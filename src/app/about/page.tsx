@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Container, Text } from "@/components/GravityUI/GravityUI";
+import { LogoGithub } from "@gravity-ui/icons";
+import { Button, Container, Text } from "@/components/GravityUI/GravityUI";
 import { withBasePath } from "@/lib/base-path";
 import { SITE_NAME } from "@/lib/site";
 
 import "./page.scss";
+
+const GITHUB_REPOSITORY_URL = "https://github.com/astandrik/gravity-ai-ui";
+const LOCAL_YDB_TOOLKIT_URL = "https://github.com/astandrik/local-ydb-toolkit";
 
 export const metadata: Metadata = {
   title: `About - ${SITE_NAME}`,
@@ -35,10 +39,14 @@ const integrations = [
     label: "Data layer",
     name: "YDB",
     description:
-      "Provides a durable foundation for product data, interaction signals, and future interface workflows.",
+      "Uses local-ydb for the development data layer, with a durable path for product data, interaction signals, and future workflows.",
     href: "https://ydb.tech/",
     image: "/assets/ydb-icon.svg",
     imageAlt: "YDB",
+    relatedLink: {
+      href: LOCAL_YDB_TOOLKIT_URL,
+      label: "local-ydb-toolkit on GitHub",
+    },
   },
 ] as const;
 
@@ -58,16 +66,19 @@ export default function AboutPage() {
           >
             Agent-generated interfaces rendered with trusted local components.
           </Text>
-
           <div className="about-page__integrations">
             {integrations.map((integration) => (
-              <a
+              <article
                 key={integration.name}
                 className="about-integration"
-                href={integration.href}
-                target="_blank"
-                rel="noopener noreferrer"
               >
+                <a
+                  aria-label={`Open ${integration.name}`}
+                  className="about-integration__overlay"
+                  href={integration.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
                 <span className="about-integration__icon">
                   <Image
                     src={withBasePath(integration.image)}
@@ -97,9 +108,32 @@ export default function AboutPage() {
                   >
                     {integration.description}
                   </Text>
+                  {"relatedLink" in integration ? (
+                    <a
+                      className="about-integration__related"
+                      href={integration.relatedLink.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {integration.relatedLink.label}
+                    </a>
+                  ) : null}
                 </span>
-              </a>
+              </article>
             ))}
+          </div>
+
+          <div className="about-page__actions">
+            <Button
+              view="outlined"
+              size="l"
+              href={GITHUB_REPOSITORY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <LogoGithub />
+              GitHub
+            </Button>
           </div>
         </section>
       </Container>
