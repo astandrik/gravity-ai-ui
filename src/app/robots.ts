@@ -12,6 +12,9 @@ export default function robots(): MetadataRoute.Robots {
           withBasePath("/docs"),
           withBasePath("/llm.txt"),
           withBasePath("/llms.txt"),
+          withBasePath("/sitemap.xml"),
+          withBasePath("/favicon.ico"),
+          withBasePath("/favicon.svg"),
           withBasePath("/opengraph-image"),
         ],
         disallow: [

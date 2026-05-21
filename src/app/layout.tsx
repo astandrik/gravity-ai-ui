@@ -50,7 +50,17 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: withBasePath("/favicon.svg"),
+    icon: [
+      {
+        url: withBasePath("/favicon.ico"),
+        type: "image/x-icon",
+      },
+      {
+        url: withBasePath("/favicon.svg"),
+        type: "image/svg+xml",
+      },
+    ],
+    shortcut: withBasePath("/favicon.ico"),
   },
   openGraph: {
     type: "website",
