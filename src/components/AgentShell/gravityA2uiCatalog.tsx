@@ -4,6 +4,28 @@ import { A2uiSurface, createComponentImplementation } from "@a2ui/react/v0_9";
 import { Catalog, CommonSchemas, MessageProcessor } from "@a2ui/web_core/v0_9";
 import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
 import type { SurfaceModel } from "@a2ui/web_core/v0_9";
+import {
+  ArrowRight,
+  Bell,
+  Check,
+  CircleInfo,
+  Clock,
+  Cloud,
+  Code,
+  Copy,
+  Database,
+  Folder,
+  Gear,
+  House,
+  ListUl,
+  Magnifier,
+  Person,
+  Plus,
+  Rocket,
+  Shield,
+  TriangleExclamation,
+} from "@gravity-ui/icons";
+import { ActionBar } from "@gravity-ui/navigation";
 import { Fragment } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
@@ -11,6 +33,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Icon as GravityIcon,
   RadioGroup,
   Text,
   TextInput,
@@ -23,6 +46,32 @@ export type GravityActionHandler = (action: A2uiClientAction) => void;
 type GravityReactComponent = ReturnType<typeof createComponentImplementation>;
 type BuildChild = (id: string, basePath?: string) => ReactNode;
 
+const iconDataByName = {
+  arrowRight: ArrowRight,
+  bell: Bell,
+  check: Check,
+  clock: Clock,
+  cloud: Cloud,
+  code: Code,
+  copy: Copy,
+  database: Database,
+  folder: Folder,
+  gear: Gear,
+  home: House,
+  info: CircleInfo,
+  list: ListUl,
+  person: Person,
+  plus: Plus,
+  rocket: Rocket,
+  search: Magnifier,
+  shield: Shield,
+  warning: TriangleExclamation,
+} as const;
+
+type IconName = keyof typeof iconDataByName;
+
+const iconNames = Object.keys(iconDataByName) as [IconName, ...IconName[]];
+
 const commonProps = {
   weight: z.number().optional(),
   accessibility: CommonSchemas.AccessibilityAttributes.optional(),
@@ -33,6 +82,7 @@ const layoutSchema = z.object({
   children: CommonSchemas.ChildList,
   justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
   align: z.enum(["start", "center", "end", "stretch"]).optional(),
+  gap: z.enum(["compact", "normal", "spacious"]).optional(),
 });
 
 const Column = createComponentImplementation(
@@ -47,6 +97,7 @@ const Column = createComponentImplementation(
         flex: props.weight,
         justifyContent: mapJustify(props.justify),
         alignItems: mapAlign(props.align),
+        gap: mapGap(props.gap),
       }}
     >
       {renderChildList(props.children, buildChild)}
@@ -66,6 +117,7 @@ const Row = createComponentImplementation(
         flex: props.weight,
         justifyContent: mapJustify(props.justify),
         alignItems: mapAlign(props.align),
+        gap: mapGap(props.gap),
       }}
     >
       {renderChildList(props.children, buildChild)}
@@ -81,6 +133,9 @@ const CardSurface = createComponentImplementation(
       child: CommonSchemas.ComponentId,
       theme: z.enum(["normal", "info", "success", "warning", "danger"]).optional(),
       view: z.enum(["outlined", "filled", "raised"]).optional(),
+      padding: z
+        .enum(["compact", "normal", "comfortable", "spacious"])
+        .optional(),
     }),
   },
   ({ props, buildChild }) => (
@@ -91,7 +146,9 @@ const CardSurface = createComponentImplementation(
       size="l"
       type="container"
     >
-      {buildChild(props.child)}
+      <div className={`a2ui-card__body a2ui-card__body_${props.padding ?? "normal"}`}>
+        {buildChild(props.child)}
+      </div>
     </Card>
   ),
 );
@@ -129,6 +186,7 @@ const ButtonSurface = createComponentImplementation(
       ...commonProps,
       child: CommonSchemas.ComponentId.optional(),
       text: CommonSchemas.DynamicString.optional(),
+      icon: z.enum(iconNames).optional(),
       variant: z.enum(["primary", "normal", "outlined", "flat"]).optional(),
       action: CommonSchemas.Action.optional(),
       disabled: CommonSchemas.DynamicBoolean.optional(),
@@ -142,8 +200,49 @@ const ButtonSurface = createComponentImplementation(
       size="m"
       view={mapButtonView(props.variant)}
     >
+      {props.icon ? (
+        <GravityIcon data={iconDataByName[props.icon]} size={16} />
+      ) : null}
       {props.child ? buildChild(props.child) : props.text}
     </Button>
+  ),
+);
+
+const IconSurface = createComponentImplementation(
+  {
+    name: "Icon",
+    schema: z.object({
+      ...commonProps,
+      name: z.enum(iconNames),
+      color: z
+        .enum(["primary", "secondary", "positive", "warning", "danger"])
+        .optional(),
+      size: z.enum(["s", "m", "l"]).optional(),
+    }),
+  },
+  ({ props }) => (
+    <GravityIcon
+      className={`a2ui-icon a2ui-icon_${props.color ?? "primary"}`}
+      data={iconDataByName[props.name]}
+      size={mapIconSize(props.size)}
+    />
+  ),
+);
+
+const NavigationBarSurface = createComponentImplementation(
+  {
+    name: "NavigationBar",
+    schema: z.object({
+      ...commonProps,
+      children: CommonSchemas.ChildList,
+    }),
+  },
+  ({ props, buildChild }) => (
+    <ActionBar aria-label="Generated navigation">
+      <ActionBar.Section>
+        <ActionBar.Group>{renderChildList(props.children, buildChild)}</ActionBar.Group>
+      </ActionBar.Section>
+    </ActionBar>
   ),
 );
 
@@ -281,6 +380,8 @@ export const gravityA2uiCatalog = new Catalog(
     CardSurface,
     TextSurface,
     ButtonSurface,
+    IconSurface,
+    NavigationBarSurface,
     TextFieldSurface,
     CheckBoxSurface,
     ChoicePickerSurface,
@@ -324,6 +425,17 @@ function toggleValue(values: string[], value: string) {
     : [...values, value];
 }
 
+function mapIconSize(value?: string) {
+  switch (value) {
+    case "s":
+      return 14;
+    case "l":
+      return 20;
+    default:
+      return 16;
+  }
+}
+
 function mapJustify(value?: string) {
   switch (value) {
     case "center":
@@ -349,6 +461,17 @@ function mapAlign(value?: string) {
       return "stretch";
     default:
       return "stretch";
+  }
+}
+
+function mapGap(value?: string) {
+  switch (value) {
+    case "compact":
+      return "var(--spacing-sm)";
+    case "spacious":
+      return "var(--spacing-xl)";
+    default:
+      return "var(--spacing-md)";
   }
 }
 

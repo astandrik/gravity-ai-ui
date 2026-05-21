@@ -1,5 +1,6 @@
 import { A2uiMessageSchema } from "@a2ui/web_core/v0_9";
 import { z } from "zod";
+import { ALLOWED_GRAVITY_ICONS } from "./gravityCapabilities";
 
 export const A2UI_VERSION = "v0.9";
 export const GRAVITY_A2UI_CATALOG_ID =
@@ -11,10 +12,12 @@ export const ALLOWED_A2UI_COMPONENTS = [
   "Card",
   "Text",
   "Button",
+  "Icon",
   "TextField",
   "CheckBox",
   "ChoicePicker",
   "Divider",
+  "NavigationBar",
 ] as const;
 
 export const ALLOWED_A2UI_ACTIONS = [
@@ -29,6 +32,9 @@ export const ALLOWED_A2UI_ACTIONS = [
   "noop",
 ] as const;
 
+const MAX_COMPONENT_CHILDREN = 96;
+const MAX_COMPONENTS = 160;
+
 const componentIdSchema = z
   .string()
   .min(1)
@@ -42,6 +48,7 @@ const jsonPointerSchema = z
   .regex(/^\/(?:[^~/]|~0|~1)*(?:\/(?:[^~/]|~0|~1)*)*$/);
 
 const dataBindingSchema = z.object({ path: jsonPointerSchema }).strict();
+const iconNameSchema = z.enum(ALLOWED_GRAVITY_ICONS);
 
 const dynamicStringSchema = z.union([
   z.string().max(2400),
@@ -61,7 +68,7 @@ const dynamicValueSchema = z.union([
 ]);
 
 const childListSchema = z.union([
-  z.array(componentIdSchema).max(32),
+  z.array(componentIdSchema).max(MAX_COMPONENT_CHILDREN),
   z.object({ componentId: componentIdSchema, path: jsonPointerSchema }).strict(),
 ]);
 
@@ -105,6 +112,7 @@ const rowComponentSchema = z
     children: childListSchema,
     justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
     align: z.enum(["start", "center", "end", "stretch"]).optional(),
+    gap: z.enum(["compact", "normal", "spacious"]).optional(),
   })
   .strict();
 
@@ -115,6 +123,7 @@ const columnComponentSchema = z
     children: childListSchema,
     justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
     align: z.enum(["start", "center", "end", "stretch"]).optional(),
+    gap: z.enum(["compact", "normal", "spacious"]).optional(),
   })
   .strict();
 
@@ -125,6 +134,9 @@ const cardComponentSchema = z
     child: componentIdSchema,
     theme: z.enum(["normal", "info", "success", "warning", "danger"]).optional(),
     view: z.enum(["outlined", "filled", "raised"]).optional(),
+    padding: z
+      .enum(["compact", "normal", "comfortable", "spacious"])
+      .optional(),
   })
   .strict();
 
@@ -134,9 +146,20 @@ const buttonComponentSchema = z
     component: z.literal("Button"),
     child: componentIdSchema.optional(),
     text: dynamicStringSchema.optional(),
+    icon: iconNameSchema.optional(),
     variant: z.enum(["primary", "normal", "outlined", "flat"]).optional(),
     action: actionSchema.optional(),
     disabled: dynamicBooleanSchema.optional(),
+  })
+  .strict();
+
+const iconComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("Icon"),
+    name: iconNameSchema,
+    color: z.enum(["primary", "secondary", "positive", "warning", "danger"]).optional(),
+    size: z.enum(["s", "m", "l"]).optional(),
   })
   .strict();
 
@@ -191,16 +214,26 @@ const dividerComponentSchema = z
   })
   .strict();
 
+const navigationBarComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("NavigationBar"),
+    children: childListSchema,
+  })
+  .strict();
+
 const gravityComponentSchema = z.discriminatedUnion("component", [
   columnComponentSchema,
   rowComponentSchema,
   cardComponentSchema,
   textComponentSchema,
   buttonComponentSchema,
+  iconComponentSchema,
   textFieldComponentSchema,
   checkboxComponentSchema,
   choicePickerComponentSchema,
   dividerComponentSchema,
+  navigationBarComponentSchema,
 ]);
 
 const updateComponentsMessageSchema = z
@@ -209,7 +242,7 @@ const updateComponentsMessageSchema = z
     updateComponents: z
       .object({
         surfaceId: componentIdSchema,
-        components: z.array(gravityComponentSchema).min(1).max(80),
+        components: z.array(gravityComponentSchema).min(1).max(MAX_COMPONENTS),
       })
       .strict(),
   })
@@ -332,7 +365,11 @@ function getChildIds(component: GravityA2uiComponent) {
     return [component.child];
   }
 
-  if (component.component === "Column" || component.component === "Row") {
+  if (
+    component.component === "Column" ||
+    component.component === "Row" ||
+    component.component === "NavigationBar"
+  ) {
     return Array.isArray(component.children)
       ? component.children
       : [component.children.componentId];

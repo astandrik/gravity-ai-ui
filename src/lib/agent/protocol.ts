@@ -1,5 +1,26 @@
 import { z } from "zod";
 import type { GravityA2uiMessage } from "./a2uiContract";
+import {
+  renderInterfaceArgumentsSchema,
+  type RenderInterfaceArguments,
+} from "./fixedInterface";
+
+const historyItemSchema = z
+  .object({
+    role: z.enum(["user", "assistant"]),
+    text: z.string().min(1).max(2000),
+    surfaceId: z.string().min(1).max(80).optional(),
+  })
+  .strict();
+
+const conversationContextSchema = z
+  .object({
+    history: z.array(historyItemSchema).max(12).optional(),
+    latestSurfaceId: z.string().min(1).max(80).optional(),
+    latestPayload: renderInterfaceArgumentsSchema.optional(),
+    latestDataModel: z.unknown().optional(),
+  })
+  .strict();
 
 const actionRequestSchema = z
   .object({
@@ -9,6 +30,7 @@ const actionRequestSchema = z
     action: z.unknown(),
     context: z.unknown().optional(),
     dataModel: z.unknown().optional(),
+    conversationContext: conversationContextSchema.optional(),
   })
   .strict();
 
@@ -17,6 +39,7 @@ const promptRequestSchema = z
     kind: z.literal("prompt"),
     conversationId: z.string().min(1).max(120),
     prompt: z.string().min(1).max(6000),
+    conversationContext: conversationContextSchema.optional(),
   })
   .strict();
 
@@ -26,9 +49,11 @@ export const agentRequestSchema = z.union([
 ]);
 
 export type AgentRequest = z.infer<typeof agentRequestSchema>;
+export type ConversationContext = z.infer<typeof conversationContextSchema>;
 
 export type AgentSseEvent =
   | { type: "status"; message: string }
+  | { type: "payload"; payload: RenderInterfaceArguments }
   | { type: "a2ui"; message: GravityA2uiMessage }
   | { type: "error"; message: string }
   | { type: "done" };

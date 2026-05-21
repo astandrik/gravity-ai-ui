@@ -9,6 +9,7 @@ import type {
   GravityA2uiComponent,
   GravityA2uiMessage,
 } from "./a2uiContract";
+import { ALLOWED_GRAVITY_ICONS } from "./gravityCapabilities";
 
 const idSchema = z
   .string()
@@ -26,18 +27,29 @@ const optionSchema = z
   })
   .strict();
 
+const layoutSchema = z
+  .object({
+    density: z.enum(["compact", "comfortable", "spacious"]),
+    sectionDividers: z.enum(["none", "minimal", "betweenSections"]),
+  })
+  .strict();
+const iconNameSchema = z.enum(ALLOWED_GRAVITY_ICONS);
+
 export const renderInterfaceArgumentsSchema = z
   .object({
     sequence: z.number().int().min(0).max(10_000),
     surfaceId: idSchema,
     title: shortTextSchema,
+    titleIcon: iconNameSchema.nullable(),
     summary: bodyTextSchema,
     tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    layout: layoutSchema,
     sections: z
       .array(
         z
           .object({
             title: shortTextSchema,
+            icon: iconNameSchema.nullable(),
             body: bodyTextSchema,
             items: z.array(shortTextSchema).max(8),
           })
@@ -74,12 +86,25 @@ export const renderInterfaceArgumentsSchema = z
         z
           .object({
             label: shortTextSchema,
+            icon: iconNameSchema.nullable(),
             action: z.enum(ALLOWED_A2UI_ACTIONS),
             variant: z.enum(["primary", "normal", "outlined", "flat"]),
           })
           .strict(),
       )
       .max(4),
+    navigation: z
+      .array(
+        z
+          .object({
+            label: shortTextSchema,
+            icon: iconNameSchema.nullable(),
+            action: z.enum(ALLOWED_A2UI_ACTIONS),
+            active: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(8),
   })
   .strict();
 
@@ -89,6 +114,7 @@ export type RenderInterfaceArguments = z.infer<
 
 export type BuiltFixedInterface = {
   sequence: number;
+  payload: RenderInterfaceArguments;
   messages: GravityA2uiMessage[];
 };
 
@@ -108,6 +134,7 @@ export function buildFixedInterface(
   const sections = args.sections
     .map((section) => ({
       title: cleanText(section.title, ""),
+      icon: section.icon,
       body: cleanText(section.body, ""),
       items: section.items.map((item) => cleanText(item, "")).filter(Boolean),
     }))
@@ -131,11 +158,16 @@ export function buildFixedInterface(
 
   const components: GravityA2uiComponent[] = [];
   const contentChildren: string[] = ["title"];
+  const gap = mapDensityToGap(args.layout.density);
   const dataModel = {
     title,
+    titleIcon: args.titleIcon,
     summary,
+    layout: args.layout,
+    navigation: args.navigation,
     sections: sections.map((section) => ({
       title: section.title,
+      icon: section.icon,
       body: section.body,
       items: section.items.map((item) => `- ${item}`),
     })),
@@ -152,8 +184,41 @@ export function buildFixedInterface(
     contentChildren.push("summary");
   }
 
+  if (args.navigation.length > 0) {
+    const navigationIds = args.navigation.map((item, index) => {
+      const id = `navigation_${index}`;
+      components.push({
+        id,
+        component: "Button",
+        text: item.label,
+        icon: item.icon ?? undefined,
+        variant: item.active ? "primary" : "flat",
+        action: {
+          event: {
+            name: item.action,
+            context: {
+              surfaceId: args.surfaceId,
+              label: item.label,
+              index,
+              source: "navigation",
+            },
+          },
+        },
+      });
+
+      return id;
+    });
+
+    components.push({
+      id: "navigation",
+      component: "NavigationBar",
+      children: navigationIds,
+    });
+    contentChildren.push("navigation");
+  }
+
   sections.forEach((section, sectionIndex) => {
-    if (contentChildren.length > 1) {
+    if (shouldAddSectionDivider(args.layout.sectionDividers, sectionIndex)) {
       const dividerId = `section_${sectionIndex}_divider`;
       components.push({
         id: dividerId,
@@ -165,12 +230,42 @@ export function buildFixedInterface(
 
     if (section.title) {
       const titleId = `section_${sectionIndex}_title`;
-      components.push({
-        id: titleId,
-        component: "Text",
-        text: { path: `/sections/${sectionIndex}/title` },
-        variant: "h3",
-      });
+      const titleTextId = `${titleId}_text`;
+      const titleComponents: GravityA2uiComponent[] = [
+        {
+          id: titleTextId,
+          component: "Text",
+          text: { path: `/sections/${sectionIndex}/title` },
+          variant: "h3",
+        },
+      ];
+
+      if (section.icon) {
+        const iconId = `${titleId}_icon`;
+        titleComponents.unshift({
+          id: iconId,
+          component: "Icon",
+          name: section.icon,
+          color: "secondary",
+          size: "s",
+        });
+        titleComponents.push({
+          id: titleId,
+          component: "Row",
+          children: [iconId, titleTextId],
+          align: "center",
+          gap: "compact",
+        });
+      } else {
+        titleComponents[0] = {
+          id: titleId,
+          component: "Text",
+          text: { path: `/sections/${sectionIndex}/title` },
+          variant: "h3",
+        };
+      }
+
+      components.push(...titleComponents);
       contentChildren.push(titleId);
     }
 
@@ -227,6 +322,7 @@ export function buildFixedInterface(
         id,
         component: "Button",
         text: { path: `/actions/${index}/label` },
+        icon: action.icon ?? undefined,
         variant: action.variant,
         action: {
           event: {
@@ -265,23 +361,20 @@ export function buildFixedInterface(
       child: "content",
       theme: args.tone,
       view: "outlined",
+      padding: mapDensityToPadding(args.layout.density),
     },
     {
       id: "content",
       component: "Column",
       children: contentChildren,
       align: "stretch",
+      gap,
     },
-    {
-      id: "title",
-      component: "Text",
-      text: { path: "/title" },
-      variant: "h2",
-    },
+    ...createTitleComponents(args.titleIcon),
   );
 
   if (summary) {
-    components.splice(4, 0, {
+    components.splice(args.titleIcon ? 6 : 4, 0, {
       id: "summary",
       component: "Text",
       text: { path: "/summary" },
@@ -318,8 +411,107 @@ export function buildFixedInterface(
 
   return {
     sequence: args.sequence,
+    payload: {
+      ...args,
+      title,
+      titleIcon: args.titleIcon,
+      summary,
+      layout: args.layout,
+      navigation: args.navigation,
+      sections,
+      fields: fields.map((field) => ({
+        id: field.id,
+        label: field.label,
+        type: field.type,
+        placeholder: field.placeholder,
+        value: field.value,
+        checked: field.checked,
+        options: field.options,
+        required: field.required,
+      })),
+      actions,
+    },
     messages,
   };
+}
+
+function createTitleComponents(
+  titleIcon: RenderInterfaceArguments["titleIcon"],
+): GravityA2uiComponent[] {
+  if (!titleIcon) {
+    return [
+      {
+        id: "title",
+        component: "Text",
+        text: { path: "/title" },
+        variant: "h2",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "title",
+      component: "Row",
+      children: ["title_icon", "title_text"],
+      align: "center",
+      gap: "compact",
+    },
+    {
+      id: "title_icon",
+      component: "Icon",
+      name: titleIcon,
+      color: "secondary",
+      size: "m",
+    },
+    {
+      id: "title_text",
+      component: "Text",
+      text: { path: "/title" },
+      variant: "h2",
+    },
+  ];
+}
+
+function mapDensityToGap(
+  density: RenderInterfaceArguments["layout"]["density"],
+) {
+  switch (density) {
+    case "compact":
+      return "compact";
+    case "spacious":
+      return "spacious";
+    default:
+      return "normal";
+  }
+}
+
+function mapDensityToPadding(
+  density: RenderInterfaceArguments["layout"]["density"],
+) {
+  switch (density) {
+    case "compact":
+      return "normal";
+    case "spacious":
+      return "spacious";
+    default:
+      return "comfortable";
+  }
+}
+
+function shouldAddSectionDivider(
+  mode: RenderInterfaceArguments["layout"]["sectionDividers"],
+  sectionIndex: number,
+) {
+  if (mode === "none") {
+    return false;
+  }
+
+  if (mode === "minimal") {
+    return sectionIndex > 0;
+  }
+
+  return true;
 }
 
 function createFieldComponent(
