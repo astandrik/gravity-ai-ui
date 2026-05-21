@@ -5,6 +5,7 @@ import "./SiteHeader.scss";
 
 const links = [
   { href: "/", label: "Generator" },
+  { href: "/docs", label: "Docs" },
   { href: "/about", label: "About" },
 ] as const;
 
