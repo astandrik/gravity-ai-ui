@@ -18,6 +18,16 @@ export const ALLOWED_A2UI_COMPONENTS = [
   "ChoicePicker",
   "Divider",
   "NavigationBar",
+  "AlertBlock",
+  "MetricGrid",
+  "DataTable",
+  "ProgressList",
+  "DefinitionListBlock",
+  "LinkList",
+  "UserList",
+  "SwitchField",
+  "SelectField",
+  "SliderField",
 ] as const;
 
 export const ALLOWED_A2UI_ACTIONS = [
@@ -55,6 +65,10 @@ const dynamicStringSchema = z.union([
   dataBindingSchema,
 ]);
 const dynamicBooleanSchema = z.union([z.boolean(), dataBindingSchema]);
+const dynamicNumberSchema = z.union([
+  z.number().min(-1_000_000_000).max(1_000_000_000),
+  dataBindingSchema,
+]);
 const dynamicStringListSchema = z.union([
   z.array(z.string().max(160)).max(24),
   dataBindingSchema,
@@ -222,6 +236,175 @@ const navigationBarComponentSchema = z
   })
   .strict();
 
+const alertBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("AlertBlock"),
+    title: z.string().max(240),
+    message: z.string().max(1600),
+    tone: z.enum(["info", "success", "warning", "danger"]),
+  })
+  .strict();
+
+const metricItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.string().min(1).max(240),
+    description: z.string().max(240).nullable(),
+    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    icon: iconNameSchema.nullable(),
+  })
+  .strict();
+
+const metricGridComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("MetricGrid"),
+    items: z.array(metricItemSchema).min(1).max(8),
+  })
+  .strict();
+
+const tableColumnSchema = z
+  .object({
+    id: componentIdSchema,
+    label: z.string().min(1).max(240),
+    align: z.enum(["start", "center", "end"]),
+  })
+  .strict();
+
+const dataTableComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("DataTable"),
+    title: z.string().max(240),
+    columns: z.array(tableColumnSchema).min(1).max(6),
+    rows: z
+      .array(
+        z
+          .object({
+            cells: z.array(z.string().max(240)).max(6),
+          })
+          .strict(),
+      )
+      .max(12),
+    emptyMessage: z.string().max(240),
+  })
+  .strict();
+
+const progressItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.number().min(0).max(100),
+    text: z.string().max(240).nullable(),
+    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+  })
+  .strict();
+
+const progressListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("ProgressList"),
+    items: z.array(progressItemSchema).min(1).max(6),
+  })
+  .strict();
+
+const definitionItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.string().min(1).max(240),
+  })
+  .strict();
+
+const definitionListBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("DefinitionListBlock"),
+    title: z.string().max(240),
+    items: z.array(definitionItemSchema).min(1).max(10),
+  })
+  .strict();
+
+const linkItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    href: z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^(https?:\/\/|mailto:|tel:|\/|#)/),
+    description: z.string().max(240).nullable(),
+  })
+  .strict();
+
+const linkListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("LinkList"),
+    items: z.array(linkItemSchema).min(1).max(8),
+  })
+  .strict();
+
+const userItemSchema = z
+  .object({
+    name: z.string().min(1).max(240),
+    description: z.string().max(240).nullable(),
+    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+  })
+  .strict();
+
+const userListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("UserList"),
+    items: z.array(userItemSchema).min(1).max(8),
+  })
+  .strict();
+
+const switchFieldComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("SwitchField"),
+    label: z.string().min(1).max(180),
+    value: dynamicBooleanSchema,
+    disabled: dynamicBooleanSchema.optional(),
+  })
+  .strict();
+
+const selectFieldComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("SelectField"),
+    label: z.string().max(120),
+    placeholder: z.string().max(160).optional(),
+    options: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(100),
+            value: z.string().min(1).max(100),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(12),
+    value: dynamicStringListSchema,
+    disabled: dynamicBooleanSchema.optional(),
+  })
+  .strict();
+
+const sliderFieldComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("SliderField"),
+    label: z.string().min(1).max(180),
+    value: dynamicNumberSchema,
+    min: z.number().min(-1_000_000).max(1_000_000),
+    max: z.number().min(-1_000_000).max(1_000_000),
+    step: z.number().positive().max(1_000_000),
+    disabled: dynamicBooleanSchema.optional(),
+  })
+  .strict();
+
 const gravityComponentSchema = z.discriminatedUnion("component", [
   columnComponentSchema,
   rowComponentSchema,
@@ -234,6 +417,16 @@ const gravityComponentSchema = z.discriminatedUnion("component", [
   choicePickerComponentSchema,
   dividerComponentSchema,
   navigationBarComponentSchema,
+  alertBlockComponentSchema,
+  metricGridComponentSchema,
+  dataTableComponentSchema,
+  progressListComponentSchema,
+  definitionListBlockComponentSchema,
+  linkListComponentSchema,
+  userListComponentSchema,
+  switchFieldComponentSchema,
+  selectFieldComponentSchema,
+  sliderFieldComponentSchema,
 ]);
 
 const updateComponentsMessageSchema = z

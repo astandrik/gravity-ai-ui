@@ -229,9 +229,6 @@
 
 .agent-surface {
   padding: var(--spacing-lg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.045);
 }
 
 .agent-inspector {
@@ -345,6 +342,16 @@
   min-width: 0;
 }
 
+.a2ui-alert,
+.a2ui-table-block,
+.a2ui-progress-list,
+.a2ui-definition-block,
+.a2ui-link-list,
+.a2ui-user-list,
+.a2ui-slider-field {
+  min-width: 0;
+}
+
 .a2ui-card__body_compact {
   padding: var(--spacing-md);
 }
@@ -387,6 +394,62 @@
 
 .a2ui-button .g-button__text {
   white-space: normal;
+}
+
+.a2ui-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.a2ui-metric-card {
+  min-width: 0;
+}
+
+.a2ui-metric-card__body {
+  display: grid;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  padding: var(--spacing-md);
+}
+
+.a2ui-metric-card__header,
+.a2ui-progress-list__header,
+.a2ui-slider-field__header,
+.a2ui-user-list__item {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.a2ui-table-block,
+.a2ui-progress-list,
+.a2ui-definition-block,
+.a2ui-link-list,
+.a2ui-user-list,
+.a2ui-slider-field {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.a2ui-table-block {
+  overflow: auto;
+}
+
+.a2ui-table {
+  min-width: 520px;
+}
+
+.a2ui-link-list__item {
+  display: grid;
+  gap: var(--spacing-2xs);
+  min-width: 0;
+}
+
+.a2ui-select-field {
+  width: 100%;
 }
 
 .a2ui-divider_horizontal {

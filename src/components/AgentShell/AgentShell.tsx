@@ -407,7 +407,7 @@ export function AgentShell({
                   disabled={isStreaming}
                   hasClear
                   onUpdate={setPrompt}
-                  placeholder="Build an incident dashboard"
+                  placeholder="Create an approval workflow"
                   size="xl"
                   value={prompt}
                 />
@@ -896,6 +896,15 @@ function summarizePayload(payload: RenderInterfaceArguments) {
     payload.summary,
     payload.sections.length > 0
       ? `Sections: ${payload.sections.map((section) => section.title).join(", ")}`
+      : "",
+    payload.metrics.length > 0
+      ? `Metrics: ${payload.metrics.map((metric) => metric.label).join(", ")}`
+      : "",
+    payload.alerts.length > 0
+      ? `Alerts: ${payload.alerts.map((alert) => alert.title).join(", ")}`
+      : "",
+    payload.tables.length > 0
+      ? `Tables: ${payload.tables.map((table) => table.title).join(", ")}`
       : "",
     payload.fields.length > 0
       ? `Fields: ${payload.fields.map((field) => field.label).join(", ")}`

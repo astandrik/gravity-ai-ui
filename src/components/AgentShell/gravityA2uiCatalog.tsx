@@ -30,13 +30,23 @@ import { Fragment } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 import {
+  Alert,
   Button,
   Card,
   Checkbox,
+  DefinitionList,
   Icon as GravityIcon,
+  Label,
+  Link,
+  Progress,
   RadioGroup,
+  Select,
+  Slider,
+  Switch,
+  Table,
   Text,
   TextInput,
+  User,
 } from "@/components/GravityUI/GravityUI";
 import { GRAVITY_A2UI_CATALOG_ID } from "@/lib/agent/a2uiContract";
 
@@ -83,6 +93,47 @@ const layoutSchema = z.object({
   justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
   align: z.enum(["start", "center", "end", "stretch"]).optional(),
   gap: z.enum(["compact", "normal", "spacious"]).optional(),
+});
+
+const toneSchema = z.enum(["normal", "info", "success", "warning", "danger"]);
+const optionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+const metricItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  description: z.string().nullable(),
+  tone: toneSchema,
+  icon: z.enum(iconNames).nullable(),
+});
+const tableColumnSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  align: z.enum(["start", "center", "end"]),
+});
+const tableRowSchema = z.object({
+  cells: z.array(z.string()),
+});
+const progressItemSchema = z.object({
+  label: z.string(),
+  value: z.number(),
+  text: z.string().nullable(),
+  tone: toneSchema,
+});
+const definitionItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+const linkItemSchema = z.object({
+  label: z.string(),
+  href: z.string(),
+  description: z.string().nullable(),
+});
+const userItemSchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  tone: toneSchema,
 });
 
 const Column = createComponentImplementation(
@@ -142,7 +193,7 @@ const CardSurface = createComponentImplementation(
     <Card
       className="a2ui-card"
       theme={mapCardTheme(props.theme)}
-      view={props.view ?? "outlined"}
+      view={props.view ?? "filled"}
       size="l"
       type="container"
     >
@@ -246,6 +297,220 @@ const NavigationBarSurface = createComponentImplementation(
   ),
 );
 
+const AlertBlockSurface = createComponentImplementation(
+  {
+    name: "AlertBlock",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      message: z.string(),
+      tone: z.enum(["info", "success", "warning", "danger"]),
+    }),
+  },
+  ({ props }) => (
+    <Alert
+      className="a2ui-alert"
+      layout="horizontal"
+      message={props.message}
+      theme={props.tone}
+      title={props.title}
+      view="filled"
+    />
+  ),
+);
+
+const MetricGridSurface = createComponentImplementation(
+  {
+    name: "MetricGrid",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(metricItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-metric-grid">
+      {props.items.map((item) => (
+        <Card
+          className="a2ui-metric-card"
+          key={`${item.label}-${item.value}`}
+          size="m"
+          theme="normal"
+          type="container"
+          view="filled"
+        >
+          <div className="a2ui-metric-card__body">
+            <div className="a2ui-metric-card__header">
+              <Text variant="caption-2" color="secondary">
+                {item.label}
+              </Text>
+              {item.icon ? (
+                <GravityIcon data={iconDataByName[item.icon]} size={14} />
+              ) : null}
+            </div>
+            <Text variant="header-1">{item.value}</Text>
+            {item.description ? (
+              <Text variant="caption-2" color="secondary">
+                {item.description}
+              </Text>
+            ) : null}
+          </div>
+        </Card>
+      ))}
+    </div>
+  ),
+);
+
+const DataTableSurface = createComponentImplementation(
+  {
+    name: "DataTable",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      columns: z.array(tableColumnSchema),
+      rows: z.array(tableRowSchema),
+      emptyMessage: z.string(),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-table-block">
+      {props.title ? (
+        <Text as="h3" variant="subheader-2">
+          {props.title}
+        </Text>
+      ) : null}
+      <Table
+        className="a2ui-table"
+        columns={props.columns.map((column) => ({
+          id: column.id,
+          name: column.label,
+          align: mapTableAlign(column.align),
+        }))}
+        data={props.rows.map((row, rowIndex) =>
+          Object.fromEntries([
+            ["_rowId", String(rowIndex)],
+            ...props.columns.map((column, columnIndex) => [
+              column.id,
+              row.cells[columnIndex] ?? "",
+            ]),
+          ]),
+        )}
+        edgePadding
+        emptyMessage={props.emptyMessage}
+        wordWrap
+      />
+    </div>
+  ),
+);
+
+const ProgressListSurface = createComponentImplementation(
+  {
+    name: "ProgressList",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(progressItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-progress-list">
+      {props.items.map((item) => (
+        <div className="a2ui-progress-list__item" key={item.label}>
+          <div className="a2ui-progress-list__header">
+            <Text variant="body-1">{item.label}</Text>
+            <Label theme={mapLabelTheme(item.tone)} size="xs">
+              {item.text ?? `${item.value}%`}
+            </Label>
+          </div>
+          <Progress
+            text=""
+            theme={mapProgressTheme(item.tone)}
+            value={item.value}
+          />
+        </div>
+      ))}
+    </div>
+  ),
+);
+
+const DefinitionListBlockSurface = createComponentImplementation(
+  {
+    name: "DefinitionListBlock",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      items: z.array(definitionItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-definition-block">
+      {props.title ? (
+        <Text as="h3" variant="subheader-2">
+          {props.title}
+        </Text>
+      ) : null}
+      <DefinitionList direction="horizontal" responsive>
+        {props.items.map((item) => (
+          <DefinitionList.Item key={item.label} name={item.label}>
+            {item.value}
+          </DefinitionList.Item>
+        ))}
+      </DefinitionList>
+    </div>
+  ),
+);
+
+const LinkListSurface = createComponentImplementation(
+  {
+    name: "LinkList",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(linkItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-link-list">
+      {props.items.map((item) => (
+        <div className="a2ui-link-list__item" key={`${item.href}-${item.label}`}>
+          <Link href={item.href} view="primary">
+            {item.label}
+          </Link>
+          {item.description ? (
+            <Text variant="caption-2" color="secondary">
+              {item.description}
+            </Text>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  ),
+);
+
+const UserListSurface = createComponentImplementation(
+  {
+    name: "UserList",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(userItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-user-list">
+      {props.items.map((item) => (
+        <div className="a2ui-user-list__item" key={item.name}>
+          <User
+            avatar={{ text: createInitials(item.name) }}
+            description={item.description}
+            name={item.name}
+            size="m"
+          />
+          <Label theme={mapLabelTheme(item.tone)} size="xs">
+            {mapToneLabel(item.tone)}
+          </Label>
+        </div>
+      ))}
+    </div>
+  ),
+);
+
 const TextFieldSurface = createComponentImplementation(
   {
     name: "TextField",
@@ -294,6 +559,91 @@ const CheckBoxSurface = createComponentImplementation(
       onUpdate={props.setValue}
       size="l"
     />
+  ),
+);
+
+const SwitchFieldSurface = createComponentImplementation(
+  {
+    name: "SwitchField",
+    schema: z.object({
+      ...commonProps,
+      label: z.string(),
+      value: CommonSchemas.DynamicBoolean,
+      disabled: CommonSchemas.DynamicBoolean.optional(),
+    }),
+  },
+  ({ props }) => (
+    <Switch
+      checked={Boolean(props.value)}
+      content={props.label}
+      disabled={Boolean(props.disabled)}
+      onUpdate={props.setValue}
+      size="l"
+    />
+  ),
+);
+
+const SelectFieldSurface = createComponentImplementation(
+  {
+    name: "SelectField",
+    schema: z.object({
+      ...commonProps,
+      label: z.string(),
+      placeholder: z.string().optional(),
+      options: z.array(optionSchema),
+      value: CommonSchemas.DynamicStringList,
+      disabled: CommonSchemas.DynamicBoolean.optional(),
+    }),
+  },
+  ({ props }) => (
+    <Select
+      className="a2ui-select-field"
+      disabled={Boolean(props.disabled)}
+      label={props.label}
+      onUpdate={props.setValue}
+      options={props.options.map((option) => ({
+        content: option.label,
+        text: option.label,
+        value: option.value,
+      }))}
+      placeholder={props.placeholder}
+      size="l"
+      value={Array.isArray(props.value) ? props.value : []}
+      width="max"
+    />
+  ),
+);
+
+const SliderFieldSurface = createComponentImplementation(
+  {
+    name: "SliderField",
+    schema: z.object({
+      ...commonProps,
+      label: z.string(),
+      value: CommonSchemas.DynamicNumber,
+      min: z.number(),
+      max: z.number(),
+      step: z.number(),
+      disabled: CommonSchemas.DynamicBoolean.optional(),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-slider-field">
+      <div className="a2ui-slider-field__header">
+        <Text variant="body-1">{props.label}</Text>
+        <Label theme="normal" size="xs">
+          {Number(props.value)}
+        </Label>
+      </div>
+      <Slider
+        disabled={Boolean(props.disabled)}
+        max={props.max}
+        min={props.min}
+        onUpdate={props.setValue}
+        step={props.step}
+        value={Number(props.value)}
+      />
+    </div>
   ),
 );
 
@@ -382,8 +732,18 @@ export const gravityA2uiCatalog = new Catalog(
     ButtonSurface,
     IconSurface,
     NavigationBarSurface,
+    AlertBlockSurface,
+    MetricGridSurface,
+    DataTableSurface,
+    ProgressListSurface,
+    DefinitionListBlockSurface,
+    LinkListSurface,
+    UserListSurface,
     TextFieldSurface,
     CheckBoxSurface,
+    SwitchFieldSurface,
+    SelectFieldSurface,
+    SliderFieldSurface,
     ChoicePickerSurface,
     DividerSurface,
   ],
@@ -495,6 +855,65 @@ function mapCardTheme(value?: string) {
     value === "warning"
     ? value
     : "normal";
+}
+
+function mapLabelTheme(value?: string) {
+  return value === "danger" ||
+    value === "info" ||
+    value === "success" ||
+    value === "warning"
+    ? value
+    : "normal";
+}
+
+function mapProgressTheme(value?: string) {
+  switch (value) {
+    case "danger":
+      return "danger";
+    case "info":
+      return "info";
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
+function mapTableAlign(value?: string) {
+  switch (value) {
+    case "center":
+      return "center";
+    case "end":
+      return "end";
+    default:
+      return "start";
+  }
+}
+
+function mapToneLabel(value?: string) {
+  switch (value) {
+    case "danger":
+      return "Risk";
+    case "info":
+      return "Info";
+    case "success":
+      return "Good";
+    case "warning":
+      return "Watch";
+    default:
+      return "Neutral";
+  }
+}
+
+function createInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1).toUpperCase())
+    .join("");
 }
 
 function mapTextVariant(value?: string) {

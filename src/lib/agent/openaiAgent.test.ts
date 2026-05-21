@@ -19,6 +19,22 @@ const interfaceArgs = {
     density: "comfortable",
     sectionDividers: "minimal",
   },
+  alerts: [
+    {
+      title: "Risk noted",
+      message: "Production deploy requires an approver.",
+      tone: "warning",
+    },
+  ],
+  metrics: [
+    {
+      label: "Readiness",
+      value: "82%",
+      description: "Automated checks completed",
+      tone: "success",
+      icon: "check",
+    },
+  ],
   sections: [
     {
       title: "Checklist",
@@ -36,7 +52,55 @@ const interfaceArgs = {
       value: "",
       checked: null,
       options: [],
+      min: null,
+      max: null,
+      step: null,
       required: true,
+    },
+  ],
+  tables: [
+    {
+      title: "Open checks",
+      columns: [
+        { id: "name", label: "Check", align: "start" },
+        { id: "status", label: "Status", align: "end" },
+      ],
+      rows: [
+        { cells: ["Config", "Ready"] },
+        { cells: ["Rollback", "Pending"] },
+      ],
+      emptyMessage: "No checks",
+    },
+  ],
+  progress: [
+    {
+      label: "Deployment preparation",
+      value: 65,
+      text: "65%",
+      tone: "info",
+    },
+  ],
+  descriptions: [
+    {
+      title: "Metadata",
+      items: [
+        { label: "Environment", value: "Production" },
+        { label: "Window", value: "Today" },
+      ],
+    },
+  ],
+  links: [
+    {
+      label: "Runbook",
+      href: "/runbook",
+      description: "Operational steps",
+    },
+  ],
+  users: [
+    {
+      name: "Ada Lovelace",
+      description: "Primary approver",
+      tone: "info",
     },
   ],
   actions: [
@@ -123,6 +187,14 @@ describe("OpenAI agent stream parsing", () => {
             id: "action_0",
             component: "Button",
           }),
+          expect.objectContaining({
+            id: "metrics",
+            component: "MetricGrid",
+          }),
+          expect.objectContaining({
+            id: "table_0",
+            component: "DataTable",
+          }),
         ]),
       },
     });
@@ -146,6 +218,9 @@ describe("OpenAI agent stream parsing", () => {
       value: "",
       checked: null,
       options: [],
+      min: null,
+      max: null,
+      step: null,
       required: false,
     }));
     const actions = Array.from({ length: 4 }, (_, actionIndex) => ({

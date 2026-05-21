@@ -335,8 +335,9 @@ export function buildInstructions() {
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
     "For action follow-ups, preserve the preferred surfaceId from the user message.",
     "Use sections for readable results, fields only when user input is needed, and actions only for clear next steps.",
+    "Use alerts for important status, metrics for dashboard KPIs, tables for comparable records, progress for completion states, descriptions for key-value details, links for resource lists, and users for people or owners.",
     `Allowed action names: ${ALLOWED_A2UI_ACTIONS.join(", ")}.`,
-    "Return empty arrays for sections, fields, or actions when they are not needed.",
+    "Return empty arrays for every optional block array when it is not needed.",
     "Keep title, summary, labels, and section copy concise and product-interface focused.",
     "Follow these design rules:",
     "- Use one clear primary task per surface.",
@@ -428,6 +429,45 @@ const renderInterfaceTool = {
         },
         required: ["density", "sectionDividers"],
       },
+      alerts: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            message: { type: "string", maxLength: 1600 },
+            tone: {
+              type: "string",
+              enum: ["info", "success", "warning", "danger"],
+            },
+          },
+          required: ["title", "message", "tone"],
+        },
+      },
+      metrics: {
+        type: "array",
+        maxItems: 8,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string", maxLength: 240 },
+            value: { type: "string", maxLength: 240 },
+            description: { type: ["string", "null"], maxLength: 240 },
+            tone: {
+              type: "string",
+              enum: ["normal", "info", "success", "warning", "danger"],
+            },
+            icon: {
+              type: ["string", "null"],
+              enum: [...ALLOWED_GRAVITY_ICONS, null],
+            },
+          },
+          required: ["label", "value", "description", "tone", "icon"],
+        },
+      },
       sections: {
         type: "array",
         maxItems: 6,
@@ -472,8 +512,11 @@ const renderInterfaceTool = {
                 "tel",
                 "url",
                 "checkbox",
+                "switch",
                 "singleChoice",
                 "multipleChoice",
+                "select",
+                "slider",
               ],
             },
             placeholder: { type: ["string", "null"], maxLength: 240 },
@@ -492,6 +535,9 @@ const renderInterfaceTool = {
                 required: ["label", "value"],
               },
             },
+            min: { type: ["number", "null"] },
+            max: { type: ["number", "null"] },
+            step: { type: ["number", "null"], exclusiveMinimum: 0 },
             required: { type: "boolean" },
           },
           required: [
@@ -502,8 +548,141 @@ const renderInterfaceTool = {
             "value",
             "checked",
             "options",
+            "min",
+            "max",
+            "step",
             "required",
           ],
+        },
+      },
+      tables: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            columns: {
+              type: "array",
+              minItems: 1,
+              maxItems: 6,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  id: {
+                    type: "string",
+                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
+                    maxLength: 48,
+                  },
+                  label: { type: "string", maxLength: 240 },
+                  align: {
+                    type: "string",
+                    enum: ["start", "center", "end"],
+                  },
+                },
+                required: ["id", "label", "align"],
+              },
+            },
+            rows: {
+              type: "array",
+              maxItems: 12,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  cells: {
+                    type: "array",
+                    maxItems: 6,
+                    items: { type: "string", maxLength: 240 },
+                  },
+                },
+                required: ["cells"],
+              },
+            },
+            emptyMessage: { type: "string", maxLength: 240 },
+          },
+          required: ["title", "columns", "rows", "emptyMessage"],
+        },
+      },
+      progress: {
+        type: "array",
+        maxItems: 6,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string", maxLength: 240 },
+            value: { type: "number", minimum: 0, maximum: 100 },
+            text: { type: ["string", "null"], maxLength: 240 },
+            tone: {
+              type: "string",
+              enum: ["normal", "info", "success", "warning", "danger"],
+            },
+          },
+          required: ["label", "value", "text", "tone"],
+        },
+      },
+      descriptions: {
+        type: "array",
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 10,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  value: { type: "string", maxLength: 240 },
+                },
+                required: ["label", "value"],
+              },
+            },
+          },
+          required: ["title", "items"],
+        },
+      },
+      links: {
+        type: "array",
+        maxItems: 8,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string", maxLength: 240 },
+            href: {
+              type: "string",
+              maxLength: 500,
+              pattern: "^(https?:\\/\\/|mailto:|tel:|\\/|#)",
+            },
+            description: { type: ["string", "null"], maxLength: 240 },
+          },
+          required: ["label", "href", "description"],
+        },
+      },
+      users: {
+        type: "array",
+        maxItems: 8,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: "string", maxLength: 240 },
+            description: { type: ["string", "null"], maxLength: 240 },
+            tone: {
+              type: "string",
+              enum: ["normal", "info", "success", "warning", "danger"],
+            },
+          },
+          required: ["name", "description", "tone"],
         },
       },
       actions: {
@@ -560,8 +739,15 @@ const renderInterfaceTool = {
       "summary",
       "tone",
       "layout",
+      "alerts",
+      "metrics",
       "sections",
       "fields",
+      "tables",
+      "progress",
+      "descriptions",
+      "links",
+      "users",
       "actions",
       "navigation",
     ],

@@ -48,12 +48,45 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
     payload.navigation.length > 0;
   const usedComponents = new Set(["Card", "Text"]);
 
+  if (payload.alerts.length > 0) {
+    usedComponents.add("Alert");
+  }
+
+  if (payload.metrics.length > 0) {
+    usedComponents.add("Label");
+  }
+
+  if (payload.tables.length > 0) {
+    usedComponents.add("Table");
+  }
+
+  if (payload.progress.length > 0) {
+    usedComponents.add("Label");
+    usedComponents.add("Progress");
+  }
+
+  if (payload.descriptions.length > 0) {
+    usedComponents.add("DefinitionList");
+  }
+
+  if (payload.links.length > 0) {
+    usedComponents.add("Link");
+  }
+
+  if (payload.users.length > 0) {
+    usedComponents.add("Label");
+    usedComponents.add("User");
+  }
+
   if (
     fields.some(
       (field) =>
         field.type !== "checkbox" &&
+        field.type !== "switch" &&
         field.type !== "singleChoice" &&
-        field.type !== "multipleChoice",
+        field.type !== "multipleChoice" &&
+        field.type !== "select" &&
+        field.type !== "slider",
     )
   ) {
     usedComponents.add("TextInput");
@@ -67,8 +100,21 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
     usedComponents.add("Checkbox");
   }
 
+  if (fields.some((field) => field.type === "switch")) {
+    usedComponents.add("Switch");
+  }
+
   if (fields.some((field) => field.type === "singleChoice")) {
     usedComponents.add("RadioGroup");
+  }
+
+  if (fields.some((field) => field.type === "select")) {
+    usedComponents.add("Select");
+  }
+
+  if (fields.some((field) => field.type === "slider")) {
+    usedComponents.add("Label");
+    usedComponents.add("Slider");
   }
 
   if (payload.actions.length > 0 || payload.navigation.length > 0) {
@@ -102,14 +148,21 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
       payload.actions.length > 0 || payload.navigation.length > 0,
     ),
     "  return (",
-    `    <Card theme=${jsxString(payload.tone)} view="outlined" size="l" type="container">`,
+    '    <Card theme="normal" view="filled" size="l" type="container">',
     `      <div style={{ display: "grid", gap: ${spacing.gap}, padding: ${spacing.padding} }}>`,
     titleLine(payload),
     payload.summary
       ? `        <Text as="p" variant="body-2" color="secondary">${jsxText(payload.summary)}</Text>`
       : null,
     ...navigationLines(payload.navigation),
+    ...alertLines(payload.alerts),
+    ...metricLines(payload.metrics),
     ...sectionLines(payload),
+    ...descriptionLines(payload.descriptions),
+    ...tableLines(payload.tables),
+    ...progressLines(payload.progress),
+    ...userLines(payload.users),
+    ...linkLines(payload.links),
     ...fieldLines(fields),
     ...actionLines(payload.actions),
     "      </div>",
@@ -125,7 +178,7 @@ function fieldStateLine(fields: FieldWithKey[]) {
     return null;
   }
 
-  return `  const [form, setForm] = useState<Record<string, string | boolean | string[]>>(${jsonForCode(
+  return `  const [form, setForm] = useState<Record<string, string | boolean | string[] | number>>(${jsonForCode(
     Object.fromEntries(fields.map((field) => [field.key, initialFieldValue(field)])),
     2,
   ).replace(/\n/g, "\n  ")});`;
@@ -184,6 +237,39 @@ function navigationLines(
   ].filter((line): line is string => Boolean(line));
 }
 
+function alertLines(alerts: RenderInterfaceArguments["alerts"]) {
+  return alerts.map(
+    (alert) =>
+      `        <Alert theme=${jsxString(alert.tone)} view="filled" layout="horizontal" title=${jsxString(alert.title)} message=${jsxString(alert.message)} />`,
+  );
+}
+
+function metricLines(metrics: RenderInterfaceArguments["metrics"]) {
+  if (metrics.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>',
+    ...metrics.flatMap((metric) => [
+      '          <Card view="filled" size="m" type="container">',
+      '            <div style={{ display: "grid", gap: 6, padding: 12 }}>',
+      '              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
+      `                <Text variant="caption-2" color="secondary">${jsxText(metric.label)}</Text>`,
+      metric.icon ? `                ${iconElement(metric.icon, 14)}` : null,
+      "              </div>",
+      `              <Text variant="header-1">${jsxText(metric.value)}</Text>`,
+      metric.description
+        ? `              <Text variant="caption-2" color="secondary">${jsxText(metric.description)}</Text>`
+        : null,
+      `              <Label theme=${jsxString(mapLabelTheme(metric.tone))} size="xs">${jsxText(mapToneLabel(metric.tone))}</Label>`,
+      "            </div>",
+      "          </Card>",
+    ]),
+    "        </div>",
+  ].filter((line): line is string => Boolean(line));
+}
+
 function sectionLines(payload: RenderInterfaceArguments) {
   return payload.sections.flatMap((section, index) => {
     const lines: string[] = [];
@@ -231,6 +317,116 @@ function sectionLines(payload: RenderInterfaceArguments) {
   });
 }
 
+function descriptionLines(
+  descriptions: RenderInterfaceArguments["descriptions"],
+) {
+  return descriptions.flatMap((description) => [
+    "        <section>",
+    description.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(description.title)}</Text>`
+      : null,
+    '          <DefinitionList direction="horizontal" responsive>',
+    ...description.items.flatMap((item) => [
+      `            <DefinitionList.Item name=${jsxString(item.label)}>`,
+      `              ${jsxText(item.value)}`,
+      "            </DefinitionList.Item>",
+    ]),
+    "          </DefinitionList>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
+}
+
+function tableLines(tables: RenderInterfaceArguments["tables"]) {
+  return tables.flatMap((table) => [
+    "        <section>",
+    table.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(table.title)}</Text>`
+      : null,
+    "          <Table",
+    `            columns={${jsonForCode(
+      table.columns.map((column) => ({
+        id: column.id,
+        name: column.label,
+        align: column.align,
+      })),
+      14,
+    ).replace(/\n/g, "\n            ")}}`,
+    `            data={${jsonForCode(
+      table.rows.map((row, rowIndex) =>
+        Object.fromEntries([
+          ["_rowId", String(rowIndex)],
+          ...table.columns.map((column, columnIndex) => [
+            column.id,
+            row.cells[columnIndex] ?? "",
+          ]),
+        ]),
+      ),
+      14,
+    ).replace(/\n/g, "\n            ")}}`,
+    "            edgePadding",
+    `            emptyMessage=${jsxString(table.emptyMessage)}`,
+    "            wordWrap",
+    "          />",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
+}
+
+function progressLines(progress: RenderInterfaceArguments["progress"]) {
+  if (progress.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gap: 10 }}>',
+    ...progress.flatMap((item) => [
+      '          <div style={{ display: "grid", gap: 6 }}>',
+      '            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
+      `              <Text variant="body-1">${jsxText(item.label)}</Text>`,
+      `              <Label theme=${jsxString(mapLabelTheme(item.tone))} size="xs">${jsxText(item.text ?? `${item.value}%`)}</Label>`,
+      "            </div>",
+      `            <Progress value={${item.value}} theme=${jsxString(mapProgressTheme(item.tone))} text="" />`,
+      "          </div>",
+    ]),
+    "        </div>",
+  ];
+}
+
+function userLines(users: RenderInterfaceArguments["users"]) {
+  if (users.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gap: 10 }}>',
+    ...users.flatMap((user) => [
+      '          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>',
+      `            <User name=${jsxString(user.name)} description=${jsxString(user.description ?? "")} avatar={{ text: ${jsString(createInitials(user.name))} }} size="m" />`,
+      `            <Label theme=${jsxString(mapLabelTheme(user.tone))} size="xs">${jsxText(mapToneLabel(user.tone))}</Label>`,
+      "          </div>",
+    ]),
+    "        </div>",
+  ];
+}
+
+function linkLines(links: RenderInterfaceArguments["links"]) {
+  if (links.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gap: 8 }}>',
+    ...links.flatMap((link) => [
+      "          <div>",
+      `            <Link href=${jsxString(link.href)} view="primary">${jsxText(link.label)}</Link>`,
+      link.description
+        ? `            <Text variant="caption-2" color="secondary">${jsxText(link.description)}</Text>`
+        : null,
+      "          </div>",
+    ]),
+    "        </div>",
+  ].filter((line): line is string => Boolean(line));
+}
+
 function fieldLines(fields: FieldWithKey[]) {
   return fields.flatMap((field) => {
     if (field.type === "checkbox") {
@@ -241,6 +437,58 @@ function fieldLines(fields: FieldWithKey[]) {
         `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
         '          size="l"',
         "        />",
+      ];
+    }
+
+    if (field.type === "switch") {
+      return [
+        "        <Switch",
+        `          checked={Boolean(form.${field.key})}`,
+        `          content=${jsxString(field.label)}`,
+        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
+        '          size="l"',
+        "        />",
+      ];
+    }
+
+    if (field.type === "select" && field.options.length > 0) {
+      return [
+        "        <Select",
+        `          label=${jsxString(field.label)}`,
+        field.placeholder
+          ? `          placeholder=${jsxString(field.placeholder)}`
+          : null,
+        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
+        `          options={${jsonForCode(
+          field.options.map((option) => ({
+            content: option.label,
+            text: option.label,
+            value: option.value,
+          })),
+          10,
+        ).replace(/\n/g, "\n          ")}}`,
+        '          size="l"',
+        `          value={Array.isArray(form.${field.key}) ? form.${field.key} : []}`,
+        '          width="max"',
+        "        />",
+      ].filter((line): line is string => Boolean(line));
+    }
+
+    if (field.type === "slider") {
+      return [
+        '        <div style={{ display: "grid", gap: 6 }}>',
+        '          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
+        `            <Text variant="body-1">${jsxText(field.label)}</Text>`,
+        `            <Label theme="normal" size="xs">{Number(form.${field.key})}</Label>`,
+        "          </div>",
+        "          <Slider",
+        `            min={${field.min ?? 0}}`,
+        `            max={${field.max ?? 100}}`,
+        `            step={${field.step ?? 1}}`,
+        `            value={Number(form.${field.key})}`,
+        `            onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
+        "          />",
+        "        </div>",
       ];
     }
 
@@ -314,11 +562,11 @@ function actionLines(actions: RenderInterfaceArguments["actions"]) {
 }
 
 function initialFieldValue(field: FieldWithKey) {
-  if (field.type === "checkbox") {
+  if (field.type === "checkbox" || field.type === "switch") {
     return Boolean(field.checked);
   }
 
-  if (field.type === "singleChoice") {
+  if (field.type === "singleChoice" || field.type === "select") {
     return field.value ? [field.value] : [];
   }
 
@@ -329,6 +577,12 @@ function initialFieldValue(field: FieldWithKey) {
           .map((value) => value.trim())
           .filter(Boolean)
       : [];
+  }
+
+  if (field.type === "slider") {
+    const parsedValue = Number(field.value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : field.min ?? 0;
   }
 
   return field.value || "";
@@ -369,6 +623,7 @@ function collectUsedIcons(payload: RenderInterfaceArguments) {
   return [
     payload.titleIcon,
     ...payload.navigation.map((item) => item.icon),
+    ...payload.metrics.map((metric) => metric.icon),
     ...payload.sections.map((section) => section.icon),
     ...payload.actions.map((action) => action.icon),
   ].filter((icon): icon is GravityIconName => Boolean(icon));
@@ -399,6 +654,54 @@ function mapButtonView(
   variant: RenderInterfaceArguments["actions"][number]["variant"],
 ) {
   return variant === "primary" ? "action" : variant;
+}
+
+function mapLabelTheme(value: string) {
+  return value === "danger" ||
+    value === "info" ||
+    value === "success" ||
+    value === "warning"
+    ? value
+    : "normal";
+}
+
+function mapProgressTheme(value: string) {
+  switch (value) {
+    case "danger":
+      return "danger";
+    case "info":
+      return "info";
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
+function mapToneLabel(value: string) {
+  switch (value) {
+    case "danger":
+      return "Risk";
+    case "info":
+      return "Info";
+    case "success":
+      return "Good";
+    case "warning":
+      return "Watch";
+    default:
+      return "Neutral";
+  }
+}
+
+function createInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1).toUpperCase())
+    .join("");
 }
 
 function jsxText(value: string) {

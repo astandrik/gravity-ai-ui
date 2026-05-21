@@ -26,6 +26,7 @@ const optionSchema = z
     value: z.string().min(1).max(100),
   })
   .strict();
+const toneSchema = z.enum(["normal", "info", "success", "warning", "danger"]);
 
 const layoutSchema = z
   .object({
@@ -34,6 +35,88 @@ const layoutSchema = z
   })
   .strict();
 const iconNameSchema = z.enum(ALLOWED_GRAVITY_ICONS);
+const metricSchema = z
+  .object({
+    label: shortTextSchema,
+    value: shortTextSchema,
+    description: shortTextSchema.nullable(),
+    tone: toneSchema,
+    icon: iconNameSchema.nullable(),
+  })
+  .strict();
+const alertSchema = z
+  .object({
+    title: shortTextSchema,
+    message: bodyTextSchema,
+    tone: z.enum(["info", "success", "warning", "danger"]),
+  })
+  .strict();
+const tableColumnSchema = z
+  .object({
+    id: idSchema,
+    label: shortTextSchema,
+    align: z.enum(["start", "center", "end"]),
+  })
+  .strict();
+const tableSchema = z
+  .object({
+    title: shortTextSchema,
+    columns: z.array(tableColumnSchema).min(1).max(6),
+    rows: z
+      .array(
+        z
+          .object({
+            cells: z.array(shortTextSchema).max(6),
+          })
+          .strict(),
+      )
+      .max(12),
+    emptyMessage: shortTextSchema,
+  })
+  .strict();
+const progressSchema = z
+  .object({
+    label: shortTextSchema,
+    value: z.number().min(0).max(100),
+    text: shortTextSchema.nullable(),
+    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+  })
+  .strict();
+const definitionListSchema = z
+  .object({
+    title: shortTextSchema,
+    items: z
+      .array(
+        z
+          .object({
+            label: shortTextSchema,
+            value: shortTextSchema,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+const hrefSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .regex(/^(https?:\/\/|mailto:|tel:|\/|#)/);
+const linkSchema = z
+  .object({
+    label: shortTextSchema,
+    href: hrefSchema,
+    description: shortTextSchema.nullable(),
+  })
+  .strict();
+const userSchema = z
+  .object({
+    name: shortTextSchema,
+    description: shortTextSchema.nullable(),
+    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+  })
+  .strict();
 
 export const renderInterfaceArgumentsSchema = z
   .object({
@@ -42,8 +125,10 @@ export const renderInterfaceArgumentsSchema = z
     title: shortTextSchema,
     titleIcon: iconNameSchema.nullable(),
     summary: bodyTextSchema,
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: toneSchema,
     layout: layoutSchema,
+    alerts: z.array(alertSchema).max(3).default([]),
+    metrics: z.array(metricSchema).max(8).default([]),
     sections: z
       .array(
         z
@@ -69,18 +154,29 @@ export const renderInterfaceArgumentsSchema = z
               "tel",
               "url",
               "checkbox",
+              "switch",
               "singleChoice",
               "multipleChoice",
+              "select",
+              "slider",
             ]),
             placeholder: shortTextSchema.nullable(),
             value: z.string().max(500).nullable(),
             checked: z.boolean().nullable(),
             options: z.array(optionSchema).max(10),
+            min: z.number().nullable().default(null),
+            max: z.number().nullable().default(null),
+            step: z.number().positive().nullable().default(null),
             required: z.boolean(),
           })
           .strict(),
       )
       .max(8),
+    tables: z.array(tableSchema).max(3).default([]),
+    progress: z.array(progressSchema).max(6).default([]),
+    descriptions: z.array(definitionListSchema).max(4).default([]),
+    links: z.array(linkSchema).max(8).default([]),
+    users: z.array(userSchema).max(8).default([]),
     actions: z
       .array(
         z
@@ -155,6 +251,73 @@ export function buildFixedInterface(
       label: cleanText(action.label, action.action),
     }))
     .filter((action) => action.label);
+  const alerts = args.alerts
+    .map((alert) => ({
+      title: cleanText(alert.title, ""),
+      message: cleanText(alert.message, ""),
+      tone: alert.tone,
+    }))
+    .filter((alert) => alert.title || alert.message);
+  const metrics = args.metrics
+    .map((metric) => ({
+      label: cleanText(metric.label, ""),
+      value: cleanText(metric.value, ""),
+      description: metric.description ? cleanText(metric.description, "") : null,
+      tone: metric.tone,
+      icon: metric.icon,
+    }))
+    .filter((metric) => metric.label && metric.value);
+  const tables = args.tables
+    .map((table) => {
+      const columns = table.columns.map((column) => ({
+        id: column.id,
+        label: cleanText(column.label, column.id),
+        align: column.align,
+      }));
+
+      return {
+        title: cleanText(table.title, ""),
+        columns,
+        rows: table.rows.map((row) => ({
+          cells: columns.map((_, index) => cleanText(row.cells[index] ?? "", "")),
+        })),
+        emptyMessage: cleanText(table.emptyMessage, "No data"),
+      };
+    })
+    .filter((table) => table.columns.length > 0);
+  const progress = args.progress
+    .map((item) => ({
+      label: cleanText(item.label, ""),
+      value: Math.round(item.value),
+      text: item.text ? cleanText(item.text, "") : null,
+      tone: item.tone,
+    }))
+    .filter((item) => item.label);
+  const descriptions = args.descriptions
+    .map((description) => ({
+      title: cleanText(description.title, ""),
+      items: description.items
+        .map((item) => ({
+          label: cleanText(item.label, ""),
+          value: cleanText(item.value, ""),
+        }))
+        .filter((item) => item.label && item.value),
+    }))
+    .filter((description) => description.items.length > 0);
+  const links = args.links
+    .map((link) => ({
+      label: cleanText(link.label, ""),
+      href: link.href,
+      description: link.description ? cleanText(link.description, "") : null,
+    }))
+    .filter((link) => link.label);
+  const users = args.users
+    .map((user) => ({
+      name: cleanText(user.name, ""),
+      description: user.description ? cleanText(user.description, "") : null,
+      tone: user.tone,
+    }))
+    .filter((user) => user.name);
 
   const components: GravityA2uiComponent[] = [];
   const contentChildren: string[] = ["title"];
@@ -165,6 +328,8 @@ export function buildFixedInterface(
     summary,
     layout: args.layout,
     navigation: args.navigation,
+    alerts,
+    metrics,
     sections: sections.map((section) => ({
       title: section.title,
       icon: section.icon,
@@ -178,6 +343,11 @@ export function buildFixedInterface(
       label: action.label,
       action: action.action,
     })),
+    tables,
+    progress,
+    descriptions,
+    links,
+    users,
   };
 
   if (summary) {
@@ -215,6 +385,27 @@ export function buildFixedInterface(
       children: navigationIds,
     });
     contentChildren.push("navigation");
+  }
+
+  alerts.forEach((alert, index) => {
+    const id = `alert_${index}`;
+    components.push({
+      id,
+      component: "AlertBlock",
+      title: alert.title,
+      message: alert.message,
+      tone: alert.tone,
+    });
+    contentChildren.push(id);
+  });
+
+  if (metrics.length > 0) {
+    components.push({
+      id: "metrics",
+      component: "MetricGrid",
+      items: metrics,
+    });
+    contentChildren.push("metrics");
   }
 
   sections.forEach((section, sectionIndex) => {
@@ -293,6 +484,57 @@ export function buildFixedInterface(
     });
   });
 
+  descriptions.forEach((description, index) => {
+    const id = `description_${index}`;
+    components.push({
+      id,
+      component: "DefinitionListBlock",
+      title: description.title,
+      items: description.items,
+    });
+    contentChildren.push(id);
+  });
+
+  tables.forEach((table, index) => {
+    const id = `table_${index}`;
+    components.push({
+      id,
+      component: "DataTable",
+      title: table.title,
+      columns: table.columns,
+      rows: table.rows,
+      emptyMessage: table.emptyMessage,
+    });
+    contentChildren.push(id);
+  });
+
+  if (progress.length > 0) {
+    components.push({
+      id: "progress",
+      component: "ProgressList",
+      items: progress,
+    });
+    contentChildren.push("progress");
+  }
+
+  if (users.length > 0) {
+    components.push({
+      id: "users",
+      component: "UserList",
+      items: users,
+    });
+    contentChildren.push("users");
+  }
+
+  if (links.length > 0) {
+    components.push({
+      id: "links",
+      component: "LinkList",
+      items: links,
+    });
+    contentChildren.push("links");
+  }
+
   if (fields.length > 0) {
     components.push({
       id: "fields_divider",
@@ -359,8 +601,8 @@ export function buildFixedInterface(
       id: "surface_card",
       component: "Card",
       child: "content",
-      theme: args.tone,
-      view: "outlined",
+      theme: "normal",
+      view: "filled",
       padding: mapDensityToPadding(args.layout.density),
     },
     {
@@ -418,6 +660,8 @@ export function buildFixedInterface(
       summary,
       layout: args.layout,
       navigation: args.navigation,
+      alerts,
+      metrics,
       sections,
       fields: fields.map((field) => ({
         id: field.id,
@@ -427,8 +671,16 @@ export function buildFixedInterface(
         value: field.value,
         checked: field.checked,
         options: field.options,
+        min: field.min,
+        max: field.max,
+        step: field.step,
         required: field.required,
       })),
+      tables,
+      progress,
+      descriptions,
+      links,
+      users,
       actions,
     },
     messages,
@@ -529,6 +781,38 @@ function createFieldComponent(
     };
   }
 
+  if (field.type === "switch") {
+    return {
+      id,
+      component: "SwitchField",
+      label: field.label,
+      value,
+    };
+  }
+
+  if (field.type === "select" && field.options.length > 0) {
+    return {
+      id,
+      component: "SelectField",
+      label: field.label,
+      placeholder: field.placeholder || undefined,
+      options: field.options,
+      value,
+    };
+  }
+
+  if (field.type === "slider") {
+    return {
+      id,
+      component: "SliderField",
+      label: field.label,
+      value,
+      min: field.min ?? 0,
+      max: field.max ?? 100,
+      step: field.step ?? 1,
+    };
+  }
+
   if (
     (field.type === "singleChoice" || field.type === "multipleChoice") &&
     field.options.length > 0
@@ -563,11 +847,11 @@ function createFieldComponent(
 function initialFieldValue(
   field: RenderInterfaceArguments["fields"][number] & { key: string },
 ) {
-  if (field.type === "checkbox") {
+  if (field.type === "checkbox" || field.type === "switch") {
     return Boolean(field.checked);
   }
 
-  if (field.type === "singleChoice") {
+  if (field.type === "singleChoice" || field.type === "select") {
     return field.value ? [field.value] : [];
   }
 
@@ -578,6 +862,12 @@ function initialFieldValue(
           .map((value) => value.trim())
           .filter(Boolean)
       : [];
+  }
+
+  if (field.type === "slider") {
+    const parsedValue = Number(field.value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : field.min ?? 0;
   }
 
   return field.value || "";
