@@ -2,6 +2,7 @@ import { EnvironCredentialsProvider } from "@ydbjs/auth/environ";
 import { Driver } from "@ydbjs/core";
 import { query, type QueryClient } from "@ydbjs/query";
 import { Int32, Utf8, Uint64 } from "@ydbjs/value/primitive";
+import { readFileSync } from "node:fs";
 import type {
   DesignFeedbackInput,
   LikedDesignExample,
@@ -93,6 +94,7 @@ async function getClient() {
 
 async function createClient(): Promise<YdbFeedbackClient> {
   const connectionString = getConnectionString();
+  applyYdbCredentialsEnv();
   const credentialsProvider = new EnvironCredentialsProvider(connectionString);
   const driver = new Driver(connectionString, {
     credentialsProvider,
@@ -182,4 +184,26 @@ function getFeedbackTableName() {
   }
 
   return table;
+}
+
+function applyYdbCredentialsEnv() {
+  if (
+    !process.env.YDB_STATIC_CREDENTIALS_ENDPOINT &&
+    process.env.YDB_STATIC_CREDENTIALS_AUTH_ENDPOINT
+  ) {
+    process.env.YDB_STATIC_CREDENTIALS_ENDPOINT =
+      process.env.YDB_STATIC_CREDENTIALS_AUTH_ENDPOINT;
+  }
+
+  if (
+    process.env.YDB_STATIC_CREDENTIALS_PASSWORD ||
+    !process.env.YDB_STATIC_CREDENTIALS_PASSWORD_FILE
+  ) {
+    return;
+  }
+
+  process.env.YDB_STATIC_CREDENTIALS_PASSWORD = readFileSync(
+    process.env.YDB_STATIC_CREDENTIALS_PASSWORD_FILE,
+    "utf8",
+  ).trimEnd();
 }

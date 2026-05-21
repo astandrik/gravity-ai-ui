@@ -24,6 +24,7 @@ import type {
   AgentSseEvent,
   ConversationContext,
 } from "@/lib/agent/protocol";
+import { trackGoal } from "@/lib/metrics/yandex";
 import {
   A2uiSurface,
   createGravityA2uiProcessor,
@@ -48,6 +49,7 @@ type AssistantTurn = {
 
 type ChatTurn = UserTurn | AssistantTurn;
 type InspectorTab = "preview" | "react" | "a2ui" | "data" | "payload";
+type PromptSource = "manual" | "starter";
 
 export function AgentShell({
   starterPrompts,
@@ -83,6 +85,8 @@ export function AgentShell({
     async (request: AgentRequest, userContent?: string) => {
       const assistantId = createId("assistant");
       const nextTurns: ChatTurn[] = [];
+      let generatedPayload = false;
+      let streamError: string | undefined;
 
       if (userContent) {
         nextTurns.push({
@@ -136,6 +140,8 @@ export function AgentShell({
             }
 
             if (event.type === "payload") {
+              generatedPayload = true;
+
               return {
                 ...turn,
                 payload: event.payload,
@@ -144,6 +150,8 @@ export function AgentShell({
             }
 
             if (event.type === "error") {
+              streamError = event.message;
+
               return {
                 ...turn,
                 error: event.message,
@@ -154,8 +162,22 @@ export function AgentShell({
             return { ...turn, done: true, status: "Done" };
           });
         });
+
+        if (streamError) {
+          trackGoal("agent_interface_error", {
+            kind: request.kind,
+          });
+        } else if (generatedPayload) {
+          trackGoal("agent_interface_generated", {
+            kind: request.kind,
+          });
+        }
       } catch (error) {
         if (!abortController.signal.aborted) {
+          trackGoal("agent_interface_error", {
+            kind: request.kind,
+          });
+
           updateAssistantTurn(assistantId, (turn) => ({
             ...turn,
             error:
@@ -176,7 +198,7 @@ export function AgentShell({
   );
 
   const submitPrompt = useCallback(
-    (value: string) => {
+    (value: string, source: PromptSource = "manual") => {
       const trimmedPrompt = value.trim();
 
       if (!trimmedPrompt || isStreaming) {
@@ -184,6 +206,12 @@ export function AgentShell({
       }
 
       const conversationContext = buildConversationContext(turns);
+
+      trackGoal("agent_prompt_submit", {
+        source,
+        promptLength: trimmedPrompt.length,
+        historyTurns: turns.length,
+      });
 
       setPrompt("");
       void sendAgentRequest(
@@ -201,13 +229,19 @@ export function AgentShell({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    submitPrompt(prompt);
+    submitPrompt(prompt, "manual");
   };
 
   const onAction = useCallback(
     (action: A2uiClientAction) => {
       const conversationContext = buildConversationContext(turns);
       const latestDataModel = conversationContext?.latestDataModel;
+
+      trackGoal("agent_action_submit", {
+        action: action.name,
+        surfaceId: action.surfaceId,
+        historyTurns: turns.length,
+      });
 
       void sendAgentRequest(
         {
@@ -227,7 +261,9 @@ export function AgentShell({
 
   const sendDesignFeedback = useCallback(
     async (turn: AssistantTurn) => {
-      if (!turn.payload) {
+      const payload = turn.payload;
+
+      if (!payload) {
         return;
       }
 
@@ -248,7 +284,7 @@ export function AgentShell({
             turnId: turn.id,
             rating: 1,
             prompt: getPromptBeforeTurn(turns, turn.id),
-            payload: turn.payload,
+            payload,
             messages: turn.messages,
             dataModel: getLatestDataModel(turn.messages),
           }),
@@ -259,6 +295,10 @@ export function AgentShell({
 
           throw new Error(body?.error || `Feedback failed with ${response.status}`);
         }
+
+        trackGoal("design_like", {
+          surfaceId: payload.surfaceId,
+        });
       } catch (error) {
         setLikedByTurnId((current) => {
           const next = { ...current };
@@ -338,7 +378,12 @@ export function AgentShell({
                       <Button
                         key={starterPrompt}
                         disabled={isStreaming}
-                        onClick={() => submitPrompt(starterPrompt)}
+                        onClick={() => {
+                          trackGoal("starter_prompt_click", {
+                            promptLength: starterPrompt.length,
+                          });
+                          submitPrompt(starterPrompt, "starter");
+                        }}
                         size="m"
                         view="outlined"
                       >
@@ -467,6 +512,21 @@ function AssistantMessage({
   const dataModel = getLatestDataModel(turn.messages);
   const reactCode = turn.payload ? buildReactCode(turn.payload) : null;
   const hasRenderablePreview = turn.messages.length > 0;
+  const updateActiveTab = useCallback(
+    (value: string) => {
+      const nextTab = value as InspectorTab;
+
+      if (nextTab !== activeTab) {
+        trackGoal("inspector_tab_change", {
+          tab: nextTab,
+          surfaceId: turn.payload?.surfaceId,
+        });
+      }
+
+      setActiveTab(nextTab);
+    },
+    [activeTab, turn.payload?.surfaceId],
+  );
   const tabs: Array<{
     id: InspectorTab;
     label: string;
@@ -501,7 +561,7 @@ function AssistantMessage({
         <Card type="container" view="outlined" className="agent-inspector">
           <TabProvider
             value={activeTab}
-            onUpdate={(value) => setActiveTab(value as InspectorTab)}
+            onUpdate={updateActiveTab}
           >
             <TabList className="agent-inspector__tabs" size="m">
               {tabs.map((tab) => (
@@ -577,6 +637,9 @@ function CodePanel({ value }: { value: string }) {
   const copyCode = useCallback(async () => {
     await navigator.clipboard.writeText(value);
     setCopied(true);
+    trackGoal("react_code_copy", {
+      codeLength: value.length,
+    });
     window.setTimeout(() => setCopied(false), 1200);
   }, [value]);
 

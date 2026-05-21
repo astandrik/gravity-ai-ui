@@ -1,0 +1,17 @@
+.git
+.next
+.playwright-mcp
+node_modules
+private
+npm-debug.log*
+coverage
+.env
+.env.runtime
+.env.local
+.env.*.local
+*.env.runtime
+*.env.runtime.local
+AGENTS.md
+AI_AGENT_UI_SHELL_PLAN.md
+src/**/*.test.ts
+src/**/*.test.tsx

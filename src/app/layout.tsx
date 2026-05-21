@@ -5,6 +5,7 @@ import "@gravity-ui/uikit/styles/styles.css";
 import "@/styles/globals.scss";
 
 import { Providers } from "@/app/Providers";
+import YandexMetrika from "@/app/YandexMetrika";
 import { getPublicOrigin, withBasePath } from "@/lib/base-path";
 import {
   getSiteSocialImageUrl,
@@ -98,6 +99,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
         <Providers>{children}</Providers>
+        <YandexMetrika />
       </body>
     </html>
   );
