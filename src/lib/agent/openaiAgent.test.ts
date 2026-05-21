@@ -390,5 +390,8 @@ describe("OpenAI agent stream parsing", () => {
     expect(instructions).toContain("Do not rely on color alone");
     expect(instructions).toContain("layout.density");
     expect(instructions).toContain("Allowed icons");
+    expect(instructions).toContain("render the actual available controls");
+    expect(instructions).toContain("button or button-variant showcases");
+    expect(instructions).toContain("Do not represent controls as bullet lists");
   });
 });
