@@ -61,7 +61,6 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
   }
 
   if (payload.progress.length > 0) {
-    usedComponents.add("Label");
     usedComponents.add("Progress");
   }
 
@@ -382,9 +381,14 @@ function progressLines(progress: RenderInterfaceArguments["progress"]) {
       '          <div style={{ display: "grid", gap: 6 }}>',
       '            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
       `              <Text variant="body-1">${jsxText(item.label)}</Text>`,
-      `              <Label theme=${jsxString(mapLabelTheme(item.tone))} size="xs">${jsxText(item.text ?? `${item.value}%`)}</Label>`,
+      `              <Text variant="caption-2" color=${jsxString(mapProgressTextColor(item.tone))}>${item.value}%</Text>`,
       "            </div>",
-      `            <Progress value={${item.value}} theme=${jsxString(mapProgressTheme(item.tone))} text="" />`,
+      ...(item.text
+        ? [
+            `            <Text variant="caption-2" color="secondary">${jsxText(item.text)}</Text>`,
+          ]
+        : []),
+      `            <Progress value={${item.value}} theme=${jsxString(mapProgressTheme(item.tone))} size="s" text="" />`,
       "          </div>",
     ]),
     "        </div>",
@@ -677,6 +681,19 @@ function mapProgressTheme(value: string) {
       return "warning";
     default:
       return "default";
+  }
+}
+
+function mapProgressTextColor(value: string) {
+  switch (value) {
+    case "danger":
+      return "danger";
+    case "success":
+      return "positive";
+    case "warning":
+      return "warning";
+    default:
+      return "secondary";
   }
 }
 

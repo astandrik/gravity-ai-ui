@@ -416,11 +416,26 @@ const ProgressListSurface = createComponentImplementation(
         <div className="a2ui-progress-list__item" key={item.label}>
           <div className="a2ui-progress-list__header">
             <Text variant="body-1">{item.label}</Text>
-            <Label theme={mapLabelTheme(item.tone)} size="xs">
-              {item.text ?? `${item.value}%`}
-            </Label>
+            <Text
+              className="a2ui-progress-list__value"
+              color={mapProgressTextColor(item.tone)}
+              variant="caption-2"
+            >
+              {item.value}%
+            </Text>
           </div>
+          {item.text ? (
+            <Text
+              className="a2ui-progress-list__description"
+              color="secondary"
+              variant="caption-2"
+            >
+              {item.text}
+            </Text>
+          ) : null}
           <Progress
+            className="a2ui-progress-list__bar"
+            size="s"
             text=""
             theme={mapProgressTheme(item.tone)}
             value={item.value}
@@ -878,6 +893,19 @@ function mapProgressTheme(value?: string) {
       return "warning";
     default:
       return "default";
+  }
+}
+
+function mapProgressTextColor(value?: string) {
+  switch (value) {
+    case "danger":
+      return "danger";
+    case "success":
+      return "positive";
+    case "warning":
+      return "warning";
+    default:
+      return "secondary";
   }
 }
 

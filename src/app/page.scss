@@ -417,6 +417,35 @@
   min-width: 0;
 }
 
+.a2ui-progress-list__item {
+  display: grid;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.a2ui-progress-list__header {
+  align-items: baseline;
+}
+
+.a2ui-progress-list__header .g-text:first-child {
+  min-width: 0;
+}
+
+.a2ui-progress-list__value {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.a2ui-progress-list__description {
+  max-width: 72ch;
+}
+
+.a2ui-progress-list__bar {
+  width: 100%;
+  margin: 0;
+  border-radius: var(--radius-full);
+}
+
 .a2ui-table-block,
 .a2ui-progress-list,
 .a2ui-definition-block,
