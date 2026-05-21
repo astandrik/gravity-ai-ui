@@ -14,15 +14,25 @@ import {
 import type { BuiltFixedInterface } from "./fixedInterface";
 import {
   ALLOWED_GRAVITY_ICONS,
+  GRAVITY_ACCORDION_ARROW_POSITIONS,
+  GRAVITY_ACCORDION_SIZES,
+  GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
   GRAVITY_DENSITIES,
+  GRAVITY_EMPTY_STATE_SIZES,
   GRAVITY_FIELD_TYPES,
+  GRAVITY_LABEL_TYPES,
+  GRAVITY_LOADING_SIZES,
   GRAVITY_SECTION_DIVIDERS,
   GRAVITY_STATUS_TONES,
+  GRAVITY_STEPPER_SIZES,
+  GRAVITY_STEPPER_VIEWS,
   GRAVITY_TABLE_ALIGN,
+  GRAVITY_TAB_SIZES,
   GRAVITY_TONES,
   formatGravityCapabilitiesForPrompt,
 } from "./gravityCapabilities";
+import { formatGravityComponentCatalogForPrompt } from "./gravityComponentCatalog";
 import type {
   AgentRequest,
   AgentSseEvent,
@@ -34,6 +44,9 @@ import { listLikedDesignExamples } from "@/lib/feedback/ydbFeedbackStore";
 const RENDER_INTERFACE_TOOL_NAME = "render_agent_interface";
 const DEFAULT_MODEL = "gpt-5.5";
 const DEFAULT_REASONING_EFFORT = "none";
+const DEFAULT_MAX_OUTPUT_TOKENS = 24_000;
+const MIN_MAX_OUTPUT_TOKENS = 4_000;
+const MAX_MAX_OUTPUT_TOKENS = 64_000;
 const ALLOWED_REASONING_EFFORTS = new Set<NonNullable<ReasoningEffort>>([
   "none",
   "low",
@@ -102,7 +115,7 @@ export async function streamAgentResponse({
       service_tier: "priority",
       stream: true,
       store: false,
-      max_output_tokens: 8000,
+      max_output_tokens: getMaxOutputTokens(),
       safety_identifier: safeIdentifier(request.conversationId),
       stream_options: { include_obfuscation: false },
     },
@@ -414,8 +427,9 @@ export function buildInstructions() {
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
     "For action follow-ups, preserve the preferred surfaceId from the user message.",
     "Use sections for readable results, fields only when user input is needed, and actions only for clear next steps.",
-    "Use alerts for important status, metrics for dashboard KPIs, tables for comparable records, progress for completion states, descriptions for key-value details, links for resource lists, and users for people or owners.",
+    "Use alerts for important status, metrics for dashboard KPIs, labels for compact tags/status chips, breadcrumbs for hierarchy paths, steppers for multi-step flows, tabs for alternate views, accordions for expandable detail groups, tables for comparable records, progress and loadingStates for completion states, emptyStates for no-data states, copyLists for copyable commands or IDs, descriptions for key-value details, links for resource lists, and users for people or owners.",
     `Available Gravity component capabilities: ${formatGravityCapabilitiesForPrompt()}`,
+    formatGravityComponentCatalogForPrompt(),
     "When the user asks to show, render, compare, or document UI components, controls, buttons, or variants, render the actual available controls instead of explaining them as prose.",
     `For button or button-variant showcases, use actions as real Button examples with variants from this set: ${GRAVITY_BUTTON_VARIANTS.join(", ")}. Use action "noop", set disabled/loading/selected booleans for every action, use false unless the state is relevant, and do not list button labels in section.items.`,
     "Do not represent controls as bullet lists when this schema has a matching block type.",
@@ -449,6 +463,19 @@ export function getReasoningEffort(): NonNullable<ReasoningEffort> {
   return isReasoningEffort(configuredEffort)
     ? configuredEffort
     : DEFAULT_REASONING_EFFORT;
+}
+
+export function getMaxOutputTokens() {
+  const configuredTokens = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS);
+
+  if (!Number.isFinite(configuredTokens)) {
+    return DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+
+  return Math.min(
+    MAX_MAX_OUTPUT_TOKENS,
+    Math.max(MIN_MAX_OUTPUT_TOKENS, Math.floor(configuredTokens)),
+  );
 }
 
 function isReasoningEffort(
@@ -830,6 +857,255 @@ const renderInterfaceTool = {
           required: ["name", "description", "tone"],
         },
       },
+      labels: {
+        type: "array",
+        maxItems: 12,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string", maxLength: 240 },
+            value: { type: ["string", "null"], maxLength: 240 },
+            tone: {
+              type: "string",
+              enum: GRAVITY_TONES,
+            },
+            type: {
+              type: "string",
+              enum: GRAVITY_LABEL_TYPES,
+            },
+          },
+          required: ["label", "value", "tone", "type"],
+        },
+      },
+      tabs: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            size: {
+              type: "string",
+              enum: GRAVITY_TAB_SIZES,
+            },
+            items: {
+              type: "array",
+              minItems: 2,
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  value: {
+                    type: "string",
+                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
+                    maxLength: 48,
+                  },
+                  body: { type: "string", maxLength: 1600 },
+                  counter: { type: ["string", "null"], maxLength: 240 },
+                  tone: {
+                    type: "string",
+                    enum: GRAVITY_TONES,
+                  },
+                  active: { type: "boolean" },
+                },
+                required: [
+                  "label",
+                  "value",
+                  "body",
+                  "counter",
+                  "tone",
+                  "active",
+                ],
+              },
+            },
+          },
+          required: ["title", "size", "items"],
+        },
+      },
+      emptyStates: {
+        type: "array",
+        maxItems: 2,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            description: { type: "string", maxLength: 1600 },
+            icon: {
+              type: ["string", "null"],
+              enum: [...ALLOWED_GRAVITY_ICONS, null],
+            },
+            tone: {
+              type: "string",
+              enum: GRAVITY_TONES,
+            },
+            size: {
+              type: "string",
+              enum: GRAVITY_EMPTY_STATE_SIZES,
+            },
+          },
+          required: ["title", "description", "icon", "tone", "size"],
+        },
+      },
+      loadingStates: {
+        type: "array",
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string", maxLength: 240 },
+            description: { type: ["string", "null"], maxLength: 240 },
+            size: {
+              type: "string",
+              enum: GRAVITY_LOADING_SIZES,
+            },
+          },
+          required: ["label", "description", "size"],
+        },
+      },
+      breadcrumbs: {
+        type: "array",
+        maxItems: 2,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            showRoot: { type: "boolean" },
+            items: {
+              type: "array",
+              minItems: 2,
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  href: {
+                    type: ["string", "null"],
+                    maxLength: 500,
+                    pattern: "^(https?:\\/\\/|mailto:|tel:|\\/|#)",
+                  },
+                },
+                required: ["label", "href"],
+              },
+            },
+          },
+          required: ["title", "showRoot", "items"],
+        },
+      },
+      steppers: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            size: {
+              type: "string",
+              enum: GRAVITY_STEPPER_SIZES,
+            },
+            items: {
+              type: "array",
+              minItems: 2,
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  value: {
+                    type: "string",
+                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
+                    maxLength: 48,
+                  },
+                  view: {
+                    type: "string",
+                    enum: GRAVITY_STEPPER_VIEWS,
+                  },
+                  disabled: { type: "boolean" },
+                  active: { type: "boolean" },
+                },
+                required: ["label", "value", "view", "disabled", "active"],
+              },
+            },
+          },
+          required: ["title", "size", "items"],
+        },
+      },
+      accordions: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            size: {
+              type: "string",
+              enum: GRAVITY_ACCORDION_SIZES,
+            },
+            view: {
+              type: "string",
+              enum: GRAVITY_ACCORDION_VIEWS,
+            },
+            arrowPosition: {
+              type: "string",
+              enum: GRAVITY_ACCORDION_ARROW_POSITIONS,
+            },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  title: { type: "string", maxLength: 240 },
+                  body: { type: "string", maxLength: 1600 },
+                  expanded: { type: "boolean" },
+                  disabled: { type: "boolean" },
+                },
+                required: ["title", "body", "expanded", "disabled"],
+              },
+            },
+          },
+          required: ["title", "size", "view", "arrowPosition", "items"],
+        },
+      },
+      copyLists: {
+        type: "array",
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 8,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  value: { type: "string", maxLength: 240 },
+                  copyText: { type: "string", minLength: 1, maxLength: 1000 },
+                },
+                required: ["label", "value", "copyText"],
+              },
+            },
+          },
+          required: ["title", "items"],
+        },
+      },
       actions: {
         type: "array",
         maxItems: 8,
@@ -915,6 +1191,14 @@ const renderInterfaceTool = {
       "descriptions",
       "links",
       "users",
+      "labels",
+      "tabs",
+      "emptyStates",
+      "loadingStates",
+      "breadcrumbs",
+      "steppers",
+      "accordions",
+      "copyLists",
       "actions",
       "navigation",
     ],

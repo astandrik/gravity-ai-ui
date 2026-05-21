@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit --incremental false"
+    "typecheck": "tsc --noEmit --incremental false",
+    "generate:gravity-capabilities": "node scripts/generate-gravity-capabilities.mjs",
+    "check:gravity-capabilities": "node scripts/generate-gravity-capabilities.mjs --check"
   },
   "dependencies": {
     "@a2ui/react": "^0.10.0",

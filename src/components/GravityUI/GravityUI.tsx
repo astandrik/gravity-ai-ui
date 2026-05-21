@@ -1,11 +1,14 @@
 "use client";
 
 export {
+  Accordion,
   Alert,
+  Breadcrumbs,
   Button,
   Card,
   Checkbox,
   Container,
+  CopyToClipboard,
   DefinitionList,
   Divider,
   Flex,
@@ -18,6 +21,7 @@ export {
   Select,
   Slider,
   Spin,
+  Stepper,
   Switch,
   Tab,
   TabList,

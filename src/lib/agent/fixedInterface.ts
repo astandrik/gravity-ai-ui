@@ -11,12 +11,21 @@ import type {
 } from "./a2uiContract";
 import {
   ALLOWED_GRAVITY_ICONS,
+  GRAVITY_ACCORDION_ARROW_POSITIONS,
+  GRAVITY_ACCORDION_SIZES,
+  GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
   GRAVITY_DENSITIES,
+  GRAVITY_EMPTY_STATE_SIZES,
   GRAVITY_FIELD_TYPES,
+  GRAVITY_LABEL_TYPES,
+  GRAVITY_LOADING_SIZES,
   GRAVITY_SECTION_DIVIDERS,
   GRAVITY_STATUS_TONES,
+  GRAVITY_STEPPER_SIZES,
+  GRAVITY_STEPPER_VIEWS,
   GRAVITY_TABLE_ALIGN,
+  GRAVITY_TAB_SIZES,
   GRAVITY_TONES,
 } from "./gravityCapabilities";
 
@@ -126,6 +135,118 @@ const userSchema = z
     tone: toneSchema,
   })
   .strict();
+const labelSchema = z
+  .object({
+    label: shortTextSchema,
+    value: shortTextSchema.nullable(),
+    tone: toneSchema,
+    type: z.enum(GRAVITY_LABEL_TYPES),
+  })
+  .strict();
+const tabItemSchema = z
+  .object({
+    label: shortTextSchema,
+    value: idSchema,
+    body: bodyTextSchema,
+    counter: shortTextSchema.nullable(),
+    tone: toneSchema,
+    active: z.boolean(),
+  })
+  .strict();
+const tabsSchema = z
+  .object({
+    title: shortTextSchema,
+    size: z.enum(GRAVITY_TAB_SIZES),
+    items: z.array(tabItemSchema).min(2).max(8),
+  })
+  .strict();
+const emptyStateSchema = z
+  .object({
+    title: shortTextSchema,
+    description: bodyTextSchema,
+    icon: iconNameSchema.nullable(),
+    tone: toneSchema,
+    size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
+  })
+  .strict();
+const loadingStateSchema = z
+  .object({
+    label: shortTextSchema,
+    description: shortTextSchema.nullable(),
+    size: z.enum(GRAVITY_LOADING_SIZES),
+  })
+  .strict();
+const breadcrumbTrailSchema = z
+  .object({
+    title: shortTextSchema,
+    showRoot: z.boolean(),
+    items: z
+      .array(
+        z
+          .object({
+            label: shortTextSchema,
+            href: hrefSchema.nullable(),
+          })
+          .strict(),
+      )
+      .min(2)
+      .max(8),
+  })
+  .strict();
+const stepperItemSchema = z
+  .object({
+    label: shortTextSchema,
+    value: idSchema,
+    view: z.enum(GRAVITY_STEPPER_VIEWS),
+    disabled: z.boolean(),
+    active: z.boolean(),
+  })
+  .strict();
+const stepperSchema = z
+  .object({
+    title: shortTextSchema,
+    size: z.enum(GRAVITY_STEPPER_SIZES),
+    items: z.array(stepperItemSchema).min(2).max(8),
+  })
+  .strict();
+const accordionSchema = z
+  .object({
+    title: shortTextSchema,
+    size: z.enum(GRAVITY_ACCORDION_SIZES),
+    view: z.enum(GRAVITY_ACCORDION_VIEWS),
+    arrowPosition: z.enum(GRAVITY_ACCORDION_ARROW_POSITIONS),
+    items: z
+      .array(
+        z
+          .object({
+            title: shortTextSchema,
+            body: bodyTextSchema,
+            expanded: z.boolean(),
+            disabled: z.boolean(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(8),
+  })
+  .strict();
+const copyListSchema = z
+  .object({
+    title: shortTextSchema,
+    items: z
+      .array(
+        z
+          .object({
+            label: shortTextSchema,
+            value: shortTextSchema,
+            copyText: z.string().min(1).max(1000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(8),
+  })
+  .strict();
 
 export const renderInterfaceArgumentsSchema = z
   .object({
@@ -174,6 +295,14 @@ export const renderInterfaceArgumentsSchema = z
     descriptions: z.array(definitionListSchema).max(4).default([]),
     links: z.array(linkSchema).max(8).default([]),
     users: z.array(userSchema).max(8).default([]),
+    labels: z.array(labelSchema).max(12).default([]),
+    tabs: z.array(tabsSchema).max(3).default([]),
+    emptyStates: z.array(emptyStateSchema).max(2).default([]),
+    loadingStates: z.array(loadingStateSchema).max(4).default([]),
+    breadcrumbs: z.array(breadcrumbTrailSchema).max(2).default([]),
+    steppers: z.array(stepperSchema).max(3).default([]),
+    accordions: z.array(accordionSchema).max(3).default([]),
+    copyLists: z.array(copyListSchema).max(4).default([]),
     actions: z
       .array(
         z
@@ -360,6 +489,14 @@ export function buildFixedInterfaceFromPartialJson(
     descriptions: readSchemaField("descriptions", fields.descriptions, []),
     links: readSchemaField("links", fields.links, []),
     users: readSchemaField("users", fields.users, []),
+    labels: readSchemaField("labels", fields.labels, []),
+    tabs: readSchemaField("tabs", fields.tabs, []),
+    emptyStates: readSchemaField("emptyStates", fields.emptyStates, []),
+    loadingStates: readSchemaField("loadingStates", fields.loadingStates, []),
+    breadcrumbs: readSchemaField("breadcrumbs", fields.breadcrumbs, []),
+    steppers: readSchemaField("steppers", fields.steppers, []),
+    accordions: readSchemaField("accordions", fields.accordions, []),
+    copyLists: readSchemaField("copyLists", fields.copyLists, []),
     actions: readSchemaField("actions", fields.actions, []),
     navigation: readSchemaField("navigation", fields.navigation, []),
   };
@@ -467,6 +604,122 @@ export function buildFixedInterface(
       tone: user.tone,
     }))
     .filter((user) => user.name);
+  const labels = args.labels
+    .map((label) => ({
+      label: cleanText(label.label, ""),
+      value: label.value ? cleanText(label.value, "") : null,
+      tone: label.tone,
+      type: label.type,
+    }))
+    .filter((label) => label.label);
+  const tabs = args.tabs
+    .map((tabBlock) => {
+      const items = tabBlock.items
+        .map((item) => ({
+          label: cleanText(item.label, ""),
+          value: item.value,
+          body: cleanText(item.body, ""),
+          counter: item.counter ? cleanText(item.counter, "") : null,
+          tone: item.tone,
+          active: item.active,
+        }))
+        .filter((item) => item.label && item.body);
+
+      const activeValue =
+        items.find((item) => item.active)?.value ?? items[0]?.value ?? "";
+
+      return {
+        title: cleanText(tabBlock.title, ""),
+        size: tabBlock.size,
+        items: items.map((item) => ({
+          ...item,
+          active: item.value === activeValue,
+        })),
+      };
+    })
+    .filter((tabBlock) => tabBlock.items.length > 1);
+  const emptyStates = args.emptyStates
+    .map((emptyState) => ({
+      title: cleanText(emptyState.title, ""),
+      description: cleanText(emptyState.description, ""),
+      icon: emptyState.icon,
+      tone: emptyState.tone,
+      size: emptyState.size,
+    }))
+    .filter((emptyState) => emptyState.title || emptyState.description);
+  const loadingStates = args.loadingStates
+    .map((loadingState) => ({
+      label: cleanText(loadingState.label, ""),
+      description: loadingState.description
+        ? cleanText(loadingState.description, "")
+        : null,
+      size: loadingState.size,
+    }))
+    .filter((loadingState) => loadingState.label);
+  const breadcrumbs = args.breadcrumbs
+    .map((trail) => ({
+      title: cleanText(trail.title, ""),
+      showRoot: trail.showRoot,
+      items: trail.items
+        .map((item) => ({
+          label: cleanText(item.label, ""),
+          href: item.href,
+        }))
+        .filter((item) => item.label),
+    }))
+    .filter((trail) => trail.items.length > 1);
+  const steppers = args.steppers
+    .map((stepper) => {
+      const items = stepper.items
+        .map((item) => ({
+          label: cleanText(item.label, ""),
+          value: item.value,
+          view: item.view,
+          disabled: item.disabled,
+          active: item.active,
+        }))
+        .filter((item) => item.label);
+      const activeValue =
+        items.find((item) => item.active)?.value ?? items[0]?.value ?? "";
+
+      return {
+        title: cleanText(stepper.title, ""),
+        size: stepper.size,
+        items: items.map((item) => ({
+          ...item,
+          active: item.value === activeValue,
+        })),
+      };
+    })
+    .filter((stepper) => stepper.items.length > 1);
+  const accordions = args.accordions
+    .map((accordion) => ({
+      title: cleanText(accordion.title, ""),
+      size: accordion.size,
+      view: accordion.view,
+      arrowPosition: accordion.arrowPosition,
+      items: accordion.items
+        .map((item) => ({
+          title: cleanText(item.title, ""),
+          body: cleanText(item.body, ""),
+          expanded: item.expanded,
+          disabled: item.disabled,
+        }))
+        .filter((item) => item.title && item.body),
+    }))
+    .filter((accordion) => accordion.items.length > 0);
+  const copyLists = args.copyLists
+    .map((copyList) => ({
+      title: cleanText(copyList.title, ""),
+      items: copyList.items
+        .map((item) => ({
+          label: cleanText(item.label, ""),
+          value: cleanText(item.value, ""),
+          copyText: item.copyText,
+        }))
+        .filter((item) => item.label && item.value && item.copyText),
+    }))
+    .filter((copyList) => copyList.items.length > 0);
 
   const components: GravityA2uiComponent[] = [];
   const contentChildren: string[] = ["title"];
@@ -500,6 +753,14 @@ export function buildFixedInterface(
     descriptions,
     links,
     users,
+    labels,
+    tabs,
+    emptyStates,
+    loadingStates,
+    breadcrumbs,
+    steppers,
+    accordions,
+    copyLists,
   };
 
   if (summary) {
@@ -539,6 +800,18 @@ export function buildFixedInterface(
     contentChildren.push("navigation");
   }
 
+  breadcrumbs.forEach((trail, index) => {
+    const id = `breadcrumbs_${index}`;
+    components.push({
+      id,
+      component: "BreadcrumbTrail",
+      title: trail.title,
+      showRoot: trail.showRoot,
+      items: trail.items,
+    });
+    contentChildren.push(id);
+  });
+
   alerts.forEach((alert, index) => {
     const id = `alert_${index}`;
     components.push({
@@ -559,6 +832,27 @@ export function buildFixedInterface(
     });
     contentChildren.push("metrics");
   }
+
+  if (labels.length > 0) {
+    components.push({
+      id: "labels",
+      component: "LabelGroup",
+      items: labels,
+    });
+    contentChildren.push("labels");
+  }
+
+  steppers.forEach((stepper, index) => {
+    const id = `stepper_${index}`;
+    components.push({
+      id,
+      component: "StepperBlock",
+      title: stepper.title,
+      size: stepper.size,
+      items: stepper.items,
+    });
+    contentChildren.push(id);
+  });
 
   sections.forEach((section, sectionIndex) => {
     if (shouldAddSectionDivider(args.layout.sectionDividers, sectionIndex)) {
@@ -636,6 +930,32 @@ export function buildFixedInterface(
     });
   });
 
+  tabs.forEach((tabBlock, index) => {
+    const id = `tabs_${index}`;
+    components.push({
+      id,
+      component: "TabsBlock",
+      title: tabBlock.title,
+      size: tabBlock.size,
+      items: tabBlock.items,
+    });
+    contentChildren.push(id);
+  });
+
+  accordions.forEach((accordion, index) => {
+    const id = `accordion_${index}`;
+    components.push({
+      id,
+      component: "AccordionBlock",
+      title: accordion.title,
+      size: accordion.size,
+      view: accordion.view,
+      arrowPosition: accordion.arrowPosition,
+      items: accordion.items,
+    });
+    contentChildren.push(id);
+  });
+
   descriptions.forEach((description, index) => {
     const id = `description_${index}`;
     components.push({
@@ -669,6 +989,24 @@ export function buildFixedInterface(
     contentChildren.push("progress");
   }
 
+  if (loadingStates.length > 0) {
+    components.push({
+      id: "loading_states",
+      component: "LoadingStateList",
+      items: loadingStates,
+    });
+    contentChildren.push("loading_states");
+  }
+
+  if (emptyStates.length > 0) {
+    components.push({
+      id: "empty_states",
+      component: "EmptyStateList",
+      items: emptyStates,
+    });
+    contentChildren.push("empty_states");
+  }
+
   if (users.length > 0) {
     components.push({
       id: "users",
@@ -686,6 +1024,17 @@ export function buildFixedInterface(
     });
     contentChildren.push("links");
   }
+
+  copyLists.forEach((copyList, index) => {
+    const id = `copy_list_${index}`;
+    components.push({
+      id,
+      component: "CopyList",
+      title: copyList.title,
+      items: copyList.items,
+    });
+    contentChildren.push(id);
+  });
 
   if (fields.length > 0) {
     components.push({
@@ -836,6 +1185,14 @@ export function buildFixedInterface(
       descriptions,
       links,
       users,
+      labels,
+      tabs,
+      emptyStates,
+      loadingStates,
+      breadcrumbs,
+      steppers,
+      accordions,
+      copyLists,
       actions,
     },
     messages,
@@ -1055,6 +1412,14 @@ function hasRenderablePartial(fields: Record<string, unknown>) {
     hasItems(fields.descriptions) ||
     hasItems(fields.links) ||
     hasItems(fields.users) ||
+    hasItems(fields.labels) ||
+    hasItems(fields.tabs) ||
+    hasItems(fields.emptyStates) ||
+    hasItems(fields.loadingStates) ||
+    hasItems(fields.breadcrumbs) ||
+    hasItems(fields.steppers) ||
+    hasItems(fields.accordions) ||
+    hasItems(fields.copyLists) ||
     hasItems(fields.actions) ||
     hasItems(fields.navigation)
   );

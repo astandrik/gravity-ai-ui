@@ -9,20 +9,28 @@ import {
 import {
   buildInput,
   buildInstructions,
+  getMaxOutputTokens,
   getReasoningEffort,
   parseFunctionCallArguments,
   parseFunctionToolCallItem,
 } from "./openaiAgent";
 
 const originalOpenAIReasoningEffort = process.env.OPENAI_REASONING_EFFORT;
+const originalOpenAIMaxOutputTokens = process.env.OPENAI_MAX_OUTPUT_TOKENS;
 
 afterEach(() => {
   if (originalOpenAIReasoningEffort === undefined) {
     delete process.env.OPENAI_REASONING_EFFORT;
+  } else {
+    process.env.OPENAI_REASONING_EFFORT = originalOpenAIReasoningEffort;
+  }
+
+  if (originalOpenAIMaxOutputTokens === undefined) {
+    delete process.env.OPENAI_MAX_OUTPUT_TOKENS;
     return;
   }
 
-  process.env.OPENAI_REASONING_EFFORT = originalOpenAIReasoningEffort;
+  process.env.OPENAI_MAX_OUTPUT_TOKENS = originalOpenAIMaxOutputTokens;
 });
 
 const interfaceArgs = {
@@ -120,6 +128,115 @@ const interfaceArgs = {
       tone: "info",
     },
   ],
+  labels: [
+    {
+      label: "Window",
+      value: "Today",
+      tone: "info",
+      type: "default",
+    },
+  ],
+  tabs: [
+    {
+      title: "Views",
+      size: "m",
+      items: [
+        {
+          label: "Summary",
+          value: "summary",
+          body: "Readiness summary for the current deploy.",
+          counter: null,
+          tone: "normal",
+          active: true,
+        },
+        {
+          label: "Risks",
+          value: "risks",
+          body: "Production approval is still pending.",
+          counter: "1",
+          tone: "warning",
+          active: false,
+        },
+      ],
+    },
+  ],
+  emptyStates: [
+    {
+      title: "No blockers",
+      description: "Blocking checks will appear here.",
+      icon: "check",
+      tone: "success",
+      size: "m",
+    },
+  ],
+  loadingStates: [
+    {
+      label: "Checking deploy health",
+      description: "Waiting for the latest probe result.",
+      size: "s",
+    },
+  ],
+  breadcrumbs: [
+    {
+      title: "Location",
+      showRoot: true,
+      items: [
+        { label: "Deployments", href: "/deployments" },
+        { label: "Production", href: "/deployments/production" },
+        { label: "Review", href: null },
+      ],
+    },
+  ],
+  steppers: [
+    {
+      title: "Deploy flow",
+      size: "m",
+      items: [
+        {
+          label: "Plan",
+          value: "plan",
+          view: "success",
+          disabled: false,
+          active: false,
+        },
+        {
+          label: "Review",
+          value: "review",
+          view: "idle",
+          disabled: false,
+          active: true,
+        },
+      ],
+    },
+  ],
+  accordions: [
+    {
+      title: "Details",
+      size: "m",
+      view: "solid",
+      arrowPosition: "end",
+      items: [
+        {
+          title: "Rollback plan",
+          body: "Restore the previous release if health checks fail.",
+          expanded: true,
+          disabled: false,
+        },
+      ],
+    },
+  ],
+  copyLists: [
+    {
+      title: "Commands",
+      items: [
+        {
+          label: "Deploy",
+          value: "npm run build",
+          copyText: "npm run build",
+        },
+      ],
+    },
+  ],
   actions: [
     {
       label: "Continue",
@@ -155,6 +272,20 @@ describe("OpenAI agent stream parsing", () => {
     process.env.OPENAI_REASONING_EFFORT = "minimal";
 
     expect(getReasoningEffort()).toBe("none");
+  });
+
+  it("uses a bounded max output token budget", () => {
+    delete process.env.OPENAI_MAX_OUTPUT_TOKENS;
+    expect(getMaxOutputTokens()).toBe(24_000);
+
+    process.env.OPENAI_MAX_OUTPUT_TOKENS = "32000";
+    expect(getMaxOutputTokens()).toBe(32_000);
+
+    process.env.OPENAI_MAX_OUTPUT_TOKENS = "1000000";
+    expect(getMaxOutputTokens()).toBe(64_000);
+
+    process.env.OPENAI_MAX_OUTPUT_TOKENS = "100";
+    expect(getMaxOutputTokens()).toBe(4_000);
   });
 
   it("builds a progressive placeholder surface before final tool output", () => {
@@ -310,6 +441,38 @@ describe("OpenAI agent stream parsing", () => {
           expect.objectContaining({
             id: "metrics",
             component: "MetricGrid",
+          }),
+          expect.objectContaining({
+            id: "labels",
+            component: "LabelGroup",
+          }),
+          expect.objectContaining({
+            id: "tabs_0",
+            component: "TabsBlock",
+          }),
+          expect.objectContaining({
+            id: "empty_states",
+            component: "EmptyStateList",
+          }),
+          expect.objectContaining({
+            id: "loading_states",
+            component: "LoadingStateList",
+          }),
+          expect.objectContaining({
+            id: "breadcrumbs_0",
+            component: "BreadcrumbTrail",
+          }),
+          expect.objectContaining({
+            id: "stepper_0",
+            component: "StepperBlock",
+          }),
+          expect.objectContaining({
+            id: "accordion_0",
+            component: "AccordionBlock",
+          }),
+          expect.objectContaining({
+            id: "copy_list_0",
+            component: "CopyList",
           }),
           expect.objectContaining({
             id: "table_0",
@@ -534,6 +697,8 @@ describe("OpenAI agent stream parsing", () => {
 
   it("includes compact design rules in agent instructions", () => {
     const instructions = buildInstructions();
+    const guideIndex = instructions.indexOf("Component choice guide:");
+    const technicalIndex = instructions.indexOf("Technical props/settings");
 
     expect(instructions).toContain("Follow these design rules");
     expect(instructions).toContain("Use one clear primary task per surface");
@@ -544,6 +709,20 @@ describe("OpenAI agent stream parsing", () => {
     expect(instructions).toContain("2 to 4 snapshots");
     expect(instructions).toContain("Allowed icons");
     expect(instructions).toContain("Available Gravity component capabilities");
+    expect(instructions).toContain("labels for compact tags/status chips");
+    expect(instructions).toContain("breadcrumbs for hierarchy paths");
+    expect(instructions).toContain("steppers for multi-step flows");
+    expect(instructions).toContain("tabs for alternate views");
+    expect(instructions).toContain("accordions for expandable detail groups");
+    expect(instructions).toContain("emptyStates for no-data states");
+    expect(instructions).toContain("copyLists for copyable commands or IDs");
+    expect(instructions).toContain("Generated Gravity UI component catalog");
+    expect(guideIndex).toBeGreaterThan(-1);
+    expect(technicalIndex).toBeGreaterThan(-1);
+    expect(guideIndex).toBeLessThan(technicalIndex);
+    expect(instructions).toContain("Button: Buttons act as a trigger");
+    expect(instructions).toContain("Button(");
+    expect(instructions).toContain("Text(");
     expect(instructions).toContain("outlined-warning");
     expect(instructions).toContain("loading");
     expect(instructions).toContain("render the actual available controls");

@@ -137,6 +137,114 @@ const payload = {
       tone: "success",
     },
   ],
+  labels: [
+    {
+      label: "Severity",
+      value: "SEV-2",
+      tone: "warning",
+      type: "default",
+    },
+  ],
+  tabs: [
+    {
+      title: "Incident views",
+      size: "m",
+      items: [
+        {
+          label: "Timeline",
+          value: "timeline",
+          body: "The incident started 18 minutes ago and is still under review.",
+          counter: null,
+          tone: "normal",
+          active: true,
+        },
+        {
+          label: "Impact",
+          value: "impact",
+          body: "Customer-facing degradation is limited to one region.",
+          counter: "1",
+          tone: "warning",
+          active: false,
+        },
+      ],
+    },
+  ],
+  emptyStates: [
+    {
+      title: "No mitigations yet",
+      description: "Add a mitigation once the owner confirms the action.",
+      icon: "info",
+      tone: "info",
+      size: "m",
+    },
+  ],
+  loadingStates: [
+    {
+      label: "Collecting telemetry",
+      description: "Waiting for region-level metrics.",
+      size: "s",
+    },
+  ],
+  breadcrumbs: [
+    {
+      title: "Incident path",
+      showRoot: true,
+      items: [
+        { label: "Incidents", href: "/incidents" },
+        { label: "Triage", href: null },
+      ],
+    },
+  ],
+  steppers: [
+    {
+      title: "Response flow",
+      size: "m",
+      items: [
+        {
+          label: "Detect",
+          value: "detect",
+          view: "success",
+          disabled: false,
+          active: false,
+        },
+        {
+          label: "Triage",
+          value: "triage",
+          view: "idle",
+          disabled: false,
+          active: true,
+        },
+      ],
+    },
+  ],
+  accordions: [
+    {
+      title: "Runbook details",
+      size: "m",
+      view: "solid",
+      arrowPosition: "end",
+      items: [
+        {
+          title: "Rollback",
+          body: "Rollback is available after commander approval.",
+          expanded: true,
+          disabled: false,
+        },
+      ],
+    },
+  ],
+  copyLists: [
+    {
+      title: "Commands",
+      items: [
+        {
+          label: "Probe",
+          value: "curl /health",
+          copyText: "curl /health",
+        },
+      ],
+    },
+  ],
   actions: [
     {
       label: "Confirm",
@@ -171,15 +279,24 @@ describe("React code generator", () => {
     expect(code).toContain('"use client";');
     expect(code).toContain("export function IncidentTriage()");
     expect(code).toContain("TextInput");
+    expect(code).toContain("Accordion");
     expect(code).toContain("Alert");
+    expect(code).toContain("Breadcrumbs");
     expect(code).toContain("Button");
+    expect(code).toContain("CopyToClipboard");
     expect(code).toContain("DefinitionList");
     expect(code).toContain("Progress");
     expect(code).toContain("Select");
     expect(code).toContain("Slider");
+    expect(code).toContain("Spin");
+    expect(code).toContain("Stepper");
     expect(code).toContain("Switch");
+    expect(code).toContain("TabProvider");
+    expect(code).toContain("TabList");
+    expect(code).toContain("TabPanel");
     expect(code).toContain("Table");
     expect(code).toContain("User");
+    expect(code).toContain("PlaceholderContainer");
     expect(code).toContain("ActionBar");
     expect(code).toContain("@gravity-ui/icons");
     expect(code).toContain("handleAction");

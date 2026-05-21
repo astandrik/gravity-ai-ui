@@ -44,6 +44,9 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
   const usedIcons = collectUsedIcons(payload);
   const needsClient =
     fields.length > 0 ||
+    payload.tabs.length > 0 ||
+    payload.steppers.length > 0 ||
+    payload.copyLists.length > 0 ||
     payload.actions.length > 0 ||
     payload.navigation.length > 0;
   const usedComponents = new Set(["Card", "Text"]);
@@ -75,6 +78,43 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
   if (payload.users.length > 0) {
     usedComponents.add("Label");
     usedComponents.add("User");
+  }
+
+  if (payload.labels.length > 0) {
+    usedComponents.add("Label");
+  }
+
+  if (payload.tabs.length > 0) {
+    usedComponents.add("Label");
+    usedComponents.add("Tab");
+    usedComponents.add("TabList");
+    usedComponents.add("TabPanel");
+    usedComponents.add("TabProvider");
+  }
+
+  if (payload.emptyStates.length > 0) {
+    usedComponents.add("PlaceholderContainer");
+  }
+
+  if (payload.loadingStates.length > 0) {
+    usedComponents.add("Spin");
+  }
+
+  if (payload.breadcrumbs.length > 0) {
+    usedComponents.add("Breadcrumbs");
+  }
+
+  if (payload.steppers.length > 0) {
+    usedComponents.add("Stepper");
+  }
+
+  if (payload.accordions.length > 0) {
+    usedComponents.add("Accordion");
+  }
+
+  if (payload.copyLists.length > 0) {
+    usedComponents.add("Button");
+    usedComponents.add("CopyToClipboard");
   }
 
   if (
@@ -126,7 +166,9 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
 
   const imports = [
     needsClient ? '"use client";\n' : "",
-    fields.length > 0 ? 'import { useState } from "react";\n' : "",
+    fields.length > 0 || payload.tabs.length > 0 || payload.steppers.length > 0
+      ? 'import { useState } from "react";\n'
+      : "",
     payload.navigation.length > 0
       ? 'import { ActionBar } from "@gravity-ui/navigation";\n'
       : "",
@@ -142,6 +184,8 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
   const spacing = densitySpacing[payload.layout.density];
   const bodyLines = [
     fieldStateLine(fields),
+    ...tabStateLines(payload.tabs),
+    ...stepperStateLines(payload.steppers),
     actionHandlerLine(
       fields,
       payload.actions.length > 0 || payload.navigation.length > 0,
@@ -154,14 +198,22 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
       ? `        <Text as="p" variant="body-2" color="secondary">${jsxText(payload.summary)}</Text>`
       : null,
     ...navigationLines(payload.navigation),
+    ...breadcrumbLines(payload.breadcrumbs),
     ...alertLines(payload.alerts),
     ...metricLines(payload.metrics),
+    ...labelLines(payload.labels),
+    ...stepperLines(payload.steppers),
     ...sectionLines(payload),
+    ...tabLines(payload.tabs),
+    ...accordionLines(payload.accordions),
     ...descriptionLines(payload.descriptions),
     ...tableLines(payload.tables),
     ...progressLines(payload.progress),
+    ...loadingStateLines(payload.loadingStates),
+    ...emptyStateLines(payload.emptyStates),
     ...userLines(payload.users),
     ...linkLines(payload.links),
+    ...copyListLines(payload.copyLists),
     ...fieldLines(fields),
     ...actionLines(payload.actions),
     "      </div>",
@@ -196,6 +248,26 @@ function actionHandlerLine(fields: FieldWithKey[], hasActions: boolean) {
     `    console.log("Action", action, ${payload});`,
     "  };",
   ].join("\n");
+}
+
+function tabStateLines(tabs: RenderInterfaceArguments["tabs"]) {
+  return tabs.map(
+    (tab, index) =>
+      `  const [activeTab${index}, setActiveTab${index}] = useState(${jsString(
+        tab.items.find((item) => item.active)?.value ?? tab.items[0]?.value ?? "",
+      )});`,
+  );
+}
+
+function stepperStateLines(steppers: RenderInterfaceArguments["steppers"]) {
+  return steppers.map(
+    (stepper, index) =>
+      `  const [activeStep${index}, setActiveStep${index}] = useState(${jsString(
+        stepper.items.find((item) => item.active)?.value ??
+          stepper.items[0]?.value ??
+          "",
+      )});`,
+  );
 }
 
 function titleLine(payload: RenderInterfaceArguments) {
@@ -236,6 +308,23 @@ function navigationLines(
   ].filter((line): line is string => Boolean(line));
 }
 
+function breadcrumbLines(breadcrumbs: RenderInterfaceArguments["breadcrumbs"]) {
+  return breadcrumbs.flatMap((trail) => [
+    "        <section>",
+    trail.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(trail.title)}</Text>`
+      : null,
+    `          <Breadcrumbs showRoot={${trail.showRoot}}>`,
+    ...trail.items.flatMap((item) => [
+      `            <Breadcrumbs.Item${item.href ? ` href=${jsxString(item.href)}` : ""}>`,
+      `              ${jsxText(item.label)}`,
+      "            </Breadcrumbs.Item>",
+    ]),
+    "          </Breadcrumbs>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
+}
+
 function alertLines(alerts: RenderInterfaceArguments["alerts"]) {
   return alerts.map(
     (alert) =>
@@ -267,6 +356,39 @@ function metricLines(metrics: RenderInterfaceArguments["metrics"]) {
     ]),
     "        </div>",
   ].filter((line): line is string => Boolean(line));
+}
+
+function labelLines(labels: RenderInterfaceArguments["labels"]) {
+  if (labels.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>',
+    ...labels.flatMap((item) => [
+      `          <Label theme=${jsxString(mapLabelTheme(item.tone))} type=${jsxString(item.type)} size="s"${item.value ? ` value=${jsxString(item.value)}` : ""}${item.type === "copy" ? ` copyText=${jsxString(item.value ?? item.label)}` : ""}>`,
+      `            ${jsxText(item.label)}`,
+      "          </Label>",
+    ]),
+    "        </div>",
+  ];
+}
+
+function stepperLines(steppers: RenderInterfaceArguments["steppers"]) {
+  return steppers.flatMap((stepper, index) => [
+    "        <section>",
+    stepper.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(stepper.title)}</Text>`
+      : null,
+    `          <Stepper value={activeStep${index}} onUpdate={(value) => setActiveStep${index}(String(value ?? activeStep${index}))} size=${jsxString(stepper.size)}>`,
+    ...stepper.items.flatMap((item) => [
+      `            <Stepper.Item id=${jsxString(item.value)} view=${jsxString(item.view)}${item.disabled ? " disabled" : ""}>`,
+      `              ${jsxText(item.label)}`,
+      "            </Stepper.Item>",
+    ]),
+    "          </Stepper>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
 }
 
 function sectionLines(payload: RenderInterfaceArguments) {
@@ -314,6 +436,52 @@ function sectionLines(payload: RenderInterfaceArguments) {
 
     return lines;
   });
+}
+
+function tabLines(tabs: RenderInterfaceArguments["tabs"]) {
+  return tabs.flatMap((tab, index) => [
+    "        <section>",
+    tab.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(tab.title)}</Text>`
+      : null,
+    `          <TabProvider value={activeTab${index}} onUpdate={setActiveTab${index}}>`,
+    `            <TabList size=${jsxString(tab.size)}>`,
+    ...tab.items.flatMap((item) => [
+      `              <Tab value=${jsxString(item.value)}${item.counter ? ` counter=${jsxString(item.counter)}` : ""}${item.tone === "normal" ? "" : ` label={{ content: ${jsString(mapToneLabel(item.tone))}, theme: ${jsString(mapLabelTheme(item.tone))} }}`}>`,
+      `                ${jsxText(item.label)}`,
+      "              </Tab>",
+    ]),
+    "            </TabList>",
+    ...tab.items.flatMap((item) => [
+      `            <TabPanel value=${jsxString(item.value)}>`,
+      `              <Text variant="body-2" color="secondary">${jsxText(item.body)}</Text>`,
+      "            </TabPanel>",
+    ]),
+    "          </TabProvider>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
+}
+
+function accordionLines(accordions: RenderInterfaceArguments["accordions"]) {
+  return accordions.flatMap((accordion) => [
+    "        <section>",
+    accordion.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(accordion.title)}</Text>`
+      : null,
+    `          <Accordion multiple defaultValue={${jsonForCode(
+      accordion.items
+        .map((item, index) => (item.expanded ? `${index}_${item.title}` : null))
+        .filter(Boolean),
+      12,
+    ).replace(/\n/g, "\n          ")}} size=${jsxString(accordion.size)} view=${jsxString(accordion.view)} arrowPosition=${jsxString(accordion.arrowPosition)}>`,
+    ...accordion.items.flatMap((item, index) => [
+      `            <Accordion.Item value=${jsxString(`${index}_${item.title}`)} summary=${jsxString(item.title)}${item.disabled ? " disabled" : ""}>`,
+      `              <Text variant="body-2" color="secondary">${jsxText(item.body)}</Text>`,
+      "            </Accordion.Item>",
+    ]),
+    "          </Accordion>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
 }
 
 function descriptionLines(
@@ -395,6 +563,51 @@ function progressLines(progress: RenderInterfaceArguments["progress"]) {
   ];
 }
 
+function loadingStateLines(
+  loadingStates: RenderInterfaceArguments["loadingStates"],
+) {
+  if (loadingStates.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gap: 10 }}>',
+    ...loadingStates.flatMap((item) => [
+      '          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>',
+      `            <Spin size=${jsxString(item.size)} />`,
+      '            <div style={{ display: "grid", gap: 2 }}>',
+      `              <Text variant="body-1">${jsxText(item.label)}</Text>`,
+      item.description
+        ? `              <Text variant="caption-2" color="secondary">${jsxText(item.description)}</Text>`
+        : null,
+      "            </div>",
+      "          </div>",
+    ]),
+    "        </div>",
+  ].filter((line): line is string => Boolean(line));
+}
+
+function emptyStateLines(emptyStates: RenderInterfaceArguments["emptyStates"]) {
+  if (emptyStates.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gap: 12 }}>',
+    ...emptyStates.flatMap((item) => [
+      "          <PlaceholderContainer",
+      '            align="center"',
+      `            description=${jsxString(item.description)}`,
+      '            direction="column"',
+      `            image={${iconElement(item.icon ?? "info", mapEmptyStateIconSize(item.size))}}`,
+      `            size=${jsxString(item.size)}`,
+      `            title=${jsxString(item.title)}`,
+      "          />",
+    ]),
+    "        </div>",
+  ];
+}
+
 function userLines(users: RenderInterfaceArguments["users"]) {
   if (users.length === 0) {
     return [];
@@ -429,6 +642,33 @@ function linkLines(links: RenderInterfaceArguments["links"]) {
     ]),
     "        </div>",
   ].filter((line): line is string => Boolean(line));
+}
+
+function copyListLines(copyLists: RenderInterfaceArguments["copyLists"]) {
+  return copyLists.flatMap((copyList) => [
+    "        <section>",
+    copyList.title
+      ? `          <Text as="h3" variant="subheader-2">${jsxText(copyList.title)}</Text>`
+      : null,
+    '          <div style={{ display: "grid", gap: 8 }}>',
+    ...copyList.items.flatMap((item) => [
+      '            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>',
+      '              <div style={{ minWidth: 0 }}>',
+      `                <Text variant="caption-2" color="secondary">${jsxText(item.label)}</Text>`,
+      `                <Text variant="body-1">${jsxText(item.value)}</Text>`,
+      "              </div>",
+      `              <CopyToClipboard text=${jsxString(item.copyText)} timeout={1200}>`,
+      '                {(status) => (',
+      '                  <Button size="s" view="flat-secondary">',
+      "                    {status === \"success\" ? \"Copied\" : \"Copy\"}",
+      "                  </Button>",
+      "                )}",
+      "              </CopyToClipboard>",
+      "            </div>",
+    ]),
+    "          </div>",
+    "        </section>",
+  ].filter((line): line is string => Boolean(line)));
 }
 
 function fieldLines(fields: FieldWithKey[]) {
@@ -637,6 +877,7 @@ function collectUsedIcons(payload: RenderInterfaceArguments) {
     ...payload.navigation.map((item) => item.icon),
     ...payload.metrics.map((metric) => metric.icon),
     ...payload.sections.map((section) => section.icon),
+    ...payload.emptyStates.map((item) => item.icon ?? "info"),
     ...payload.actions.map((action) => action.icon),
   ].filter((icon): icon is GravityIconName => Boolean(icon));
 }
@@ -702,6 +943,19 @@ function mapProgressTextColor(value: string) {
       return "warning";
     default:
       return "secondary";
+  }
+}
+
+function mapEmptyStateIconSize(value: string) {
+  switch (value) {
+    case "s":
+      return 28;
+    case "l":
+      return 44;
+    case "promo":
+      return 52;
+    default:
+      return 36;
   }
 }
 

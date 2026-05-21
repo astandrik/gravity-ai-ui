@@ -2,17 +2,26 @@ import { A2uiMessageSchema } from "@a2ui/web_core/v0_9";
 import { z } from "zod";
 import {
   ALLOWED_GRAVITY_ICONS,
+  GRAVITY_ACCORDION_ARROW_POSITIONS,
+  GRAVITY_ACCORDION_SIZES,
+  GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
   GRAVITY_CARD_PADDING,
   GRAVITY_CARD_VIEWS,
   GRAVITY_CHOICE_PICKER_VARIANTS,
   GRAVITY_DIVIDER_AXES,
+  GRAVITY_EMPTY_STATE_SIZES,
   GRAVITY_GAPS,
   GRAVITY_ICON_SIZES,
   GRAVITY_LAYOUT_ALIGN,
   GRAVITY_LAYOUT_JUSTIFY,
+  GRAVITY_LABEL_TYPES,
+  GRAVITY_LOADING_SIZES,
   GRAVITY_STATUS_TONES,
+  GRAVITY_STEPPER_SIZES,
+  GRAVITY_STEPPER_VIEWS,
   GRAVITY_TABLE_ALIGN,
+  GRAVITY_TAB_SIZES,
   GRAVITY_TEXT_COLORS,
   GRAVITY_TEXT_FIELD_TYPES,
   GRAVITY_TEXT_VARIANTS,
@@ -45,6 +54,14 @@ export const ALLOWED_A2UI_COMPONENTS = [
   "SwitchField",
   "SelectField",
   "SliderField",
+  "LabelGroup",
+  "TabsBlock",
+  "EmptyStateList",
+  "LoadingStateList",
+  "BreadcrumbTrail",
+  "StepperBlock",
+  "AccordionBlock",
+  "CopyList",
 ] as const;
 
 export const ALLOWED_A2UI_ACTIONS = [
@@ -422,6 +439,158 @@ const sliderFieldComponentSchema = z
   })
   .strict();
 
+const labelItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.string().max(240).nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    type: z.enum(GRAVITY_LABEL_TYPES),
+  })
+  .strict();
+
+const labelGroupComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("LabelGroup"),
+    items: z.array(labelItemSchema).min(1).max(12),
+  })
+  .strict();
+
+const tabItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: componentIdSchema,
+    body: z.string().min(1).max(1600),
+    counter: z.string().max(240).nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    active: z.boolean(),
+  })
+  .strict();
+
+const tabsBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("TabsBlock"),
+    title: z.string().max(240),
+    size: z.enum(GRAVITY_TAB_SIZES),
+    items: z.array(tabItemSchema).min(2).max(8),
+  })
+  .strict();
+
+const emptyStateItemSchema = z
+  .object({
+    title: z.string().max(240),
+    description: z.string().max(1600),
+    icon: iconNameSchema.nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
+  })
+  .strict();
+
+const emptyStateListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("EmptyStateList"),
+    items: z.array(emptyStateItemSchema).min(1).max(2),
+  })
+  .strict();
+
+const loadingStateItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    description: z.string().max(240).nullable(),
+    size: z.enum(GRAVITY_LOADING_SIZES),
+  })
+  .strict();
+
+const loadingStateListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("LoadingStateList"),
+    items: z.array(loadingStateItemSchema).min(1).max(4),
+  })
+  .strict();
+
+const breadcrumbItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    href: z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^(https?:\/\/|mailto:|tel:|\/|#)/)
+      .nullable(),
+  })
+  .strict();
+
+const breadcrumbTrailComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("BreadcrumbTrail"),
+    title: z.string().max(240),
+    showRoot: z.boolean(),
+    items: z.array(breadcrumbItemSchema).min(2).max(8),
+  })
+  .strict();
+
+const stepperItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: componentIdSchema,
+    view: z.enum(GRAVITY_STEPPER_VIEWS),
+    disabled: z.boolean(),
+    active: z.boolean(),
+  })
+  .strict();
+
+const stepperBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("StepperBlock"),
+    title: z.string().max(240),
+    size: z.enum(GRAVITY_STEPPER_SIZES),
+    items: z.array(stepperItemSchema).min(2).max(8),
+  })
+  .strict();
+
+const accordionItemSchema = z
+  .object({
+    title: z.string().min(1).max(240),
+    body: z.string().min(1).max(1600),
+    expanded: z.boolean(),
+    disabled: z.boolean(),
+  })
+  .strict();
+
+const accordionBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("AccordionBlock"),
+    title: z.string().max(240),
+    size: z.enum(GRAVITY_ACCORDION_SIZES),
+    view: z.enum(GRAVITY_ACCORDION_VIEWS),
+    arrowPosition: z.enum(GRAVITY_ACCORDION_ARROW_POSITIONS),
+    items: z.array(accordionItemSchema).min(1).max(8),
+  })
+  .strict();
+
+const copyListItemSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.string().min(1).max(240),
+    copyText: z.string().min(1).max(1000),
+  })
+  .strict();
+
+const copyListComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("CopyList"),
+    title: z.string().max(240),
+    items: z.array(copyListItemSchema).min(1).max(8),
+  })
+  .strict();
+
 const gravityComponentSchema = z.discriminatedUnion("component", [
   columnComponentSchema,
   rowComponentSchema,
@@ -444,6 +613,14 @@ const gravityComponentSchema = z.discriminatedUnion("component", [
   switchFieldComponentSchema,
   selectFieldComponentSchema,
   sliderFieldComponentSchema,
+  labelGroupComponentSchema,
+  tabsBlockComponentSchema,
+  emptyStateListComponentSchema,
+  loadingStateListComponentSchema,
+  breadcrumbTrailComponentSchema,
+  stepperBlockComponentSchema,
+  accordionBlockComponentSchema,
+  copyListComponentSchema,
 ]);
 
 const updateComponentsMessageSchema = z

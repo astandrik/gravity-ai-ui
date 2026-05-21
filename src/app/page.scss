@@ -358,6 +358,14 @@
 .a2ui-definition-block,
 .a2ui-link-list,
 .a2ui-user-list,
+.a2ui-label-group,
+.a2ui-tabs-block,
+.a2ui-empty-state-list,
+.a2ui-loading-state-list,
+.a2ui-breadcrumb-trail,
+.a2ui-stepper-block,
+.a2ui-accordion-block,
+.a2ui-copy-list,
 .a2ui-slider-field {
   min-width: 0;
 }
@@ -468,9 +476,65 @@
 .a2ui-definition-block,
 .a2ui-link-list,
 .a2ui-user-list,
+.a2ui-tabs-block,
+.a2ui-empty-state-list,
+.a2ui-loading-state-list,
+.a2ui-breadcrumb-trail,
+.a2ui-stepper-block,
+.a2ui-accordion-block,
+.a2ui-copy-list,
 .a2ui-slider-field {
   display: grid;
   gap: var(--spacing-sm);
+}
+
+.a2ui-label-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.a2ui-tabs-block {
+  .g-tab-panel {
+    padding-top: var(--spacing-sm);
+  }
+}
+
+.a2ui-empty-state-list {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.a2ui-empty-state {
+  min-width: 0;
+}
+
+.a2ui-loading-state-list__item {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.a2ui-loading-state-list__copy {
+  display: grid;
+  gap: var(--spacing-2xs);
+  min-width: 0;
+}
+
+.a2ui-copy-list__item {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding-block: var(--spacing-xs);
+}
+
+.a2ui-copy-list__copy {
+  display: grid;
+  gap: var(--spacing-2xs);
+  min-width: 0;
 }
 
 .a2ui-table-block {

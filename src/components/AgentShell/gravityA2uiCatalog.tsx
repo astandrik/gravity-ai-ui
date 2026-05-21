@@ -26,23 +26,33 @@ import {
   TriangleExclamation,
 } from "@gravity-ui/icons";
 import { ActionBar } from "@gravity-ui/navigation";
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 import {
+  Accordion,
   Alert,
+  Breadcrumbs,
   Button,
   Card,
   Checkbox,
+  CopyToClipboard,
   DefinitionList,
   Icon as GravityIcon,
   Label,
   Link,
+  PlaceholderContainer,
   Progress,
   RadioGroup,
   Select,
   Slider,
+  Spin,
+  Stepper,
   Switch,
+  Tab,
+  TabList,
+  TabPanel,
+  TabProvider,
   Table,
   Text,
   TextInput,
@@ -50,21 +60,33 @@ import {
 } from "@/components/GravityUI/GravityUI";
 import { GRAVITY_A2UI_CATALOG_ID } from "@/lib/agent/a2uiContract";
 import {
+  GRAVITY_ACCORDION_ARROW_POSITIONS,
+  GRAVITY_ACCORDION_SIZES,
+  GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
   GRAVITY_CARD_PADDING,
   GRAVITY_CARD_VIEWS,
   GRAVITY_CHOICE_PICKER_VARIANTS,
   GRAVITY_DIVIDER_AXES,
+  GRAVITY_EMPTY_STATE_SIZES,
   GRAVITY_GAPS,
   GRAVITY_ICON_SIZES,
   GRAVITY_LAYOUT_ALIGN,
   GRAVITY_LAYOUT_JUSTIFY,
+  GRAVITY_LABEL_TYPES,
+  GRAVITY_LOADING_SIZES,
   GRAVITY_STATUS_TONES,
+  GRAVITY_STEPPER_SIZES,
+  GRAVITY_STEPPER_VIEWS,
   GRAVITY_TABLE_ALIGN,
+  GRAVITY_TAB_SIZES,
   GRAVITY_TEXT_COLORS,
   GRAVITY_TEXT_FIELD_TYPES,
   GRAVITY_TEXT_VARIANTS,
   GRAVITY_TONES,
+  mapGravityButtonVariantToView,
+  mapGravityTextColor,
+  mapGravityTextVariant,
 } from "@/lib/agent/gravityCapabilities";
 
 export type GravitySurface = SurfaceModel<GravityReactComponent>;
@@ -151,6 +173,54 @@ const userItemSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   tone: toneSchema,
+});
+const labelItemSchema = z.object({
+  label: z.string(),
+  value: z.string().nullable(),
+  tone: toneSchema,
+  type: z.enum(GRAVITY_LABEL_TYPES),
+});
+const tabItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  body: z.string(),
+  counter: z.string().nullable(),
+  tone: toneSchema,
+  active: z.boolean(),
+});
+const emptyStateItemSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  icon: z.enum(iconNames).nullable(),
+  tone: toneSchema,
+  size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
+});
+const loadingStateItemSchema = z.object({
+  label: z.string(),
+  description: z.string().nullable(),
+  size: z.enum(GRAVITY_LOADING_SIZES),
+});
+const breadcrumbItemSchema = z.object({
+  label: z.string(),
+  href: z.string().nullable(),
+});
+const stepperItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  view: z.enum(GRAVITY_STEPPER_VIEWS),
+  disabled: z.boolean(),
+  active: z.boolean(),
+});
+const accordionItemSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  expanded: z.boolean(),
+  disabled: z.boolean(),
+});
+const copyListItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  copyText: z.string(),
 });
 
 const Column = createComponentImplementation(
@@ -539,6 +609,243 @@ const UserListSurface = createComponentImplementation(
   ),
 );
 
+const LabelGroupSurface = createComponentImplementation(
+  {
+    name: "LabelGroup",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(labelItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-label-group">
+      {props.items.map((item) => (
+        <Label
+          copyText={item.type === "copy" ? item.value ?? item.label : undefined}
+          key={`${item.label}-${item.value ?? ""}`}
+          size="s"
+          theme={mapLabelTheme(item.tone)}
+          type={item.type}
+          value={item.value ?? undefined}
+        >
+          {item.label}
+        </Label>
+      ))}
+    </div>
+  ),
+);
+
+const TabsBlockSurface = createComponentImplementation(
+  {
+    name: "TabsBlock",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      size: z.enum(GRAVITY_TAB_SIZES),
+      items: z.array(tabItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <TabsBlockRenderer
+      items={props.items}
+      size={props.size}
+      title={props.title}
+    />
+  ),
+);
+
+const EmptyStateListSurface = createComponentImplementation(
+  {
+    name: "EmptyStateList",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(emptyStateItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-empty-state-list">
+      {props.items.map((item) => (
+        <PlaceholderContainer
+          align="center"
+          className="a2ui-empty-state"
+          description={item.description}
+          direction="column"
+          image={
+            <GravityIcon
+              className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
+              data={iconDataByName[item.icon ?? "info"]}
+              size={mapEmptyStateIconSize(item.size)}
+            />
+          }
+          key={`${item.title}-${item.description}`}
+          size={item.size}
+          title={item.title}
+        />
+      ))}
+    </div>
+  ),
+);
+
+const LoadingStateListSurface = createComponentImplementation(
+  {
+    name: "LoadingStateList",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(loadingStateItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-loading-state-list">
+      {props.items.map((item) => (
+        <div className="a2ui-loading-state-list__item" key={item.label}>
+          <Spin size={item.size} />
+          <div className="a2ui-loading-state-list__copy">
+            <Text variant="body-1">{item.label}</Text>
+            {item.description ? (
+              <Text color="secondary" variant="caption-2">
+                {item.description}
+              </Text>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  ),
+);
+
+const BreadcrumbTrailSurface = createComponentImplementation(
+  {
+    name: "BreadcrumbTrail",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      showRoot: z.boolean(),
+      items: z.array(breadcrumbItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-breadcrumb-trail">
+      {props.title ? (
+        <Text as="h3" variant="subheader-2">
+          {props.title}
+        </Text>
+      ) : null}
+      <Breadcrumbs showRoot={props.showRoot}>
+        {props.items.map((item, index) => (
+          <Breadcrumbs.Item
+            href={item.href ?? undefined}
+            key={`${item.label}-${index}`}
+          >
+            {item.label}
+          </Breadcrumbs.Item>
+        ))}
+      </Breadcrumbs>
+    </div>
+  ),
+);
+
+const StepperBlockSurface = createComponentImplementation(
+  {
+    name: "StepperBlock",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      size: z.enum(GRAVITY_STEPPER_SIZES),
+      items: z.array(stepperItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <StepperBlockRenderer
+      items={props.items}
+      size={props.size}
+      title={props.title}
+    />
+  ),
+);
+
+const AccordionBlockSurface = createComponentImplementation(
+  {
+    name: "AccordionBlock",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      size: z.enum(GRAVITY_ACCORDION_SIZES),
+      view: z.enum(GRAVITY_ACCORDION_VIEWS),
+      arrowPosition: z.enum(GRAVITY_ACCORDION_ARROW_POSITIONS),
+      items: z.array(accordionItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-accordion-block">
+      {props.title ? (
+        <Text as="h3" variant="subheader-2">
+          {props.title}
+        </Text>
+      ) : null}
+      <Accordion
+        arrowPosition={props.arrowPosition}
+        defaultValue={props.items
+          .filter((item) => item.expanded)
+          .map((item, index) => `${index}_${item.title}`)}
+        multiple
+        size={props.size}
+        view={props.view}
+      >
+        {props.items.map((item, index) => (
+          <Accordion.Item
+            disabled={item.disabled}
+            key={`${item.title}-${index}`}
+            summary={item.title}
+            value={`${index}_${item.title}`}
+          >
+            <Text color="secondary" variant="body-2">
+              {item.body}
+            </Text>
+          </Accordion.Item>
+        ))}
+      </Accordion>
+    </div>
+  ),
+);
+
+const CopyListSurface = createComponentImplementation(
+  {
+    name: "CopyList",
+    schema: z.object({
+      ...commonProps,
+      title: z.string(),
+      items: z.array(copyListItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-copy-list">
+      {props.title ? (
+        <Text as="h3" variant="subheader-2">
+          {props.title}
+        </Text>
+      ) : null}
+      {props.items.map((item) => (
+        <div className="a2ui-copy-list__item" key={`${item.label}-${item.value}`}>
+          <div className="a2ui-copy-list__copy">
+            <Text color="secondary" variant="caption-2">
+              {item.label}
+            </Text>
+            <Text variant="body-1">{item.value}</Text>
+          </div>
+          <CopyToClipboard text={item.copyText} timeout={1200}>
+            {(status) => (
+              <Button size="s" view="flat-secondary">
+                <GravityIcon data={Copy} size={14} />
+                {status === "success" ? "Copied" : "Copy"}
+              </Button>
+            )}
+          </CopyToClipboard>
+        </div>
+      ))}
+    </div>
+  ),
+);
+
 const TextFieldSurface = createComponentImplementation(
   {
     name: "TextField",
@@ -765,6 +1072,14 @@ export const gravityA2uiCatalog = new Catalog(
     DefinitionListBlockSurface,
     LinkListSurface,
     UserListSurface,
+    LabelGroupSurface,
+    TabsBlockSurface,
+    EmptyStateListSurface,
+    LoadingStateListSurface,
+    BreadcrumbTrailSurface,
+    StepperBlockSurface,
+    AccordionBlockSurface,
+    CopyListSurface,
     TextFieldSurface,
     CheckBoxSurface,
     SwitchFieldSurface,
@@ -780,6 +1095,111 @@ export function createGravityA2uiProcessor(actionHandler: GravityActionHandler) 
 }
 
 export { A2uiSurface };
+
+type TabsBlockItem = z.infer<typeof tabItemSchema>;
+type StepperBlockItem = z.infer<typeof stepperItemSchema>;
+
+function TabsBlockRenderer({
+  items,
+  size,
+  title,
+}: {
+  items: TabsBlockItem[];
+  size: (typeof GRAVITY_TAB_SIZES)[number];
+  title: string;
+}) {
+  const defaultValue = useMemo(
+    () => items.find((item) => item.active)?.value ?? items[0]?.value ?? "",
+    [items],
+  );
+  const [value, setValue] = useState(defaultValue);
+  const currentValue = items.some((item) => item.value === value)
+    ? value
+    : defaultValue;
+
+  return (
+    <div className="a2ui-tabs-block">
+      {title ? (
+        <Text as="h3" variant="subheader-2">
+          {title}
+        </Text>
+      ) : null}
+      <TabProvider value={currentValue} onUpdate={setValue}>
+        <TabList size={size}>
+          {items.map((item) => (
+            <Tab
+              counter={item.counter ?? undefined}
+              key={item.value}
+              label={
+                item.tone === "normal"
+                  ? undefined
+                  : {
+                      content: mapToneLabel(item.tone),
+                      theme: mapLabelTheme(item.tone),
+                    }
+              }
+              value={item.value}
+            >
+              {item.label}
+            </Tab>
+          ))}
+        </TabList>
+        {items.map((item) => (
+          <TabPanel key={item.value} value={item.value}>
+            <Text color="secondary" variant="body-2">
+              {item.body}
+            </Text>
+          </TabPanel>
+        ))}
+      </TabProvider>
+    </div>
+  );
+}
+
+function StepperBlockRenderer({
+  items,
+  size,
+  title,
+}: {
+  items: StepperBlockItem[];
+  size: (typeof GRAVITY_STEPPER_SIZES)[number];
+  title: string;
+}) {
+  const defaultValue = useMemo(
+    () => items.find((item) => item.active)?.value ?? items[0]?.value ?? "",
+    [items],
+  );
+  const [value, setValue] = useState(defaultValue);
+  const currentValue = items.some((item) => item.value === value)
+    ? value
+    : defaultValue;
+
+  return (
+    <div className="a2ui-stepper-block">
+      {title ? (
+        <Text as="h3" variant="subheader-2">
+          {title}
+        </Text>
+      ) : null}
+      <Stepper
+        onUpdate={(nextValue) => setValue(String(nextValue ?? currentValue))}
+        size={size}
+        value={currentValue}
+      >
+        {items.map((item) => (
+          <Stepper.Item
+            disabled={item.disabled}
+            id={item.value}
+            key={item.value}
+            view={item.view}
+          >
+            {item.label}
+          </Stepper.Item>
+        ))}
+      </Stepper>
+    </div>
+  );
+}
 
 function renderChildList(children: unknown, buildChild: BuildChild) {
   if (!Array.isArray(children)) {
@@ -862,16 +1282,7 @@ function mapGap(value?: string) {
 }
 
 function mapButtonView(value?: string) {
-  switch (value) {
-    case "primary":
-      return "action";
-    case "outlined":
-      return "outlined";
-    case "flat":
-      return "flat";
-    default:
-      return "normal";
-  }
+  return mapGravityButtonVariantToView(value);
 }
 
 function mapCardTheme(value?: string) {
@@ -920,6 +1331,32 @@ function mapProgressTextColor(value?: string) {
   }
 }
 
+function mapToneIconColor(value?: string) {
+  switch (value) {
+    case "danger":
+      return "danger";
+    case "success":
+      return "positive";
+    case "warning":
+      return "warning";
+    default:
+      return "secondary";
+  }
+}
+
+function mapEmptyStateIconSize(value?: string) {
+  switch (value) {
+    case "s":
+      return 28;
+    case "l":
+      return 44;
+    case "promo":
+      return 52;
+    default:
+      return 36;
+  }
+}
+
 function mapTableAlign(value?: string) {
   switch (value) {
     case "center":
@@ -956,20 +1393,7 @@ function createInitials(value: string) {
 }
 
 function mapTextVariant(value?: string) {
-  switch (value) {
-    case "h1":
-      return "display-1";
-    case "h2":
-      return "subheader-3";
-    case "h3":
-    case "h4":
-    case "h5":
-      return "subheader-2";
-    case "caption":
-      return "caption-2";
-    default:
-      return "body-2";
-  }
+  return mapGravityTextVariant(value);
 }
 
 function mapTextElement(value?: string) {
@@ -986,18 +1410,7 @@ function mapTextElement(value?: string) {
 }
 
 function mapTextColor(value?: string) {
-  switch (value) {
-    case "secondary":
-      return "secondary";
-    case "positive":
-      return "positive";
-    case "warning":
-      return "warning";
-    case "danger":
-      return "danger";
-    default:
-      return "primary";
-  }
+  return mapGravityTextColor(value);
 }
 
 function mapTextFieldType(value?: string) {
