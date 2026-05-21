@@ -2,6 +2,10 @@
 
 Website scaffold using the same frontend stack as `codex-pets`.
 
+## Site
+
+https://gravity-ai.ydb-qdrant.tech
+
 ## Stack
 
 - Next.js 16 App Router, React 19, TypeScript strict
