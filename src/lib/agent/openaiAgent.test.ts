@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { GRAVITY_A2UI_CATALOG_ID } from "./a2uiContract";
-import type { RenderInterfaceArguments } from "./fixedInterface";
+import {
+  buildFixedInterfaceFromPartialJson,
+  buildProgressivePlaceholderInterface,
+  buildProgressiveStatusUpdate,
+  type RenderInterfaceArguments,
+} from "./fixedInterface";
 import {
   buildInput,
   buildInstructions,
@@ -122,6 +127,91 @@ const interfaceArgs = {
 } satisfies RenderInterfaceArguments;
 
 describe("OpenAI agent stream parsing", () => {
+  it("builds a progressive placeholder surface before final tool output", () => {
+    const messages = buildProgressivePlaceholderInterface({
+      surfaceId: "main",
+      status: "Contacting OpenAI",
+    });
+
+    expect(messages).toHaveLength(3);
+    expect(messages[0]).toMatchObject({
+      createSurface: {
+        surfaceId: "main",
+        catalogId: GRAVITY_A2UI_CATALOG_ID,
+      },
+    });
+    expect(messages[1]).toMatchObject({
+      updateComponents: {
+        surfaceId: "main",
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "status_button",
+            component: "Button",
+            loading: true,
+          }),
+          expect.objectContaining({
+            id: "status_text",
+            component: "Text",
+            text: { path: "/status" },
+          }),
+        ]),
+      },
+    });
+    expect(messages[2]).toMatchObject({
+      updateDataModel: {
+        surfaceId: "main",
+        path: "/",
+        value: expect.objectContaining({
+          status: "Contacting OpenAI",
+        }),
+      },
+    });
+  });
+
+  it("builds progressive status updates for an existing placeholder surface", () => {
+    expect(buildProgressiveStatusUpdate("main", "Composing interface")).toMatchObject({
+      updateDataModel: {
+        surfaceId: "main",
+        path: "/status",
+        value: "Composing interface",
+      },
+    });
+  });
+
+  it("builds renderable snapshots from partial function argument JSON", () => {
+    const parsed = buildFixedInterfaceFromPartialJson(
+      [
+        '{"sequence":0,"surfaceId":"main","title":"Button styles",',
+        '"titleIcon":null,"summary":"Available button variants.",',
+        '"tone":"info","layout":{"density":"comfortable","sectionDividers":"minimal"},',
+        '"alerts":[],"metrics":[],"sections":[],"fields":[],"tables":[],',
+        '"progress":[],"descriptions":[],"links":[],"users":[],',
+        '"actions":[{"label":"Primary","icon":null,"action":"noop",',
+        '"variant":"primary","disabled":false,"loading":false,"selected":false}]',
+      ].join(""),
+      "main",
+    );
+
+    expect(parsed).toMatchObject({
+      payload: {
+        title: "Button styles",
+        actions: [
+          expect.objectContaining({
+            label: "Primary",
+            variant: "primary",
+          }),
+        ],
+      },
+      messages: expect.arrayContaining([
+        expect.objectContaining({
+          updateComponents: expect.objectContaining({
+            surfaceId: "main",
+          }),
+        }),
+      ]),
+    });
+  });
+
   it("builds canonical A2UI messages from fixed interface data", () => {
     expect(
       parseFunctionToolCallItem({
@@ -420,6 +510,8 @@ describe("OpenAI agent stream parsing", () => {
     expect(instructions).toContain("Use at most one primary action");
     expect(instructions).toContain("Do not rely on color alone");
     expect(instructions).toContain("layout.density");
+    expect(instructions).toContain("Render progressively");
+    expect(instructions).toContain("2 to 4 snapshots");
     expect(instructions).toContain("Allowed icons");
     expect(instructions).toContain("Available Gravity component capabilities");
     expect(instructions).toContain("outlined-warning");

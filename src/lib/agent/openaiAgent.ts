@@ -4,7 +4,12 @@ import {
   ALLOWED_A2UI_ACTIONS,
   A2UI_VERSION,
 } from "./a2uiContract";
-import { buildFixedInterfaceFromJson } from "./fixedInterface";
+import {
+  buildFixedInterfaceFromJson,
+  buildFixedInterfaceFromPartialJson,
+  buildProgressivePlaceholderInterface,
+  buildProgressiveStatusUpdate,
+} from "./fixedInterface";
 import type { BuiltFixedInterface } from "./fixedInterface";
 import {
   ALLOWED_GRAVITY_ICONS,
@@ -44,10 +49,32 @@ export async function streamAgentResponse({
 }: StreamAgentOptions) {
   const client = new OpenAI({ apiKey });
   const processedToolCalls = new Set<string>();
-  let emittedMessages = 0;
+  const initializedSurfaceIds = new Set<string>();
+  const partialArgumentBuffers = new Map<string, string>();
+  let emittedInterfaceMessages = 0;
+  let emittedError = false;
+  let lastRenderedPayloadSignature: string | null = null;
   let streamingStatusSent = false;
 
-  await onEvent({ type: "status", message: "Contacting OpenAI" });
+  const progressiveSurfaceId = getProgressiveSurfaceId(request);
+  const emitBuiltInterface = async (parsed: BuiltFixedInterface) => {
+    const payloadSignature = createPayloadSignature(parsed.payload);
+
+    if (payloadSignature === lastRenderedPayloadSignature) {
+      return 0;
+    }
+
+    lastRenderedPayloadSignature = payloadSignature;
+
+    return emitParsedToolCall(parsed, onEvent, initializedSurfaceIds);
+  };
+
+  await emitProgressiveStatus({
+    initializedSurfaceIds,
+    onEvent,
+    status: "Contacting OpenAI",
+    surfaceId: progressiveSurfaceId,
+  });
   const likedDesignExamples = await loadLikedDesignExamples();
 
   const stream = await client.responses.create(
@@ -73,14 +100,37 @@ export async function streamAgentResponse({
 
   for await (const event of stream) {
     if (event.type === "response.created") {
-      await onEvent({ type: "status", message: "Planning interface" });
+      await emitProgressiveStatus({
+        initializedSurfaceIds,
+        onEvent,
+        status: "Planning interface",
+        surfaceId: progressiveSurfaceId,
+      });
       continue;
     }
 
     if (event.type === "response.function_call_arguments.delta") {
+      const accumulatedArguments = `${partialArgumentBuffers.get(event.item_id) ?? ""}${event.delta}`;
+
+      partialArgumentBuffers.set(event.item_id, accumulatedArguments);
+
       if (!streamingStatusSent) {
-        await onEvent({ type: "status", message: "Streaming interface" });
+        await emitProgressiveStatus({
+          initializedSurfaceIds,
+          onEvent,
+          status: "Composing interface",
+          surfaceId: progressiveSurfaceId,
+        });
         streamingStatusSent = true;
+      }
+
+      const partialInterface = buildFixedInterfaceFromPartialJson(
+        accumulatedArguments,
+        progressiveSurfaceId,
+      );
+
+      if (partialInterface) {
+        emittedInterfaceMessages += await emitBuiltInterface(partialInterface);
       }
 
       continue;
@@ -98,7 +148,8 @@ export async function streamAgentResponse({
         continue;
       }
 
-      emittedMessages += await emitParsedToolCall(parsed, onEvent);
+      partialArgumentBuffers.delete(event.item_id);
+      emittedInterfaceMessages += await emitBuiltInterface(parsed);
       continue;
     }
 
@@ -109,7 +160,7 @@ export async function streamAgentResponse({
         continue;
       }
 
-      emittedMessages += await emitParsedToolCall(parsed, onEvent);
+      emittedInterfaceMessages += await emitBuiltInterface(parsed);
       continue;
     }
 
@@ -118,12 +169,13 @@ export async function streamAgentResponse({
         const parsed = parseFunctionToolCallItem(item, processedToolCalls);
 
         if (parsed) {
-          emittedMessages += await emitParsedToolCall(parsed, onEvent);
+          emittedInterfaceMessages += await emitBuiltInterface(parsed);
         }
       }
     }
 
     if (event.type === "response.failed") {
+      emittedError = true;
       await onEvent({
         type: "error",
         message: event.response.error?.message || "OpenAI response failed",
@@ -131,7 +183,7 @@ export async function streamAgentResponse({
     }
   }
 
-  if (emittedMessages === 0) {
+  if (emittedInterfaceMessages === 0 && !emittedError) {
     await onEvent({
       type: "error",
       message: "The agent did not emit a valid A2UI message.",
@@ -336,10 +388,16 @@ function stringifyForPrompt(value: unknown) {
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
 }
 
+function createPayloadSignature(payload: BuiltFixedInterface["payload"]) {
+  return JSON.stringify(payload);
+}
+
 export function buildInstructions() {
   return [
     "You are the interface planner for Gravity AI UI.",
-    `Always respond only by calling ${RENDER_INTERFACE_TOOL_NAME} exactly once.`,
+    `Respond only by calling ${RENDER_INTERFACE_TOOL_NAME}; never write assistant text.`,
+    "Render progressively: emit 2 to 4 snapshots for every normal request, using sequence values 0, 1, 2, ... on the same surfaceId.",
+    "Each snapshot must be a valid renderable interface. Snapshot 0 should be small: title, summary, and the first useful block or controls. Later snapshots add missing blocks and refine copy. The last snapshot is the complete final interface.",
     "Do not generate A2UI JSON, component JSON, Markdown fences, HTML, or code.",
     `The server will convert your fixed-schema interface data into validated A2UI ${A2UI_VERSION} messages.`,
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
@@ -377,14 +435,71 @@ export function buildInstructions() {
 async function emitParsedToolCall(
   parsed: BuiltFixedInterface,
   onEvent: (event: AgentSseEvent) => void | Promise<void>,
+  initializedSurfaceIds = new Set<string>(),
 ) {
   await onEvent({ type: "payload", payload: parsed.payload });
+  let emittedMessages = 0;
 
   for (const message of parsed.messages) {
+    if ("createSurface" in message) {
+      const { surfaceId } = message.createSurface;
+
+      if (initializedSurfaceIds.has(surfaceId)) {
+        continue;
+      }
+
+      initializedSurfaceIds.add(surfaceId);
+    }
+
     await onEvent({ type: "a2ui", message });
+    emittedMessages += 1;
   }
 
-  return parsed.messages.length;
+  return emittedMessages;
+}
+
+async function emitProgressiveStatus({
+  initializedSurfaceIds,
+  onEvent,
+  status,
+  surfaceId,
+}: {
+  initializedSurfaceIds: Set<string>;
+  onEvent: (event: AgentSseEvent) => void | Promise<void>;
+  status: string;
+  surfaceId: string;
+}) {
+  await onEvent({ type: "status", message: status });
+
+  if (!initializedSurfaceIds.has(surfaceId)) {
+    for (const message of buildProgressivePlaceholderInterface({
+      status,
+      surfaceId,
+    })) {
+      await onEvent({ type: "a2ui", message });
+    }
+
+    initializedSurfaceIds.add(surfaceId);
+    return;
+  }
+
+  await onEvent({
+    type: "a2ui",
+    message: buildProgressiveStatusUpdate(surfaceId, status),
+  });
+}
+
+function getProgressiveSurfaceId(request: AgentRequest) {
+  const preferredSurfaceId =
+    request.kind === "action"
+      ? request.surfaceId
+      : request.conversationContext?.latestSurfaceId;
+
+  return isValidSurfaceId(preferredSurfaceId) ? preferredSurfaceId : "main";
+}
+
+function isValidSurfaceId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value);
 }
 
 const renderInterfaceTool = {
@@ -392,7 +507,7 @@ const renderInterfaceTool = {
   name: RENDER_INTERFACE_TOOL_NAME,
   strict: true,
   description:
-    "Describe one fixed-schema Gravity interface. The server will render it as validated A2UI messages.",
+    "Describe one fixed-schema Gravity interface snapshot. Call it repeatedly to stream progressive snapshots; the server renders each snapshot as validated A2UI messages.",
   parameters: {
     type: "object",
     additionalProperties: false,

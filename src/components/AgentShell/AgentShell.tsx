@@ -645,6 +645,7 @@ function A2uiMessageRenderer({
   const processedCountRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [processor] = useState(() => createGravityA2uiProcessor(onAction));
+  const [renderVersion, setRenderVersion] = useState(0);
   const [surfaces, setSurfaces] = useState<GravitySurface[]>(() =>
     Array.from(processor.model.surfacesMap.values()),
   );
@@ -671,6 +672,10 @@ function A2uiMessageRenderer({
     try {
       processor.processMessages(nextMessages);
       processedCountRef.current = messages.length;
+      queueMicrotask(() => {
+        setSurfaces(Array.from(processor.model.surfacesMap.values()));
+        setRenderVersion((currentVersion) => currentVersion + 1);
+      });
     } catch (processingError) {
       const nextError =
         processingError instanceof Error
@@ -697,7 +702,7 @@ function A2uiMessageRenderer({
   return (
     <div className="agent-surfaces">
       {surfaces.map((surface) => (
-        <div className="agent-surface" key={surface.id}>
+        <div className="agent-surface" key={`${surface.id}-${renderVersion}`}>
           <A2uiSurface surface={surface} />
         </div>
       ))}

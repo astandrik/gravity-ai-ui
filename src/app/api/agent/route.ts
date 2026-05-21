@@ -18,38 +18,40 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       const send = (event: Parameters<typeof encode>[0]) => {
         controller.enqueue(encode(event));
       };
 
-      try {
-        if (!apiKey) {
+      void (async () => {
+        try {
+          if (!apiKey) {
+            send({
+              type: "error",
+              message: "OPENAI_API_KEY is not configured.",
+            });
+            return;
+          }
+
+          await streamAgentResponse({
+            request: parsed.data,
+            apiKey,
+            signal: request.signal,
+            onEvent: send,
+          });
+        } catch (error) {
           send({
             type: "error",
-            message: "OPENAI_API_KEY is not configured.",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Agent stream failed unexpectedly.",
           });
-          return;
+        } finally {
+          send({ type: "done" });
+          controller.close();
         }
-
-        await streamAgentResponse({
-          request: parsed.data,
-          apiKey,
-          signal: request.signal,
-          onEvent: send,
-        });
-      } catch (error) {
-        send({
-          type: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Agent stream failed unexpectedly.",
-        });
-      } finally {
-        send({ type: "done" });
-        controller.close();
-      }
+      })();
     },
   });
 

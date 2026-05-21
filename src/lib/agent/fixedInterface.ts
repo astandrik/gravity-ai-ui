@@ -214,12 +214,158 @@ export type BuiltFixedInterface = {
   messages: GravityA2uiMessage[];
 };
 
+export function buildProgressivePlaceholderInterface({
+  status,
+  surfaceId,
+}: {
+  status: string;
+  surfaceId: string;
+}): GravityA2uiMessage[] {
+  return [
+    validateGravityA2uiMessage({
+      version: A2UI_VERSION,
+      createSurface: {
+        surfaceId,
+        catalogId: GRAVITY_A2UI_CATALOG_ID,
+        sendDataModel: true,
+      },
+    }),
+    validateGravityA2uiMessage({
+      version: A2UI_VERSION,
+      updateComponents: {
+        surfaceId,
+        components: [
+          {
+            id: "root",
+            component: "Column",
+            children: ["surface_card"],
+            align: "stretch",
+          },
+          {
+            id: "surface_card",
+            component: "Card",
+            child: "content",
+            theme: "normal",
+            view: "filled",
+            padding: "comfortable",
+          },
+          {
+            id: "content",
+            component: "Column",
+            children: ["title", "summary", "status_row"],
+            align: "stretch",
+            gap: "normal",
+          },
+          {
+            id: "title",
+            component: "Text",
+            text: { path: "/title" },
+            variant: "h2",
+          },
+          {
+            id: "summary",
+            component: "Text",
+            text: { path: "/summary" },
+            variant: "body",
+            color: "secondary",
+          },
+          {
+            id: "status_row",
+            component: "Row",
+            children: ["status_button", "status_text"],
+            align: "center",
+            gap: "compact",
+          },
+          {
+            id: "status_button",
+            component: "Button",
+            text: "Generating",
+            variant: "outlined",
+            disabled: true,
+            loading: true,
+          },
+          {
+            id: "status_text",
+            component: "Text",
+            text: { path: "/status" },
+            variant: "body",
+            color: "secondary",
+          },
+        ],
+      },
+    }),
+    buildProgressiveStatusUpdate(surfaceId, status, {
+      summary: "Preparing a trusted Gravity UI preview from the request.",
+      title: "Generating interface",
+    }),
+  ];
+}
+
+export function buildProgressiveStatusUpdate(
+  surfaceId: string,
+  status: string,
+  initialData?: { title: string; summary: string },
+): GravityA2uiMessage {
+  return validateGravityA2uiMessage({
+    version: A2UI_VERSION,
+    updateDataModel: {
+      surfaceId,
+      path: initialData ? "/" : "/status",
+      value: initialData
+        ? {
+            title: initialData.title,
+            summary: initialData.summary,
+            status,
+          }
+        : status,
+    },
+  });
+}
+
 export function buildFixedInterfaceFromJson(
   argumentsJson: string,
 ): BuiltFixedInterface {
   return buildFixedInterface(
     renderInterfaceArgumentsSchema.parse(JSON.parse(argumentsJson)),
   );
+}
+
+export function buildFixedInterfaceFromPartialJson(
+  argumentsJson: string,
+  fallbackSurfaceId: string,
+): BuiltFixedInterface | null {
+  const fields = parseCompleteTopLevelFields(argumentsJson);
+
+  if (!hasRenderablePartial(fields)) {
+    return null;
+  }
+
+  const args: RenderInterfaceArguments = {
+    sequence: readSchemaField("sequence", fields.sequence, 0),
+    surfaceId: readSchemaField("surfaceId", fields.surfaceId, fallbackSurfaceId),
+    title: readSchemaField("title", fields.title, "Generating interface"),
+    titleIcon: readSchemaField("titleIcon", fields.titleIcon, null),
+    summary: readSchemaField("summary", fields.summary, ""),
+    tone: readSchemaField("tone", fields.tone, "info"),
+    layout: readSchemaField("layout", fields.layout, {
+      density: "comfortable",
+      sectionDividers: "minimal",
+    }),
+    alerts: readSchemaField("alerts", fields.alerts, []),
+    metrics: readSchemaField("metrics", fields.metrics, []),
+    sections: readSchemaField("sections", fields.sections, []),
+    fields: readSchemaField("fields", fields.fields, []),
+    tables: readSchemaField("tables", fields.tables, []),
+    progress: readSchemaField("progress", fields.progress, []),
+    descriptions: readSchemaField("descriptions", fields.descriptions, []),
+    links: readSchemaField("links", fields.links, []),
+    users: readSchemaField("users", fields.users, []),
+    actions: readSchemaField("actions", fields.actions, []),
+    navigation: readSchemaField("navigation", fields.navigation, []),
+  };
+  const parsed = renderInterfaceArgumentsSchema.safeParse(args);
+
+  return parsed.success ? buildFixedInterface(parsed.data) : null;
 }
 
 export function buildFixedInterface(
@@ -880,6 +1026,227 @@ function initialFieldValue(
   }
 
   return field.value || "";
+}
+
+function readSchemaField<Key extends keyof RenderInterfaceArguments>(
+  key: Key,
+  value: unknown,
+  fallback: RenderInterfaceArguments[Key],
+): RenderInterfaceArguments[Key] {
+  const parsed = renderInterfaceArgumentsSchema.shape[key].safeParse(value);
+
+  return parsed.success
+    ? (parsed.data as RenderInterfaceArguments[Key])
+    : fallback;
+}
+
+function hasRenderablePartial(fields: Record<string, unknown>) {
+  return (
+    (typeof fields.title === "string" &&
+      fields.title.trim().length > 0 &&
+      typeof fields.summary === "string" &&
+      fields.summary.trim().length > 0) ||
+    hasItems(fields.alerts) ||
+    hasItems(fields.metrics) ||
+    hasItems(fields.sections) ||
+    hasItems(fields.fields) ||
+    hasItems(fields.tables) ||
+    hasItems(fields.progress) ||
+    hasItems(fields.descriptions) ||
+    hasItems(fields.links) ||
+    hasItems(fields.users) ||
+    hasItems(fields.actions) ||
+    hasItems(fields.navigation)
+  );
+}
+
+function hasItems(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function parseCompleteTopLevelFields(source: string) {
+  const fields: Record<string, unknown> = {};
+  let index = skipWhitespace(source, 0);
+
+  if (source[index] !== "{") {
+    return fields;
+  }
+
+  index += 1;
+
+  while (index < source.length) {
+    index = skipWhitespace(source, index);
+
+    if (source[index] === "}") {
+      return fields;
+    }
+
+    const keySpan = readJsonStringSpan(source, index);
+
+    if (!keySpan) {
+      return fields;
+    }
+
+    let key: string;
+
+    try {
+      key = JSON.parse(source.slice(index, keySpan.end));
+    } catch {
+      return fields;
+    }
+
+    index = skipWhitespace(source, keySpan.end);
+
+    if (source[index] !== ":") {
+      return fields;
+    }
+
+    index = skipWhitespace(source, index + 1);
+
+    const valueSpan = readJsonValueSpan(source, index);
+
+    if (!valueSpan) {
+      return fields;
+    }
+
+    const nextIndex = skipWhitespace(source, valueSpan.end);
+
+    if (nextIndex >= source.length && !valueSpan.completeAtEnd) {
+      return fields;
+    }
+
+    try {
+      fields[key] = JSON.parse(source.slice(index, valueSpan.end));
+    } catch {
+      return fields;
+    }
+
+    if (nextIndex >= source.length || source[nextIndex] === "}") {
+      return fields;
+    }
+
+    if (source[nextIndex] !== ",") {
+      return fields;
+    }
+
+    index = nextIndex + 1;
+  }
+
+  return fields;
+}
+
+function readJsonValueSpan(source: string, start: number) {
+  const firstChar = source[start];
+
+  if (firstChar === '"') {
+    const span = readJsonStringSpan(source, start);
+
+    return span ? { ...span, completeAtEnd: true } : null;
+  }
+
+  if (firstChar === "{" || firstChar === "[") {
+    const span = readBalancedJsonSpan(source, start);
+
+    return span ? { ...span, completeAtEnd: true } : null;
+  }
+
+  let index = start;
+
+  while (index < source.length && source[index] !== "," && source[index] !== "}") {
+    index += 1;
+  }
+
+  return index > start && index < source.length
+    ? { end: index, completeAtEnd: false }
+    : null;
+}
+
+function readJsonStringSpan(source: string, start: number) {
+  if (source[start] !== '"') {
+    return null;
+  }
+
+  let escaped = false;
+
+  for (let index = start + 1; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      return { end: index + 1 };
+    }
+  }
+
+  return null;
+}
+
+function readBalancedJsonSpan(source: string, start: number) {
+  const opening = source[start];
+  const closing = opening === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === opening) {
+      depth += 1;
+      continue;
+    }
+
+    if (char === closing) {
+      depth -= 1;
+
+      if (depth === 0) {
+        return { end: index + 1 };
+      }
+    }
+  }
+
+  return null;
+}
+
+function skipWhitespace(source: string, start: number) {
+  let index = start;
+
+  while (index < source.length && /\s/.test(source[index])) {
+    index += 1;
+  }
+
+  return index;
 }
 
 function createUniqueFieldKeys(fields: RenderInterfaceArguments["fields"]) {
