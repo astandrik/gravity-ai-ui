@@ -1,0 +1,49 @@
+:root {
+  --bg: #090b12;
+  --bg-elevated: #13151d;
+  --fg: #f4f1eb;
+  --muted: rgba(244, 241, 235, 0.62);
+  --muted-strong: rgba(244, 241, 235, 0.78);
+  --line: rgba(255, 214, 143, 0.16);
+  --line-strong: rgba(255, 214, 143, 0.28);
+  --acc: #ffbd4a;
+  --acc-hover: #ffd37a;
+  --acc-soft: rgba(255, 189, 74, 0.16);
+  --teal: #7ce0d6;
+  --green: #87d37c;
+  --red: #ff6f6f;
+  --blue: #8bb8ff;
+
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-hover: rgba(255, 255, 255, 0.09);
+  --pill-bg: rgba(255, 255, 255, 0.08);
+  --pill-border: rgba(255, 255, 255, 0.12);
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  --spacing-4xl: 40px;
+  --spacing-5xl: 48px;
+  --spacing-6xl: 60px;
+  --spacing-7xl: 80px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-full: 999px;
+
+  --font-sans: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', monospace;
+}
+
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1200px;

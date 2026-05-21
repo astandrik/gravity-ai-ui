@@ -1,0 +1,25 @@
+.docs-page {
+  max-width: 760px;
+
+  &__lead {
+    max-width: 560px;
+    margin-top: var(--spacing-md);
+    color: var(--muted-strong);
+  }
+
+  &__commands {
+    display: grid;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-3xl);
+
+    code {
+      display: block;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.24);
+      color: var(--fg);
+      overflow-x: auto;
+    }
+  }
+}

@@ -1,0 +1,21 @@
+@use 'mixins' as *;
+
+.page-shell {
+  padding-block: var(--spacing-3xl);
+
+  @include md {
+    padding-block: var(--spacing-5xl);
+  }
+}
+
+.page-section {
+  margin-top: var(--spacing-5xl);
+}
+
+.page-section-header {
+  max-width: 720px;
+}
+
+.page-section-header__lead {
+  max-width: 640px;
+}

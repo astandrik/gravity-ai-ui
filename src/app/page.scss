@@ -1,0 +1,217 @@
+@use '@/styles/mixins' as *;
+
+.agent-page {
+  min-height: 100vh;
+  padding-block: var(--spacing-2xl);
+}
+
+.agent-shell {
+  display: grid;
+  gap: var(--spacing-xl);
+  min-height: calc(100vh - 48px);
+}
+
+.agent-shell__header {
+  display: flex;
+  gap: var(--spacing-xl);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.agent-shell__title {
+  margin: var(--spacing-sm) 0 0;
+}
+
+.agent-shell__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 32px;
+  padding-inline: var(--spacing-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  color: var(--muted-strong);
+  font-size: 13px;
+
+  span {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--green);
+    box-shadow: 0 0 0 4px rgba(135, 211, 124, 0.12);
+
+    &.is-active {
+      background: var(--acc);
+      box-shadow: 0 0 0 4px var(--acc-soft);
+    }
+  }
+}
+
+.agent-workbench {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 12, 18, 0.72);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+}
+
+.agent-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  min-height: 560px;
+  max-height: calc(100vh - 260px);
+  padding: var(--spacing-xl);
+  overflow: auto;
+}
+
+.agent-empty {
+  display: grid;
+  gap: var(--spacing-md);
+  max-width: 720px;
+  margin: auto;
+  text-align: center;
+}
+
+.agent-empty__prompts {
+  display: grid;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+
+  @include md {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .g-button {
+    min-height: 64px;
+    white-space: normal;
+  }
+}
+
+.agent-turn {
+  max-width: min(100%, 860px);
+  border-radius: var(--radius-lg);
+}
+
+.agent-turn_user {
+  align-self: flex-end;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--acc-soft);
+  color: var(--fg);
+}
+
+.agent-turn_assistant {
+  display: grid;
+  gap: var(--spacing-md);
+  align-self: flex-start;
+  width: min(100%, 920px);
+}
+
+.agent-turn__meta {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.agent-surfaces {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.agent-surface {
+  padding: var(--spacing-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.agent-error {
+  display: grid;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border: 1px solid rgba(255, 111, 111, 0.34);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 111, 111, 0.08);
+}
+
+.agent-loader {
+  width: 56px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(90deg, var(--acc), transparent) 0 0 / 24px 100% no-repeat,
+    rgba(255, 255, 255, 0.08);
+  animation: agent-loader 900ms ease-in-out infinite;
+}
+
+.agent-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.24);
+
+  @include md {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.a2ui-column,
+.a2ui-row,
+.a2ui-choice-picker,
+.a2ui-choice-picker__options {
+  display: flex;
+  gap: var(--spacing-md);
+  min-width: 0;
+}
+
+.a2ui-column,
+.a2ui-choice-picker,
+.a2ui-choice-picker__options {
+  flex-direction: column;
+}
+
+.a2ui-row {
+  flex-wrap: wrap;
+}
+
+.a2ui-card {
+  min-width: 0;
+}
+
+.a2ui-text {
+  margin: 0;
+}
+
+.a2ui-button .g-button__text {
+  white-space: normal;
+}
+
+.a2ui-divider_horizontal {
+  height: 1px;
+  background: var(--line);
+}
+
+.a2ui-divider_vertical {
+  width: 1px;
+  min-height: 32px;
+  background: var(--line);
+}
+
+@keyframes agent-loader {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+
+  50% {
+    background-position: 32px 0, 0 0;
+  }
+
+  100% {
+    background-position: 0 0, 0 0;
+  }
+}
