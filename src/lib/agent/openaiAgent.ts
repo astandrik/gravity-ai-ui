@@ -6,7 +6,17 @@ import {
 } from "./a2uiContract";
 import { buildFixedInterfaceFromJson } from "./fixedInterface";
 import type { BuiltFixedInterface } from "./fixedInterface";
-import { ALLOWED_GRAVITY_ICONS } from "./gravityCapabilities";
+import {
+  ALLOWED_GRAVITY_ICONS,
+  GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_DENSITIES,
+  GRAVITY_FIELD_TYPES,
+  GRAVITY_SECTION_DIVIDERS,
+  GRAVITY_STATUS_TONES,
+  GRAVITY_TABLE_ALIGN,
+  GRAVITY_TONES,
+  formatGravityCapabilitiesForPrompt,
+} from "./gravityCapabilities";
 import type {
   AgentRequest,
   AgentSseEvent,
@@ -336,8 +346,9 @@ export function buildInstructions() {
     "For action follow-ups, preserve the preferred surfaceId from the user message.",
     "Use sections for readable results, fields only when user input is needed, and actions only for clear next steps.",
     "Use alerts for important status, metrics for dashboard KPIs, tables for comparable records, progress for completion states, descriptions for key-value details, links for resource lists, and users for people or owners.",
+    `Available Gravity component capabilities: ${formatGravityCapabilitiesForPrompt()}`,
     "When the user asks to show, render, compare, or document UI components, controls, buttons, or variants, render the actual available controls instead of explaining them as prose.",
-    'For button or button-variant showcases, use actions as real Button examples with variants "primary", "normal", "outlined", and "flat" where relevant, action "noop", and do not list button labels in section.items.',
+    `For button or button-variant showcases, use actions as real Button examples with variants from this set: ${GRAVITY_BUTTON_VARIANTS.join(", ")}. Use action "noop", set disabled/loading/selected booleans for every action, use false unless the state is relevant, and do not list button labels in section.items.`,
     "Do not represent controls as bullet lists when this schema has a matching block type.",
     `Allowed action names: ${ALLOWED_A2UI_ACTIONS.join(", ")}.`,
     "Return empty arrays for every optional block array when it is not needed.",
@@ -411,7 +422,7 @@ const renderInterfaceTool = {
       },
       tone: {
         type: "string",
-        enum: ["normal", "info", "success", "warning", "danger"],
+        enum: GRAVITY_TONES,
       },
       layout: {
         type: "object",
@@ -419,13 +430,13 @@ const renderInterfaceTool = {
         properties: {
           density: {
             type: "string",
-            enum: ["compact", "comfortable", "spacious"],
+            enum: GRAVITY_DENSITIES,
             description:
               "Visual density for spacing and padding. Use comfortable by default.",
           },
           sectionDividers: {
             type: "string",
-            enum: ["none", "minimal", "betweenSections"],
+            enum: GRAVITY_SECTION_DIVIDERS,
             description:
               "How much visible separation sections need. Use none for very short surfaces.",
           },
@@ -443,7 +454,7 @@ const renderInterfaceTool = {
             message: { type: "string", maxLength: 1600 },
             tone: {
               type: "string",
-              enum: ["info", "success", "warning", "danger"],
+              enum: GRAVITY_STATUS_TONES,
             },
           },
           required: ["title", "message", "tone"],
@@ -461,7 +472,7 @@ const renderInterfaceTool = {
             description: { type: ["string", "null"], maxLength: 240 },
             tone: {
               type: "string",
-              enum: ["normal", "info", "success", "warning", "danger"],
+              enum: GRAVITY_TONES,
             },
             icon: {
               type: ["string", "null"],
@@ -508,19 +519,7 @@ const renderInterfaceTool = {
             label: { type: "string", maxLength: 240 },
             type: {
               type: "string",
-              enum: [
-                "shortText",
-                "number",
-                "email",
-                "tel",
-                "url",
-                "checkbox",
-                "switch",
-                "singleChoice",
-                "multipleChoice",
-                "select",
-                "slider",
-              ],
+              enum: GRAVITY_FIELD_TYPES,
             },
             placeholder: { type: ["string", "null"], maxLength: 240 },
             value: { type: ["string", "null"], maxLength: 500 },
@@ -582,7 +581,7 @@ const renderInterfaceTool = {
                   label: { type: "string", maxLength: 240 },
                   align: {
                     type: "string",
-                    enum: ["start", "center", "end"],
+                    enum: GRAVITY_TABLE_ALIGN,
                   },
                 },
                 required: ["id", "label", "align"],
@@ -621,7 +620,7 @@ const renderInterfaceTool = {
             text: { type: ["string", "null"], maxLength: 240 },
             tone: {
               type: "string",
-              enum: ["normal", "info", "success", "warning", "danger"],
+              enum: GRAVITY_TONES,
             },
           },
           required: ["label", "value", "text", "tone"],
@@ -682,7 +681,7 @@ const renderInterfaceTool = {
             description: { type: ["string", "null"], maxLength: 240 },
             tone: {
               type: "string",
-              enum: ["normal", "info", "success", "warning", "danger"],
+              enum: GRAVITY_TONES,
             },
           },
           required: ["name", "description", "tone"],
@@ -690,7 +689,7 @@ const renderInterfaceTool = {
       },
       actions: {
         type: "array",
-        maxItems: 4,
+        maxItems: 8,
         items: {
           type: "object",
           additionalProperties: false,
@@ -706,10 +705,32 @@ const renderInterfaceTool = {
             },
             variant: {
               type: "string",
-              enum: ["primary", "normal", "outlined", "flat"],
+              enum: GRAVITY_BUTTON_VARIANTS,
+              description:
+                'Button appearance. "primary" maps to Gravity UI action view.',
+            },
+            disabled: {
+              type: "boolean",
+              description: "Whether the button is unavailable.",
+            },
+            loading: {
+              type: "boolean",
+              description: "Whether the button shows a loading state.",
+            },
+            selected: {
+              type: "boolean",
+              description: "Whether the button is selected or pressed.",
             },
           },
-          required: ["label", "icon", "action", "variant"],
+          required: [
+            "label",
+            "icon",
+            "action",
+            "variant",
+            "disabled",
+            "loading",
+            "selected",
+          ],
         },
       },
       navigation: {

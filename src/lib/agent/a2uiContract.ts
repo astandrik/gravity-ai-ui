@@ -1,6 +1,23 @@
 import { A2uiMessageSchema } from "@a2ui/web_core/v0_9";
 import { z } from "zod";
-import { ALLOWED_GRAVITY_ICONS } from "./gravityCapabilities";
+import {
+  ALLOWED_GRAVITY_ICONS,
+  GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_CARD_PADDING,
+  GRAVITY_CARD_VIEWS,
+  GRAVITY_CHOICE_PICKER_VARIANTS,
+  GRAVITY_DIVIDER_AXES,
+  GRAVITY_GAPS,
+  GRAVITY_ICON_SIZES,
+  GRAVITY_LAYOUT_ALIGN,
+  GRAVITY_LAYOUT_JUSTIFY,
+  GRAVITY_STATUS_TONES,
+  GRAVITY_TABLE_ALIGN,
+  GRAVITY_TEXT_COLORS,
+  GRAVITY_TEXT_FIELD_TYPES,
+  GRAVITY_TEXT_VARIANTS,
+  GRAVITY_TONES,
+} from "./gravityCapabilities";
 
 export const A2UI_VERSION = "v0.9";
 export const GRAVITY_A2UI_CATALOG_ID =
@@ -114,8 +131,8 @@ const textComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("Text"),
     text: dynamicStringSchema,
-    variant: z.enum(["h1", "h2", "h3", "h4", "h5", "body", "caption"]).optional(),
-    color: z.enum(["primary", "secondary", "positive", "warning", "danger"]).optional(),
+    variant: z.enum(GRAVITY_TEXT_VARIANTS).optional(),
+    color: z.enum(GRAVITY_TEXT_COLORS).optional(),
   })
   .strict();
 
@@ -124,9 +141,9 @@ const rowComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("Row"),
     children: childListSchema,
-    justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
-    align: z.enum(["start", "center", "end", "stretch"]).optional(),
-    gap: z.enum(["compact", "normal", "spacious"]).optional(),
+    justify: z.enum(GRAVITY_LAYOUT_JUSTIFY).optional(),
+    align: z.enum(GRAVITY_LAYOUT_ALIGN).optional(),
+    gap: z.enum(GRAVITY_GAPS).optional(),
   })
   .strict();
 
@@ -135,9 +152,9 @@ const columnComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("Column"),
     children: childListSchema,
-    justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
-    align: z.enum(["start", "center", "end", "stretch"]).optional(),
-    gap: z.enum(["compact", "normal", "spacious"]).optional(),
+    justify: z.enum(GRAVITY_LAYOUT_JUSTIFY).optional(),
+    align: z.enum(GRAVITY_LAYOUT_ALIGN).optional(),
+    gap: z.enum(GRAVITY_GAPS).optional(),
   })
   .strict();
 
@@ -146,11 +163,9 @@ const cardComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("Card"),
     child: componentIdSchema,
-    theme: z.enum(["normal", "info", "success", "warning", "danger"]).optional(),
-    view: z.enum(["outlined", "filled", "raised"]).optional(),
-    padding: z
-      .enum(["compact", "normal", "comfortable", "spacious"])
-      .optional(),
+    theme: z.enum(GRAVITY_TONES).optional(),
+    view: z.enum(GRAVITY_CARD_VIEWS).optional(),
+    padding: z.enum(GRAVITY_CARD_PADDING).optional(),
   })
   .strict();
 
@@ -161,9 +176,11 @@ const buttonComponentSchema = z
     child: componentIdSchema.optional(),
     text: dynamicStringSchema.optional(),
     icon: iconNameSchema.optional(),
-    variant: z.enum(["primary", "normal", "outlined", "flat"]).optional(),
+    variant: z.enum(GRAVITY_BUTTON_VARIANTS).optional(),
     action: actionSchema.optional(),
     disabled: dynamicBooleanSchema.optional(),
+    loading: dynamicBooleanSchema.optional(),
+    selected: dynamicBooleanSchema.optional(),
   })
   .strict();
 
@@ -172,8 +189,8 @@ const iconComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("Icon"),
     name: iconNameSchema,
-    color: z.enum(["primary", "secondary", "positive", "warning", "danger"]).optional(),
-    size: z.enum(["s", "m", "l"]).optional(),
+    color: z.enum(GRAVITY_TEXT_COLORS).optional(),
+    size: z.enum(GRAVITY_ICON_SIZES).optional(),
   })
   .strict();
 
@@ -184,7 +201,7 @@ const textFieldComponentSchema = z
     label: z.string().max(120).optional(),
     placeholder: z.string().max(160).optional(),
     value: dynamicStringSchema,
-    textFieldType: z.enum(["shortText", "number", "email", "tel", "url"]).optional(),
+    textFieldType: z.enum(GRAVITY_TEXT_FIELD_TYPES).optional(),
     disabled: dynamicBooleanSchema.optional(),
   })
   .strict();
@@ -204,7 +221,7 @@ const choicePickerComponentSchema = z
     ...baseComponentSchema,
     component: z.literal("ChoicePicker"),
     label: z.string().max(120).optional(),
-    variant: z.enum(["mutuallyExclusive", "multiple"]).optional(),
+    variant: z.enum(GRAVITY_CHOICE_PICKER_VARIANTS).optional(),
     options: z
       .array(
         z
@@ -224,7 +241,7 @@ const dividerComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("Divider"),
-    axis: z.enum(["horizontal", "vertical"]).optional(),
+    axis: z.enum(GRAVITY_DIVIDER_AXES).optional(),
   })
   .strict();
 
@@ -242,7 +259,7 @@ const alertBlockComponentSchema = z
     component: z.literal("AlertBlock"),
     title: z.string().max(240),
     message: z.string().max(1600),
-    tone: z.enum(["info", "success", "warning", "danger"]),
+    tone: z.enum(GRAVITY_STATUS_TONES),
   })
   .strict();
 
@@ -251,7 +268,7 @@ const metricItemSchema = z
     label: z.string().min(1).max(240),
     value: z.string().min(1).max(240),
     description: z.string().max(240).nullable(),
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: z.enum(GRAVITY_TONES),
     icon: iconNameSchema.nullable(),
   })
   .strict();
@@ -268,7 +285,7 @@ const tableColumnSchema = z
   .object({
     id: componentIdSchema,
     label: z.string().min(1).max(240),
-    align: z.enum(["start", "center", "end"]),
+    align: z.enum(GRAVITY_TABLE_ALIGN),
   })
   .strict();
 
@@ -296,7 +313,7 @@ const progressItemSchema = z
     label: z.string().min(1).max(240),
     value: z.number().min(0).max(100),
     text: z.string().max(240).nullable(),
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: z.enum(GRAVITY_TONES),
   })
   .strict();
 
@@ -348,7 +365,7 @@ const userItemSchema = z
   .object({
     name: z.string().min(1).max(240),
     description: z.string().max(240).nullable(),
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: z.enum(GRAVITY_TONES),
   })
   .strict();
 

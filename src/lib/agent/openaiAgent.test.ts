@@ -223,11 +223,24 @@ describe("OpenAI agent stream parsing", () => {
       step: null,
       required: false,
     }));
-    const actions = Array.from({ length: 4 }, (_, actionIndex) => ({
+    const actionVariants = [
+      "primary",
+      "normal",
+      "outlined",
+      "outlined-warning",
+      "flat-danger",
+      "raised",
+      "flat-action",
+      "normal-contrast",
+    ] as const;
+    const actions = actionVariants.map((variant, actionIndex) => ({
       label: `Action ${actionIndex + 1}`,
       icon: "arrowRight" as const,
       action: "next" as const,
-      variant: actionIndex === 0 ? ("primary" as const) : ("normal" as const),
+      variant,
+      disabled: actionIndex === 3,
+      loading: actionIndex === 4,
+      selected: actionIndex === 5,
     }));
     const navigation = Array.from({ length: 8 }, (_, itemIndex) => ({
       label: `Nav ${itemIndex + 1}`,
@@ -263,6 +276,24 @@ describe("OpenAI agent stream parsing", () => {
           expect.objectContaining({
             id: "content",
             component: "Column",
+          }),
+          expect.objectContaining({
+            id: "action_3",
+            component: "Button",
+            variant: "outlined-warning",
+            disabled: true,
+          }),
+          expect.objectContaining({
+            id: "action_4",
+            component: "Button",
+            variant: "flat-danger",
+            loading: true,
+          }),
+          expect.objectContaining({
+            id: "action_5",
+            component: "Button",
+            variant: "raised",
+            selected: true,
           }),
         ]),
       },
@@ -390,6 +421,9 @@ describe("OpenAI agent stream parsing", () => {
     expect(instructions).toContain("Do not rely on color alone");
     expect(instructions).toContain("layout.density");
     expect(instructions).toContain("Allowed icons");
+    expect(instructions).toContain("Available Gravity component capabilities");
+    expect(instructions).toContain("outlined-warning");
+    expect(instructions).toContain("loading");
     expect(instructions).toContain("render the actual available controls");
     expect(instructions).toContain("button or button-variant showcases");
     expect(instructions).toContain("Do not represent controls as bullet lists");

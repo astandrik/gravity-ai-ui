@@ -49,6 +49,23 @@ import {
   User,
 } from "@/components/GravityUI/GravityUI";
 import { GRAVITY_A2UI_CATALOG_ID } from "@/lib/agent/a2uiContract";
+import {
+  GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_CARD_PADDING,
+  GRAVITY_CARD_VIEWS,
+  GRAVITY_CHOICE_PICKER_VARIANTS,
+  GRAVITY_DIVIDER_AXES,
+  GRAVITY_GAPS,
+  GRAVITY_ICON_SIZES,
+  GRAVITY_LAYOUT_ALIGN,
+  GRAVITY_LAYOUT_JUSTIFY,
+  GRAVITY_STATUS_TONES,
+  GRAVITY_TABLE_ALIGN,
+  GRAVITY_TEXT_COLORS,
+  GRAVITY_TEXT_FIELD_TYPES,
+  GRAVITY_TEXT_VARIANTS,
+  GRAVITY_TONES,
+} from "@/lib/agent/gravityCapabilities";
 
 export type GravitySurface = SurfaceModel<GravityReactComponent>;
 export type GravityActionHandler = (action: A2uiClientAction) => void;
@@ -90,12 +107,12 @@ const commonProps = {
 const layoutSchema = z.object({
   ...commonProps,
   children: CommonSchemas.ChildList,
-  justify: z.enum(["start", "center", "end", "spaceBetween"]).optional(),
-  align: z.enum(["start", "center", "end", "stretch"]).optional(),
-  gap: z.enum(["compact", "normal", "spacious"]).optional(),
+  justify: z.enum(GRAVITY_LAYOUT_JUSTIFY).optional(),
+  align: z.enum(GRAVITY_LAYOUT_ALIGN).optional(),
+  gap: z.enum(GRAVITY_GAPS).optional(),
 });
 
-const toneSchema = z.enum(["normal", "info", "success", "warning", "danger"]);
+const toneSchema = z.enum(GRAVITY_TONES);
 const optionSchema = z.object({
   label: z.string(),
   value: z.string(),
@@ -110,7 +127,7 @@ const metricItemSchema = z.object({
 const tableColumnSchema = z.object({
   id: z.string(),
   label: z.string(),
-  align: z.enum(["start", "center", "end"]),
+  align: z.enum(GRAVITY_TABLE_ALIGN),
 });
 const tableRowSchema = z.object({
   cells: z.array(z.string()),
@@ -182,11 +199,9 @@ const CardSurface = createComponentImplementation(
     schema: z.object({
       ...commonProps,
       child: CommonSchemas.ComponentId,
-      theme: z.enum(["normal", "info", "success", "warning", "danger"]).optional(),
-      view: z.enum(["outlined", "filled", "raised"]).optional(),
-      padding: z
-        .enum(["compact", "normal", "comfortable", "spacious"])
-        .optional(),
+      theme: z.enum(GRAVITY_TONES).optional(),
+      view: z.enum(GRAVITY_CARD_VIEWS).optional(),
+      padding: z.enum(GRAVITY_CARD_PADDING).optional(),
     }),
   },
   ({ props, buildChild }) => (
@@ -210,12 +225,8 @@ const TextSurface = createComponentImplementation(
     schema: z.object({
       ...commonProps,
       text: CommonSchemas.DynamicString,
-      variant: z
-        .enum(["h1", "h2", "h3", "h4", "h5", "body", "caption"])
-        .optional(),
-      color: z
-        .enum(["primary", "secondary", "positive", "warning", "danger"])
-        .optional(),
+      variant: z.enum(GRAVITY_TEXT_VARIANTS).optional(),
+      color: z.enum(GRAVITY_TEXT_COLORS).optional(),
     }),
   },
   ({ props }) => (
@@ -238,16 +249,20 @@ const ButtonSurface = createComponentImplementation(
       child: CommonSchemas.ComponentId.optional(),
       text: CommonSchemas.DynamicString.optional(),
       icon: z.enum(iconNames).optional(),
-      variant: z.enum(["primary", "normal", "outlined", "flat"]).optional(),
+      variant: z.enum(GRAVITY_BUTTON_VARIANTS).optional(),
       action: CommonSchemas.Action.optional(),
       disabled: CommonSchemas.DynamicBoolean.optional(),
+      loading: CommonSchemas.DynamicBoolean.optional(),
+      selected: CommonSchemas.DynamicBoolean.optional(),
     }),
   },
   ({ props, buildChild }) => (
     <Button
       className="a2ui-button"
       disabled={Boolean(props.disabled) || props.isValid === false}
+      loading={Boolean(props.loading)}
       onClick={props.action}
+      selected={Boolean(props.selected)}
       size="m"
       view={mapButtonView(props.variant)}
     >
@@ -265,10 +280,8 @@ const IconSurface = createComponentImplementation(
     schema: z.object({
       ...commonProps,
       name: z.enum(iconNames),
-      color: z
-        .enum(["primary", "secondary", "positive", "warning", "danger"])
-        .optional(),
-      size: z.enum(["s", "m", "l"]).optional(),
+      color: z.enum(GRAVITY_TEXT_COLORS).optional(),
+      size: z.enum(GRAVITY_ICON_SIZES).optional(),
     }),
   },
   ({ props }) => (
@@ -304,7 +317,7 @@ const AlertBlockSurface = createComponentImplementation(
       ...commonProps,
       title: z.string(),
       message: z.string(),
-      tone: z.enum(["info", "success", "warning", "danger"]),
+      tone: z.enum(GRAVITY_STATUS_TONES),
     }),
   },
   ({ props }) => (
@@ -534,9 +547,7 @@ const TextFieldSurface = createComponentImplementation(
       label: z.string().optional(),
       placeholder: z.string().optional(),
       value: CommonSchemas.DynamicString,
-      textFieldType: z
-        .enum(["shortText", "number", "email", "tel", "url"])
-        .optional(),
+      textFieldType: z.enum(GRAVITY_TEXT_FIELD_TYPES).optional(),
       disabled: CommonSchemas.DynamicBoolean.optional(),
     }),
   },
@@ -668,7 +679,7 @@ const ChoicePickerSurface = createComponentImplementation(
     schema: z.object({
       ...commonProps,
       label: z.string().optional(),
-      variant: z.enum(["mutuallyExclusive", "multiple"]).optional(),
+      variant: z.enum(GRAVITY_CHOICE_PICKER_VARIANTS).optional(),
       options: z.array(
         z.object({
           label: z.string(),
@@ -731,7 +742,7 @@ const DividerSurface = createComponentImplementation(
     name: "Divider",
     schema: z.object({
       ...commonProps,
-      axis: z.enum(["horizontal", "vertical"]).optional(),
+      axis: z.enum(GRAVITY_DIVIDER_AXES).optional(),
     }),
   },
   ({ props }) => <div className={`a2ui-divider a2ui-divider_${props.axis ?? "horizontal"}`} />,

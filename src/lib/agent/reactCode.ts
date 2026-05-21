@@ -556,13 +556,21 @@ function actionLines(actions: RenderInterfaceArguments["actions"]) {
   return [
     '        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>',
     ...actions.flatMap((action) => [
-      `          <Button view=${jsxString(mapButtonView(action.variant))} onClick={() => handleAction(${jsString(action.action)})}>`,
+      `          <Button view=${jsxString(mapButtonView(action.variant))} onClick={() => handleAction(${jsString(action.action)})}${buttonStateProps(action)}>`,
       action.icon ? `            ${iconElement(action.icon, 16)}` : null,
       `            ${jsxText(action.label)}`,
       "          </Button>",
     ]),
     "        </div>",
   ].filter((line): line is string => Boolean(line));
+}
+
+function buttonStateProps(action: RenderInterfaceArguments["actions"][number]) {
+  return [
+    action.disabled ? " disabled={true}" : "",
+    action.loading ? " loading={true}" : "",
+    action.selected ? " selected={true}" : "",
+  ].join("");
 }
 
 function initialFieldValue(field: FieldWithKey) {

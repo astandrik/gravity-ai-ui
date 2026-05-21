@@ -34,7 +34,9 @@ const updateComponentsMessage = {
         id: "cta",
         component: "Button",
         text: "Continue",
-        variant: "primary",
+        variant: "outlined-warning",
+        loading: true,
+        selected: true,
         action: {
           event: {
             name: "next",

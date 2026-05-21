@@ -9,7 +9,16 @@ import type {
   GravityA2uiComponent,
   GravityA2uiMessage,
 } from "./a2uiContract";
-import { ALLOWED_GRAVITY_ICONS } from "./gravityCapabilities";
+import {
+  ALLOWED_GRAVITY_ICONS,
+  GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_DENSITIES,
+  GRAVITY_FIELD_TYPES,
+  GRAVITY_SECTION_DIVIDERS,
+  GRAVITY_STATUS_TONES,
+  GRAVITY_TABLE_ALIGN,
+  GRAVITY_TONES,
+} from "./gravityCapabilities";
 
 const idSchema = z
   .string()
@@ -26,12 +35,12 @@ const optionSchema = z
     value: z.string().min(1).max(100),
   })
   .strict();
-const toneSchema = z.enum(["normal", "info", "success", "warning", "danger"]);
+const toneSchema = z.enum(GRAVITY_TONES);
 
 const layoutSchema = z
   .object({
-    density: z.enum(["compact", "comfortable", "spacious"]),
-    sectionDividers: z.enum(["none", "minimal", "betweenSections"]),
+    density: z.enum(GRAVITY_DENSITIES),
+    sectionDividers: z.enum(GRAVITY_SECTION_DIVIDERS),
   })
   .strict();
 const iconNameSchema = z.enum(ALLOWED_GRAVITY_ICONS);
@@ -48,14 +57,14 @@ const alertSchema = z
   .object({
     title: shortTextSchema,
     message: bodyTextSchema,
-    tone: z.enum(["info", "success", "warning", "danger"]),
+    tone: z.enum(GRAVITY_STATUS_TONES),
   })
   .strict();
 const tableColumnSchema = z
   .object({
     id: idSchema,
     label: shortTextSchema,
-    align: z.enum(["start", "center", "end"]),
+    align: z.enum(GRAVITY_TABLE_ALIGN),
   })
   .strict();
 const tableSchema = z
@@ -79,7 +88,7 @@ const progressSchema = z
     label: shortTextSchema,
     value: z.number().min(0).max(100),
     text: shortTextSchema.nullable(),
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: toneSchema,
   })
   .strict();
 const definitionListSchema = z
@@ -114,7 +123,7 @@ const userSchema = z
   .object({
     name: shortTextSchema,
     description: shortTextSchema.nullable(),
-    tone: z.enum(["normal", "info", "success", "warning", "danger"]),
+    tone: toneSchema,
   })
   .strict();
 
@@ -147,19 +156,7 @@ export const renderInterfaceArgumentsSchema = z
           .object({
             id: idSchema,
             label: shortTextSchema,
-            type: z.enum([
-              "shortText",
-              "number",
-              "email",
-              "tel",
-              "url",
-              "checkbox",
-              "switch",
-              "singleChoice",
-              "multipleChoice",
-              "select",
-              "slider",
-            ]),
+            type: z.enum(GRAVITY_FIELD_TYPES),
             placeholder: shortTextSchema.nullable(),
             value: z.string().max(500).nullable(),
             checked: z.boolean().nullable(),
@@ -184,11 +181,14 @@ export const renderInterfaceArgumentsSchema = z
             label: shortTextSchema,
             icon: iconNameSchema.nullable(),
             action: z.enum(ALLOWED_A2UI_ACTIONS),
-            variant: z.enum(["primary", "normal", "outlined", "flat"]),
+            variant: z.enum(GRAVITY_BUTTON_VARIANTS),
+            disabled: z.boolean().optional(),
+            loading: z.boolean().optional(),
+            selected: z.boolean().optional(),
           })
           .strict(),
       )
-      .max(4),
+      .max(8),
     navigation: z
       .array(
         z
@@ -249,6 +249,9 @@ export function buildFixedInterface(
     .map((action) => ({
       ...action,
       label: cleanText(action.label, action.action),
+      disabled: Boolean(action.disabled),
+      loading: Boolean(action.loading),
+      selected: Boolean(action.selected),
     }))
     .filter((action) => action.label);
   const alerts = args.alerts
@@ -342,6 +345,9 @@ export function buildFixedInterface(
     actions: actions.map((action) => ({
       label: action.label,
       action: action.action,
+      disabled: action.disabled,
+      loading: action.loading,
+      selected: action.selected,
     })),
     tables,
     progress,
@@ -566,6 +572,9 @@ export function buildFixedInterface(
         text: { path: `/actions/${index}/label` },
         icon: action.icon ?? undefined,
         variant: action.variant,
+        disabled: action.disabled || undefined,
+        loading: action.loading || undefined,
+        selected: action.selected || undefined,
         action: {
           event: {
             name: action.action,

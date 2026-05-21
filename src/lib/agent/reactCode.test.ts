@@ -144,6 +144,15 @@ const payload = {
       action: "confirm",
       variant: "primary",
     },
+    {
+      label: "Escalating",
+      icon: "warning",
+      action: "noop",
+      variant: "outlined-warning",
+      disabled: true,
+      loading: true,
+      selected: true,
+    },
   ],
   navigation: [
     {
@@ -174,6 +183,10 @@ describe("React code generator", () => {
     expect(code).toContain("ActionBar");
     expect(code).toContain("@gravity-ui/icons");
     expect(code).toContain("handleAction");
+    expect(code).toContain('view={"outlined-warning"}');
+    expect(code).toContain("disabled={true}");
+    expect(code).toContain("loading={true}");
+    expect(code).toContain("selected={true}");
     expect(code).not.toContain("Dislike");
   });
 
