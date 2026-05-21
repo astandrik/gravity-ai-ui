@@ -308,6 +308,23 @@
   background: rgba(0, 0, 0, 0.24);
 }
 
+.agent-composer__actions {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.agent-composer__send {
+  width: 100%;
+  min-width: 0;
+  box-shadow: none;
+
+  .g-button__text {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
 .a2ui-column,
 .a2ui-row,
 .a2ui-choice-picker,

@@ -48,10 +48,14 @@ OPENAI_API_KEY=...
 
 # Optional
 OPENAI_MODEL=gpt-5.5
+OPENAI_REASONING_EFFORT=none
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_BASE_PATH=
 INDEXNOW_KEY=
 ```
+
+`OPENAI_REASONING_EFFORT` defaults to `none` to keep interface generation responsive on `gpt-5.5`.
+OpenAI requests use `service_tier: "priority"` for lower latency when the project has access to priority processing.
 
 YDB is optional for basic interface generation. Without YDB, the app can still render generated interfaces, but saving likes and loading liked examples will be unavailable.
 

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { ResponseFunctionToolCall } from "openai/resources/responses/responses";
+import type { ReasoningEffort } from "openai/resources/shared";
 import {
   ALLOWED_A2UI_ACTIONS,
   A2UI_VERSION,
@@ -32,6 +33,14 @@ import { listLikedDesignExamples } from "@/lib/feedback/ydbFeedbackStore";
 
 const RENDER_INTERFACE_TOOL_NAME = "render_agent_interface";
 const DEFAULT_MODEL = "gpt-5.5";
+const DEFAULT_REASONING_EFFORT = "none";
+const ALLOWED_REASONING_EFFORTS = new Set<NonNullable<ReasoningEffort>>([
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+]);
 const TOOL_NAMES = new Set([RENDER_INTERFACE_TOOL_NAME]);
 
 type StreamAgentOptions = {
@@ -82,6 +91,7 @@ export async function streamAgentResponse({
       model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
       input: buildInput(request, likedDesignExamples),
       instructions: buildInstructions(),
+      reasoning: { effort: getReasoningEffort() },
       tools: [renderInterfaceTool],
       tool_choice: {
         type: "allowed_tools",
@@ -89,6 +99,7 @@ export async function streamAgentResponse({
         tools: [{ type: "function", name: RENDER_INTERFACE_TOOL_NAME }],
       },
       parallel_tool_calls: false,
+      service_tier: "priority",
       stream: true,
       store: false,
       max_output_tokens: 8000,
@@ -430,6 +441,23 @@ export function buildInstructions() {
     "- Use navigation for multi-view shells, dashboards, setup flows, or app sections; return an empty navigation array when it is not useful.",
     "- Use liked design examples to infer spacing, grouping, and hierarchy preferences.",
   ].join("\n");
+}
+
+export function getReasoningEffort(): NonNullable<ReasoningEffort> {
+  const configuredEffort = process.env.OPENAI_REASONING_EFFORT;
+
+  return isReasoningEffort(configuredEffort)
+    ? configuredEffort
+    : DEFAULT_REASONING_EFFORT;
+}
+
+function isReasoningEffort(
+  value: string | undefined,
+): value is NonNullable<ReasoningEffort> {
+  return (
+    value !== undefined &&
+    ALLOWED_REASONING_EFFORTS.has(value as NonNullable<ReasoningEffort>)
+  );
 }
 
 async function emitParsedToolCall(

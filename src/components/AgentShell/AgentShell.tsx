@@ -2,12 +2,14 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import { Eraser } from "@gravity-ui/icons";
 import {
   Button,
   Card,
   Container,
   Divider,
   Flex,
+  Icon,
   Label,
   Tab,
   TabList,
@@ -55,7 +57,9 @@ export function AgentShell({
 }: {
   starterPrompts: readonly string[];
 }) {
-  const [conversationId] = useState(() => createId("conversation"));
+  const [conversationId, setConversationId] = useState(() =>
+    createId("conversation"),
+  );
   const [prompt, setPrompt] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -231,6 +235,21 @@ export function AgentShell({
     submitPrompt(prompt, "manual");
   };
 
+  const clearConversation = useCallback(() => {
+    if (isStreaming || turns.length === 0) {
+      return;
+    }
+
+    trackGoal("agent_conversation_clear", {
+      historyTurns: turns.length,
+    });
+    setConversationId(createId("conversation"));
+    setPrompt("");
+    setTurns([]);
+    setLikedByTurnId({});
+    setFeedbackErrorByTurnId({});
+  }, [isStreaming, turns.length]);
+
   const onAction = useCallback(
     (action: A2uiClientAction) => {
       const conversationContext = buildConversationContext(turns);
@@ -343,11 +362,23 @@ export function AgentShell({
                   <Text as="h2" variant="subheader-2">
                     Requests
                   </Text>
-                  <Label theme="unknown" size="s">
-                    {turns.length === 0
-                      ? "None yet"
-                      : `${userTurns.length} sent`}
-                  </Label>
+                  <Flex gap="2" alignItems="center">
+                    <Label theme="unknown" size="s">
+                      {turns.length === 0
+                        ? "None yet"
+                        : `${userTurns.length} sent`}
+                    </Label>
+                    <Button
+                      aria-label="Clear conversation"
+                      disabled={isStreaming || turns.length === 0}
+                      onClick={clearConversation}
+                      size="s"
+                      view="flat-danger"
+                    >
+                      <Icon data={Eraser} size={14} />
+                      Clear
+                    </Button>
+                  </Flex>
                 </Flex>
 
                 {turns.length === 0 ? (
@@ -389,17 +420,17 @@ export function AgentShell({
                   size="xl"
                   value={prompt}
                 />
-                <Flex gap="2" justifyContent="flex-end">
+                <div className="agent-composer__actions">
                   <Button
+                    className="agent-composer__send"
                     disabled={isStreaming || !prompt.trim()}
                     size="xl"
                     type="submit"
                     view="action"
-                    width="max"
                   >
                     Send
                   </Button>
-                </Flex>
+                </div>
               </form>
             </aside>
 

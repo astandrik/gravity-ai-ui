@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { GRAVITY_A2UI_CATALOG_ID } from "./a2uiContract";
 import {
   buildFixedInterfaceFromPartialJson,
@@ -9,9 +9,21 @@ import {
 import {
   buildInput,
   buildInstructions,
+  getReasoningEffort,
   parseFunctionCallArguments,
   parseFunctionToolCallItem,
 } from "./openaiAgent";
+
+const originalOpenAIReasoningEffort = process.env.OPENAI_REASONING_EFFORT;
+
+afterEach(() => {
+  if (originalOpenAIReasoningEffort === undefined) {
+    delete process.env.OPENAI_REASONING_EFFORT;
+    return;
+  }
+
+  process.env.OPENAI_REASONING_EFFORT = originalOpenAIReasoningEffort;
+});
 
 const interfaceArgs = {
   sequence: 0,
@@ -127,6 +139,24 @@ const interfaceArgs = {
 } satisfies RenderInterfaceArguments;
 
 describe("OpenAI agent stream parsing", () => {
+  it("disables reasoning by default", () => {
+    delete process.env.OPENAI_REASONING_EFFORT;
+
+    expect(getReasoningEffort()).toBe("none");
+  });
+
+  it("allows reasoning effort to be configured", () => {
+    process.env.OPENAI_REASONING_EFFORT = "low";
+
+    expect(getReasoningEffort()).toBe("low");
+  });
+
+  it("falls back to disabled reasoning for unsupported values", () => {
+    process.env.OPENAI_REASONING_EFFORT = "minimal";
+
+    expect(getReasoningEffort()).toBe("none");
+  });
+
   it("builds a progressive placeholder surface before final tool output", () => {
     const messages = buildProgressivePlaceholderInterface({
       surfaceId: "main",
