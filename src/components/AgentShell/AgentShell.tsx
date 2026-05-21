@@ -9,7 +9,6 @@ import {
   Divider,
   Flex,
   Label,
-  Spin,
   Tab,
   TabList,
   TabProvider,
@@ -329,30 +328,9 @@ export function AgentShell({
     <main className="agent-page">
       <Container maxWidth="xl" gutters={5}>
         <section className="agent-shell" aria-labelledby="agent-title">
-          <Card type="container" view="filled" className="agent-shell__header">
-            <Flex justifyContent="space-between" alignItems="center" gap="4">
-              <Flex gap="3" alignItems="center">
-                <Text
-                  as="h1"
-                  id="agent-title"
-                  variant="subheader-3"
-                  className="agent-shell__title"
-                >
-                  Gravity AI UI
-                </Text>
-                <Label theme="info" size="s">A2UI shell</Label>
-              </Flex>
-              <Label
-                className="agent-shell__status"
-                theme={isStreaming ? "warning" : "success"}
-                size="s"
-                icon={isStreaming ? <Spin size="xs" /> : undefined}
-              >
-                {isStreaming ? "Streaming" : "Ready"}
-              </Label>
-            </Flex>
-          </Card>
-
+          <h1 id="agent-title" className="agent-shell__sr-title">
+            Gravity AI UI generator
+          </h1>
           <Card type="container" view="raised" className="agent-workbench">
             <aside className="agent-sidebar" aria-label="Conversation controls">
               <section className="agent-history" aria-label="Requests">

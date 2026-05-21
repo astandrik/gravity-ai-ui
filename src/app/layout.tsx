@@ -7,6 +7,7 @@ import "@/styles/globals.scss";
 import { Providers } from "@/app/Providers";
 import YandexMetrika from "@/app/YandexMetrika";
 import { Footer } from "@/components/Footer/Footer";
+import { SiteHeader } from "@/components/SiteHeader/SiteHeader";
 import { getPublicOrigin, withBasePath } from "@/lib/base-path";
 import {
   getSiteSocialImageUrl,
@@ -100,6 +101,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
         <Providers>
+          <SiteHeader />
           {children}
           <Footer />
         </Providers>
