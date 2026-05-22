@@ -3,8 +3,10 @@
 import { A2uiSurface, createComponentImplementation } from "@a2ui/react/v0_9";
 import { Catalog, CommonSchemas, MessageProcessor } from "@a2ui/web_core/v0_9";
 import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import type { ComponentContext } from "@a2ui/web_core/v0_9";
 import type { SurfaceModel } from "@a2ui/web_core/v0_9";
 import {
+  ArrowRotateRight,
   ArrowRight,
   Bell,
   Check,
@@ -90,6 +92,11 @@ import {
   mapGravityTextColor,
   mapGravityTextVariant,
 } from "@/lib/agent/gravityCapabilities";
+import {
+  resolveDynamicArray,
+  resolveDynamicProps,
+  resolveDynamicValue,
+} from "./a2uiDynamicProps";
 
 export type GravitySurface = SurfaceModel<GravityReactComponent>;
 export type GravityActionHandler = (action: A2uiClientAction) => void;
@@ -114,6 +121,7 @@ const iconDataByName = {
   list: ListUl,
   person: Person,
   plus: Plus,
+  refresh: ArrowRotateRight,
   rocket: Rocket,
   search: Magnifier,
   shield: Shield,
@@ -128,6 +136,12 @@ const commonProps = {
   weight: z.number().optional(),
   accessibility: CommonSchemas.AccessibilityAttributes.optional(),
 };
+const dynamicStringSchema = CommonSchemas.DynamicString as unknown as z.ZodString;
+const nullableDynamicStringSchema = CommonSchemas.DynamicString.nullable() as unknown as z.ZodNullable<z.ZodString>;
+const dynamicNumberSchema = CommonSchemas.DynamicNumber as unknown as z.ZodNumber;
+const dynamicArraySchema = <Item extends z.ZodTypeAny>(
+  schema: z.ZodArray<Item>,
+) => z.union([schema, CommonSchemas.DataBinding]) as unknown as typeof schema;
 
 const layoutSchema = z.object({
   ...commonProps,
@@ -139,52 +153,52 @@ const layoutSchema = z.object({
 
 const toneSchema = z.enum(GRAVITY_TONES);
 const optionSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   value: z.string(),
 });
 const metricItemSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-  description: z.string().nullable(),
+  label: dynamicStringSchema,
+  value: dynamicStringSchema,
+  description: nullableDynamicStringSchema,
   tone: toneSchema,
   icon: z.enum(iconNames).nullable(),
 });
 const tableColumnSchema = z.object({
   id: z.string(),
-  label: z.string(),
+  label: dynamicStringSchema,
   align: z.enum(GRAVITY_TABLE_ALIGN),
 });
 const tableRowSchema = z.object({
-  cells: z.array(z.string()),
+  cells: z.array(dynamicStringSchema),
 });
 const progressItemSchema = z.object({
-  label: z.string(),
-  value: z.number(),
-  text: z.string().nullable(),
+  label: dynamicStringSchema,
+  value: dynamicNumberSchema,
+  text: nullableDynamicStringSchema,
   tone: toneSchema,
 });
 const definitionItemSchema = z.object({
-  label: z.string(),
-  value: z.string(),
+  label: dynamicStringSchema,
+  value: dynamicStringSchema,
 });
 const linkItemSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   href: z.string(),
-  description: z.string().nullable(),
+  description: nullableDynamicStringSchema,
 });
 const userItemSchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
+  name: dynamicStringSchema,
+  description: nullableDynamicStringSchema,
   tone: toneSchema,
 });
 const labelItemSchema = z.object({
-  label: z.string(),
-  value: z.string().nullable(),
+  label: dynamicStringSchema,
+  value: nullableDynamicStringSchema,
   tone: toneSchema,
   type: z.enum(GRAVITY_LABEL_TYPES),
 });
 const cardActionSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   icon: z.enum(iconNames).nullable(),
   action: CommonSchemas.Action,
   variant: z.enum(GRAVITY_BUTTON_VARIANTS),
@@ -193,88 +207,88 @@ const cardActionSchema = z.object({
   selected: z.boolean().optional(),
 });
 const cardGridItemSchema = z.object({
-  title: z.string(),
-  subtitle: z.string().nullable(),
-  body: z.string(),
-  imageLabel: z.string().nullable(),
-  value: z.string().nullable(),
-  meta: z.string().nullable(),
+  title: dynamicStringSchema,
+  subtitle: nullableDynamicStringSchema,
+  body: dynamicStringSchema,
+  imageLabel: nullableDynamicStringSchema,
+  value: nullableDynamicStringSchema,
+  meta: nullableDynamicStringSchema,
   tone: toneSchema,
-  labels: z.array(labelItemSchema),
-  actions: z.array(cardActionSchema),
+  labels: dynamicArraySchema(z.array(labelItemSchema)),
+  actions: dynamicArraySchema(z.array(cardActionSchema)),
 });
 const heroBlockSchema = z.object({
-  eyebrow: z.string().nullable(),
-  title: z.string(),
-  body: z.string(),
-  imageLabel: z.string().nullable(),
+  eyebrow: CommonSchemas.DynamicString.nullable(),
+  title: CommonSchemas.DynamicString,
+  body: CommonSchemas.DynamicString,
+  imageLabel: CommonSchemas.DynamicString.nullable(),
   tone: toneSchema,
-  labels: z.array(labelItemSchema),
-  actions: z.array(cardActionSchema),
+  labels: dynamicArraySchema(z.array(labelItemSchema)),
+  actions: dynamicArraySchema(z.array(cardActionSchema)),
 });
 const filterOptionSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   value: z.string(),
   active: z.boolean(),
 });
 const filterBarSchema = z.object({
-  title: z.string(),
-  searchPlaceholder: z.string().nullable(),
-  searchValue: z.string().nullable(),
-  filters: z.array(filterOptionSchema),
-  sortLabel: z.string().nullable(),
-  sortValue: z.string().nullable(),
-  sortOptions: z.array(optionSchema),
+  title: dynamicStringSchema,
+  searchPlaceholder: nullableDynamicStringSchema,
+  searchValue: nullableDynamicStringSchema,
+  filters: dynamicArraySchema(z.array(filterOptionSchema)),
+  sortLabel: nullableDynamicStringSchema,
+  sortValue: nullableDynamicStringSchema,
+  sortOptions: dynamicArraySchema(z.array(optionSchema)),
 });
 const featurePanelItemSchema = z.object({
-  title: z.string(),
-  body: z.string(),
+  title: dynamicStringSchema,
+  body: dynamicStringSchema,
   icon: z.enum(iconNames).nullable(),
   tone: toneSchema,
-  value: z.string().nullable(),
-  labels: z.array(labelItemSchema),
+  value: nullableDynamicStringSchema,
+  labels: dynamicArraySchema(z.array(labelItemSchema)),
 });
 const tabItemSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   value: z.string(),
-  body: z.string(),
-  counter: z.string().nullable(),
+  body: dynamicStringSchema,
+  counter: nullableDynamicStringSchema,
   tone: toneSchema,
   active: z.boolean(),
 });
 const emptyStateItemSchema = z.object({
-  title: z.string(),
-  description: z.string(),
+  title: dynamicStringSchema,
+  description: dynamicStringSchema,
   icon: z.enum(iconNames).nullable(),
   tone: toneSchema,
   size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
 });
 const loadingStateItemSchema = z.object({
-  label: z.string(),
-  description: z.string().nullable(),
+  label: dynamicStringSchema,
+  description: nullableDynamicStringSchema,
   size: z.enum(GRAVITY_LOADING_SIZES),
 });
 const breadcrumbItemSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   href: z.string().nullable(),
 });
 const stepperItemSchema = z.object({
-  label: z.string(),
+  label: dynamicStringSchema,
   value: z.string(),
   view: z.enum(GRAVITY_STEPPER_VIEWS),
   disabled: z.boolean(),
   active: z.boolean(),
 });
 const accordionItemSchema = z.object({
-  title: z.string(),
-  body: z.string(),
+  title: dynamicStringSchema,
+  body: dynamicStringSchema,
   expanded: z.boolean(),
   disabled: z.boolean(),
 });
 const copyListItemSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-  copyText: z.string(),
+  label: dynamicStringSchema,
+  value: dynamicStringSchema,
+  copyText: dynamicStringSchema,
 });
 
 const Column = createComponentImplementation(
@@ -439,8 +453,8 @@ const AlertBlockSurface = createComponentImplementation(
     name: "AlertBlock",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
-      message: z.string(),
+      title: dynamicStringSchema,
+      message: dynamicStringSchema,
       tone: z.enum(GRAVITY_STATUS_TONES),
     }),
   },
@@ -461,40 +475,49 @@ const MetricGridSurface = createComponentImplementation(
     name: "MetricGrid",
     schema: z.object({
       ...commonProps,
-      items: z.array(metricItemSchema),
+      items: dynamicArraySchema(z.array(metricItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-metric-grid">
-      {props.items.map((item) => (
-        <Card
-          className="a2ui-metric-card"
-          key={`${item.label}-${item.value}`}
-          size="m"
-          theme="normal"
-          type="container"
-          view="filled"
-        >
-          <div className="a2ui-metric-card__body">
-            <div className="a2ui-metric-card__header">
-              <Text variant="caption-2" color="secondary">
-                {item.label}
-              </Text>
-              {item.icon ? (
-                <GravityIcon data={iconDataByName[item.icon]} size={14} />
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(metricItemSchema),
+    );
+
+    return (
+      <div className="a2ui-metric-grid">
+        {items.map((item) => (
+          <Card
+            className="a2ui-metric-card"
+            key={`${item.label}-${item.value}`}
+            size="m"
+            theme="normal"
+            type="container"
+            view="filled"
+          >
+            <div className="a2ui-metric-card__body">
+              <div className="a2ui-metric-card__header">
+                <Text variant="caption-2" color="secondary">
+                  {item.label}
+                </Text>
+                {item.icon ? (
+                  <GravityIcon data={iconDataByName[item.icon]} size={14} />
+                ) : null}
+              </div>
+              <Text variant="header-1">{item.value}</Text>
+              {item.description ? (
+                <Text variant="caption-2" color="secondary">
+                  {item.description}
+                </Text>
               ) : null}
             </div>
-            <Text variant="header-1">{item.value}</Text>
-            {item.description ? (
-              <Text variant="caption-2" color="secondary">
-                {item.description}
-              </Text>
-            ) : null}
-          </div>
-        </Card>
-      ))}
-    </div>
-  ),
+          </Card>
+        ))}
+      </div>
+    );
+  },
 );
 
 const DataTableSurface = createComponentImplementation(
@@ -502,41 +525,57 @@ const DataTableSurface = createComponentImplementation(
     name: "DataTable",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
-      columns: z.array(tableColumnSchema),
-      rows: z.array(tableRowSchema),
-      emptyMessage: z.string(),
+      title: dynamicStringSchema,
+      columns: dynamicArraySchema(z.array(tableColumnSchema)),
+      rows: dynamicArraySchema(z.array(tableRowSchema)),
+      emptyMessage: dynamicStringSchema,
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-table-block">
-      {props.title ? (
-        <Text as="h3" variant="subheader-2">
-          {props.title}
-        </Text>
-      ) : null}
-      <Table
-        className="a2ui-table"
-        columns={props.columns.map((column) => ({
-          id: column.id,
-          name: column.label,
-          align: mapTableAlign(column.align),
-        }))}
-        data={props.rows.map((row, rowIndex) =>
-          Object.fromEntries([
-            ["_rowId", String(rowIndex)],
-            ...props.columns.map((column, columnIndex) => [
-              column.id,
-              row.cells[columnIndex] ?? "",
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const columns = resolveDynamicArray(
+      rawProps,
+      "columns",
+      context,
+      z.array(tableColumnSchema),
+    );
+    const rows = resolveDynamicArray(
+      rawProps,
+      "rows",
+      context,
+      z.array(tableRowSchema),
+    );
+
+    return (
+      <div className="a2ui-table-block">
+        {props.title ? (
+          <Text as="h3" variant="subheader-2">
+            {props.title}
+          </Text>
+        ) : null}
+        <Table
+          className="a2ui-table"
+          columns={columns.map((column) => ({
+            id: column.id,
+            name: column.label,
+            align: mapTableAlign(column.align),
+          }))}
+          data={rows.map((row, rowIndex) =>
+            Object.fromEntries([
+              ["_rowId", String(rowIndex)],
+              ...columns.map((column, columnIndex) => [
+                column.id,
+                row.cells[columnIndex] ?? "",
+              ]),
             ]),
-          ]),
-        )}
-        edgePadding
-        emptyMessage={props.emptyMessage}
-        wordWrap
-      />
-    </div>
-  ),
+          )}
+          edgePadding
+          emptyMessage={props.emptyMessage}
+          wordWrap
+        />
+      </div>
+    );
+  },
 );
 
 const ProgressListSurface = createComponentImplementation(
@@ -544,43 +583,52 @@ const ProgressListSurface = createComponentImplementation(
     name: "ProgressList",
     schema: z.object({
       ...commonProps,
-      items: z.array(progressItemSchema),
+      items: dynamicArraySchema(z.array(progressItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-progress-list">
-      {props.items.map((item) => (
-        <div className="a2ui-progress-list__item" key={item.label}>
-          <div className="a2ui-progress-list__header">
-            <Text variant="body-1">{item.label}</Text>
-            <Text
-              className="a2ui-progress-list__value"
-              color={mapProgressTextColor(item.tone)}
-              variant="caption-2"
-            >
-              {item.value}%
-            </Text>
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(progressItemSchema),
+    );
+
+    return (
+      <div className="a2ui-progress-list">
+        {items.map((item) => (
+          <div className="a2ui-progress-list__item" key={item.label}>
+            <div className="a2ui-progress-list__header">
+              <Text variant="body-1">{item.label}</Text>
+              <Text
+                className="a2ui-progress-list__value"
+                color={mapProgressTextColor(item.tone)}
+                variant="caption-2"
+              >
+                {item.value}%
+              </Text>
+            </div>
+            {item.text ? (
+              <Text
+                className="a2ui-progress-list__description"
+                color="secondary"
+                variant="caption-2"
+              >
+                {item.text}
+              </Text>
+            ) : null}
+            <Progress
+              className="a2ui-progress-list__bar"
+              size="s"
+              text=""
+              theme={mapProgressTheme(item.tone)}
+              value={item.value}
+            />
           </div>
-          {item.text ? (
-            <Text
-              className="a2ui-progress-list__description"
-              color="secondary"
-              variant="caption-2"
-            >
-              {item.text}
-            </Text>
-          ) : null}
-          <Progress
-            className="a2ui-progress-list__bar"
-            size="s"
-            text=""
-            theme={mapProgressTheme(item.tone)}
-            value={item.value}
-          />
-        </div>
-      ))}
-    </div>
-  ),
+        ))}
+      </div>
+    );
+  },
 );
 
 const DefinitionListBlockSurface = createComponentImplementation(
@@ -588,26 +636,36 @@ const DefinitionListBlockSurface = createComponentImplementation(
     name: "DefinitionListBlock",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
-      items: z.array(definitionItemSchema),
+      title: dynamicStringSchema,
+      items: dynamicArraySchema(z.array(definitionItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-definition-block">
-      {props.title ? (
-        <Text as="h3" variant="subheader-2">
-          {props.title}
-        </Text>
-      ) : null}
-      <DefinitionList direction="horizontal" responsive>
-        {props.items.map((item) => (
-          <DefinitionList.Item key={item.label} name={item.label}>
-            {item.value}
-          </DefinitionList.Item>
-        ))}
-      </DefinitionList>
-    </div>
-  ),
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(definitionItemSchema),
+    );
+
+    return (
+      <div className="a2ui-definition-block">
+        {props.title ? (
+          <Text as="h3" variant="subheader-2">
+            {props.title}
+          </Text>
+        ) : null}
+        <DefinitionList direction="horizontal" responsive>
+          {items.map((item) => (
+            <DefinitionList.Item key={item.label} name={item.label}>
+              {item.value}
+            </DefinitionList.Item>
+          ))}
+        </DefinitionList>
+      </div>
+    );
+  },
 );
 
 const LinkListSurface = createComponentImplementation(
@@ -615,25 +673,34 @@ const LinkListSurface = createComponentImplementation(
     name: "LinkList",
     schema: z.object({
       ...commonProps,
-      items: z.array(linkItemSchema),
+      items: dynamicArraySchema(z.array(linkItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-link-list">
-      {props.items.map((item) => (
-        <div className="a2ui-link-list__item" key={`${item.href}-${item.label}`}>
-          <Link href={item.href} view="primary">
-            {item.label}
-          </Link>
-          {item.description ? (
-            <Text variant="caption-2" color="secondary">
-              {item.description}
-            </Text>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  ),
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(linkItemSchema),
+    );
+
+    return (
+      <div className="a2ui-link-list">
+        {items.map((item) => (
+          <div className="a2ui-link-list__item" key={`${item.href}-${item.label}`}>
+            <Link href={item.href} view="primary">
+              {item.label}
+            </Link>
+            {item.description ? (
+              <Text variant="caption-2" color="secondary">
+                {item.description}
+              </Text>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
+  },
 );
 
 const UserListSurface = createComponentImplementation(
@@ -641,26 +708,35 @@ const UserListSurface = createComponentImplementation(
     name: "UserList",
     schema: z.object({
       ...commonProps,
-      items: z.array(userItemSchema),
+      items: dynamicArraySchema(z.array(userItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-user-list">
-      {props.items.map((item) => (
-        <div className="a2ui-user-list__item" key={item.name}>
-          <User
-            avatar={{ text: createInitials(item.name) }}
-            description={item.description}
-            name={item.name}
-            size="m"
-          />
-          <Label theme={mapLabelTheme(item.tone)} size="xs">
-            {mapToneLabel(item.tone)}
-          </Label>
-        </div>
-      ))}
-    </div>
-  ),
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(userItemSchema),
+    );
+
+    return (
+      <div className="a2ui-user-list">
+        {items.map((item) => (
+          <div className="a2ui-user-list__item" key={item.name}>
+            <User
+              avatar={{ text: createInitials(item.name) }}
+              description={item.description}
+              name={item.name}
+              size="m"
+            />
+            <Label theme={mapLabelTheme(item.tone)} size="xs">
+              {mapToneLabel(item.tone)}
+            </Label>
+          </div>
+        ))}
+      </div>
+    );
+  },
 );
 
 const LabelGroupSurface = createComponentImplementation(
@@ -668,25 +744,34 @@ const LabelGroupSurface = createComponentImplementation(
     name: "LabelGroup",
     schema: z.object({
       ...commonProps,
-      items: z.array(labelItemSchema),
+      items: dynamicArraySchema(z.array(labelItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-label-group">
-      {props.items.map((item) => (
-        <Label
-          copyText={item.type === "copy" ? item.value ?? item.label : undefined}
-          key={`${item.label}-${item.value ?? ""}`}
-          size="s"
-          theme={mapLabelTheme(item.tone)}
-          type={item.type}
-          value={item.value ?? undefined}
-        >
-          {item.label}
-        </Label>
-      ))}
-    </div>
-  ),
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(labelItemSchema),
+    );
+
+    return (
+      <div className="a2ui-label-group">
+        {items.map((item) => (
+          <Label
+            copyText={item.type === "copy" ? item.value ?? item.label : undefined}
+            key={`${item.label}-${item.value ?? ""}`}
+            size="s"
+            theme={mapLabelTheme(item.tone)}
+            type={item.type}
+            value={item.value ?? undefined}
+          >
+            {item.label}
+          </Label>
+        ))}
+      </div>
+    );
+  },
 );
 
 const HeroBlockSurface = createComponentImplementation(
@@ -697,7 +782,22 @@ const HeroBlockSurface = createComponentImplementation(
       ...heroBlockSchema.shape,
     }),
   },
-  ({ props }) => (
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const labels = resolveDynamicArray(
+      rawProps,
+      "labels",
+      context,
+      z.array(labelItemSchema),
+    );
+    const actions = resolveDynamicArray(
+      rawProps,
+      "actions",
+      context,
+      z.array(cardActionSchema),
+    );
+
+    return (
     <section className={`a2ui-hero-block a2ui-hero-block_${props.tone}`}>
       <div className="a2ui-hero-block__copy">
         {props.eyebrow ? (
@@ -713,9 +813,9 @@ const HeroBlockSurface = createComponentImplementation(
             {props.body}
           </Text>
         ) : null}
-        {props.labels.length > 0 ? (
+        {labels.length > 0 ? (
           <div className="a2ui-hero-block__labels">
-            {props.labels.map((label) => (
+            {labels.map((label) => (
               <Label
                 copyText={label.type === "copy" ? label.value ?? label.label : undefined}
                 key={`${label.label}-${label.value ?? ""}`}
@@ -729,14 +829,14 @@ const HeroBlockSurface = createComponentImplementation(
             ))}
           </div>
         ) : null}
-        {props.actions.length > 0 ? (
+        {actions.length > 0 ? (
           <div className="a2ui-hero-block__actions">
-            {props.actions.map((action, actionIndex) => (
+            {actions.map((action, actionIndex) => (
               <Button
                 disabled={Boolean(action.disabled)}
                 key={`${action.label}-${actionIndex}`}
                 loading={Boolean(action.loading)}
-                onClick={asResolvedAction(action.action)}
+                onClick={asResolvedAction(action.action, context)}
                 selected={Boolean(action.selected)}
                 size="m"
                 view={mapButtonView(action.variant)}
@@ -756,7 +856,8 @@ const HeroBlockSurface = createComponentImplementation(
         </div>
       ) : null}
     </section>
-  ),
+    );
+  },
 );
 
 const FilterBarSurface = createComponentImplementation(
@@ -767,7 +868,27 @@ const FilterBarSurface = createComponentImplementation(
       ...filterBarSchema.shape,
     }),
   },
-  ({ props }) => <FilterBarRenderer {...props} />,
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+
+    return (
+      <FilterBarRenderer
+        {...props}
+        filters={resolveDynamicArray(
+          rawProps,
+          "filters",
+          context,
+          z.array(filterOptionSchema),
+        )}
+        sortOptions={resolveDynamicArray(
+          rawProps,
+          "sortOptions",
+          context,
+          z.array(optionSchema),
+        )}
+      />
+    );
+  },
 );
 
 const FeaturePanelGridSurface = createComponentImplementation(
@@ -775,68 +896,77 @@ const FeaturePanelGridSurface = createComponentImplementation(
     name: "FeaturePanelGrid",
     schema: z.object({
       ...commonProps,
-      items: z.array(featurePanelItemSchema),
+      items: dynamicArraySchema(z.array(featurePanelItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-feature-panel-grid">
-      {props.items.map((item, index) => (
-        <Card
-          className="a2ui-feature-panel"
-          key={`${item.title}-${index}`}
-          size="m"
-          theme={mapCardTheme(item.tone)}
-          type="container"
-          view="filled"
-        >
-          <div className="a2ui-feature-panel__body">
-            <div className="a2ui-feature-panel__header">
-              {item.icon ? (
-                <GravityIcon
-                  className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
-                  data={iconDataByName[item.icon]}
-                  size={18}
-                />
-              ) : null}
-              {item.value ? (
-                <Text className="a2ui-feature-panel__value" variant="subheader-2">
-                  {item.value}
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(featurePanelItemSchema),
+    );
+
+    return (
+      <div className="a2ui-feature-panel-grid">
+        {items.map((item, index) => (
+          <Card
+            className="a2ui-feature-panel"
+            key={`${item.title}-${index}`}
+            size="m"
+            theme={mapCardTheme(item.tone)}
+            type="container"
+            view="filled"
+          >
+            <div className="a2ui-feature-panel__body">
+              <div className="a2ui-feature-panel__header">
+                {item.icon ? (
+                  <GravityIcon
+                    className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
+                    data={iconDataByName[item.icon]}
+                    size={18}
+                  />
+                ) : null}
+                {item.value ? (
+                  <Text className="a2ui-feature-panel__value" variant="subheader-2">
+                    {item.value}
+                  </Text>
+                ) : null}
+              </div>
+              {item.title ? (
+                <Text as="h3" variant="subheader-2">
+                  {item.title}
                 </Text>
               ) : null}
+              {item.body ? (
+                <Text color="secondary" variant="body-2">
+                  {item.body}
+                </Text>
+              ) : null}
+              {item.labels.length > 0 ? (
+                <div className="a2ui-feature-panel__labels">
+                  {item.labels.map((label) => (
+                    <Label
+                      copyText={
+                        label.type === "copy" ? label.value ?? label.label : undefined
+                      }
+                      key={`${label.label}-${label.value ?? ""}`}
+                      size="xs"
+                      theme={mapLabelTheme(label.tone)}
+                      type={label.type}
+                      value={label.value ?? undefined}
+                    >
+                      {label.label}
+                    </Label>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            {item.title ? (
-              <Text as="h3" variant="subheader-2">
-                {item.title}
-              </Text>
-            ) : null}
-            {item.body ? (
-              <Text color="secondary" variant="body-2">
-                {item.body}
-              </Text>
-            ) : null}
-            {item.labels.length > 0 ? (
-              <div className="a2ui-feature-panel__labels">
-                {item.labels.map((label) => (
-                  <Label
-                    copyText={
-                      label.type === "copy" ? label.value ?? label.label : undefined
-                    }
-                    key={`${label.label}-${label.value ?? ""}`}
-                    size="xs"
-                    theme={mapLabelTheme(label.tone)}
-                    type={label.type}
-                    value={label.value ?? undefined}
-                  >
-                    {label.label}
-                  </Label>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </Card>
-      ))}
-    </div>
-  ),
+          </Card>
+        ))}
+      </div>
+    );
+  },
 );
 
 const CardGridSurface = createComponentImplementation(
@@ -844,15 +974,24 @@ const CardGridSurface = createComponentImplementation(
     name: "CardGrid",
     schema: z.object({
       ...commonProps,
-      title: z.string().optional(),
-      description: z.string().nullable().optional(),
+      title: dynamicStringSchema.optional(),
+      description: nullableDynamicStringSchema.optional(),
       variant: z.enum(GRAVITY_CARD_GRID_VARIANTS).optional(),
       columns: z.enum(GRAVITY_CARD_GRID_COLUMNS).optional(),
-      items: z.array(cardGridItemSchema),
+      items: dynamicArraySchema(z.array(cardGridItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-card-grid-block">
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(cardGridItemSchema),
+    );
+
+    return (
+      <div className="a2ui-card-grid-block">
       {props.title || props.description ? (
         <div className="a2ui-card-grid-block__header">
           {props.title ? (
@@ -870,7 +1009,7 @@ const CardGridSurface = createComponentImplementation(
       <div
         className={`a2ui-card-grid a2ui-card-grid_${props.variant ?? "product"} a2ui-card-grid_columns_${props.columns ?? "auto"}`}
       >
-        {props.items.map((item, index) => (
+        {items.map((item, index) => (
           <Card
             className="a2ui-card-grid__card"
             key={`${item.title}-${index}`}
@@ -937,7 +1076,7 @@ const CardGridSurface = createComponentImplementation(
                       disabled={Boolean(action.disabled)}
                       key={`${action.label}-${actionIndex}`}
                       loading={Boolean(action.loading)}
-                      onClick={asResolvedAction(action.action)}
+                      onClick={asResolvedAction(action.action, context)}
                       selected={Boolean(action.selected)}
                       size="s"
                       view={mapButtonView(action.variant)}
@@ -954,8 +1093,9 @@ const CardGridSurface = createComponentImplementation(
           </Card>
         ))}
       </div>
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const TabsBlockSurface = createComponentImplementation(
@@ -963,18 +1103,28 @@ const TabsBlockSurface = createComponentImplementation(
     name: "TabsBlock",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
+      title: dynamicStringSchema,
       size: z.enum(GRAVITY_TAB_SIZES),
-      items: z.array(tabItemSchema),
+      items: dynamicArraySchema(z.array(tabItemSchema)),
     }),
   },
-  ({ props }) => (
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(tabItemSchema),
+    );
+
+    return (
     <TabsBlockRenderer
-      items={props.items}
+      items={items}
       size={props.size}
       title={props.title}
     />
-  ),
+    );
+  },
 );
 
 const EmptyStateListSurface = createComponentImplementation(
@@ -982,12 +1132,20 @@ const EmptyStateListSurface = createComponentImplementation(
     name: "EmptyStateList",
     schema: z.object({
       ...commonProps,
-      items: z.array(emptyStateItemSchema),
+      items: dynamicArraySchema(z.array(emptyStateItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-empty-state-list">
-      {props.items.map((item) => (
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(emptyStateItemSchema),
+    );
+
+    return (
+      <div className="a2ui-empty-state-list">
+      {items.map((item) => (
         <PlaceholderContainer
           align="center"
           className="a2ui-empty-state"
@@ -1005,8 +1163,9 @@ const EmptyStateListSurface = createComponentImplementation(
           title={item.title}
         />
       ))}
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const LoadingStateListSurface = createComponentImplementation(
@@ -1014,12 +1173,20 @@ const LoadingStateListSurface = createComponentImplementation(
     name: "LoadingStateList",
     schema: z.object({
       ...commonProps,
-      items: z.array(loadingStateItemSchema),
+      items: dynamicArraySchema(z.array(loadingStateItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-loading-state-list">
-      {props.items.map((item) => (
+  ({ props: rawProps, context }) => {
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(loadingStateItemSchema),
+    );
+
+    return (
+      <div className="a2ui-loading-state-list">
+      {items.map((item) => (
         <div className="a2ui-loading-state-list__item" key={item.label}>
           <Spin size={item.size} />
           <div className="a2ui-loading-state-list__copy">
@@ -1032,8 +1199,9 @@ const LoadingStateListSurface = createComponentImplementation(
           </div>
         </div>
       ))}
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const BreadcrumbTrailSurface = createComponentImplementation(
@@ -1041,20 +1209,29 @@ const BreadcrumbTrailSurface = createComponentImplementation(
     name: "BreadcrumbTrail",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
+      title: dynamicStringSchema,
       showRoot: z.boolean(),
-      items: z.array(breadcrumbItemSchema),
+      items: dynamicArraySchema(z.array(breadcrumbItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-breadcrumb-trail">
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(breadcrumbItemSchema),
+    );
+
+    return (
+      <div className="a2ui-breadcrumb-trail">
       {props.title ? (
         <Text as="h3" variant="subheader-2">
           {props.title}
         </Text>
       ) : null}
       <Breadcrumbs showRoot={props.showRoot}>
-        {props.items.map((item, index) => (
+        {items.map((item, index) => (
           <Breadcrumbs.Item
             href={item.href ?? undefined}
             key={`${item.label}-${index}`}
@@ -1063,8 +1240,9 @@ const BreadcrumbTrailSurface = createComponentImplementation(
           </Breadcrumbs.Item>
         ))}
       </Breadcrumbs>
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const StepperBlockSurface = createComponentImplementation(
@@ -1072,18 +1250,28 @@ const StepperBlockSurface = createComponentImplementation(
     name: "StepperBlock",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
+      title: dynamicStringSchema,
       size: z.enum(GRAVITY_STEPPER_SIZES),
-      items: z.array(stepperItemSchema),
+      items: dynamicArraySchema(z.array(stepperItemSchema)),
     }),
   },
-  ({ props }) => (
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(stepperItemSchema),
+    );
+
+    return (
     <StepperBlockRenderer
-      items={props.items}
+      items={items}
       size={props.size}
       title={props.title}
     />
-  ),
+    );
+  },
 );
 
 const AccordionBlockSurface = createComponentImplementation(
@@ -1091,15 +1279,24 @@ const AccordionBlockSurface = createComponentImplementation(
     name: "AccordionBlock",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
+      title: dynamicStringSchema,
       size: z.enum(GRAVITY_ACCORDION_SIZES),
       view: z.enum(GRAVITY_ACCORDION_VIEWS),
       arrowPosition: z.enum(GRAVITY_ACCORDION_ARROW_POSITIONS),
-      items: z.array(accordionItemSchema),
+      items: dynamicArraySchema(z.array(accordionItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-accordion-block">
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(accordionItemSchema),
+    );
+
+    return (
+      <div className="a2ui-accordion-block">
       {props.title ? (
         <Text as="h3" variant="subheader-2">
           {props.title}
@@ -1107,14 +1304,14 @@ const AccordionBlockSurface = createComponentImplementation(
       ) : null}
       <Accordion
         arrowPosition={props.arrowPosition}
-        defaultValue={props.items
+        defaultValue={items
           .filter((item) => item.expanded)
           .map((item, index) => `${index}_${item.title}`)}
         multiple
         size={props.size}
         view={props.view}
       >
-        {props.items.map((item, index) => (
+        {items.map((item, index) => (
           <Accordion.Item
             disabled={item.disabled}
             key={`${item.title}-${index}`}
@@ -1127,8 +1324,9 @@ const AccordionBlockSurface = createComponentImplementation(
           </Accordion.Item>
         ))}
       </Accordion>
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const CopyListSurface = createComponentImplementation(
@@ -1136,18 +1334,27 @@ const CopyListSurface = createComponentImplementation(
     name: "CopyList",
     schema: z.object({
       ...commonProps,
-      title: z.string(),
-      items: z.array(copyListItemSchema),
+      title: dynamicStringSchema,
+      items: dynamicArraySchema(z.array(copyListItemSchema)),
     }),
   },
-  ({ props }) => (
-    <div className="a2ui-copy-list">
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const items = resolveDynamicArray(
+      rawProps,
+      "items",
+      context,
+      z.array(copyListItemSchema),
+    );
+
+    return (
+      <div className="a2ui-copy-list">
       {props.title ? (
         <Text as="h3" variant="subheader-2">
           {props.title}
         </Text>
       ) : null}
-      {props.items.map((item) => (
+      {items.map((item) => (
         <div className="a2ui-copy-list__item" key={`${item.label}-${item.value}`}>
           <div className="a2ui-copy-list__copy">
             <Text color="secondary" variant="caption-2">
@@ -1165,8 +1372,9 @@ const CopyListSurface = createComponentImplementation(
           </CopyToClipboard>
         </div>
       ))}
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 const TextFieldSurface = createComponentImplementation(
@@ -1174,8 +1382,8 @@ const TextFieldSurface = createComponentImplementation(
     name: "TextField",
     schema: z.object({
       ...commonProps,
-      label: z.string().optional(),
-      placeholder: z.string().optional(),
+      label: dynamicStringSchema.optional(),
+      placeholder: dynamicStringSchema.optional(),
       value: CommonSchemas.DynamicString,
       textFieldType: z.enum(GRAVITY_TEXT_FIELD_TYPES).optional(),
       disabled: CommonSchemas.DynamicBoolean.optional(),
@@ -1202,7 +1410,7 @@ const CheckBoxSurface = createComponentImplementation(
     name: "CheckBox",
     schema: z.object({
       ...commonProps,
-      label: z.string(),
+      label: dynamicStringSchema,
       value: CommonSchemas.DynamicBoolean,
       disabled: CommonSchemas.DynamicBoolean.optional(),
     }),
@@ -1223,7 +1431,7 @@ const SwitchFieldSurface = createComponentImplementation(
     name: "SwitchField",
     schema: z.object({
       ...commonProps,
-      label: z.string(),
+      label: dynamicStringSchema,
       value: CommonSchemas.DynamicBoolean,
       disabled: CommonSchemas.DynamicBoolean.optional(),
     }),
@@ -1244,20 +1452,29 @@ const SelectFieldSurface = createComponentImplementation(
     name: "SelectField",
     schema: z.object({
       ...commonProps,
-      label: z.string(),
-      placeholder: z.string().optional(),
-      options: z.array(optionSchema),
+      label: dynamicStringSchema,
+      placeholder: dynamicStringSchema.optional(),
+      options: dynamicArraySchema(z.array(optionSchema)),
       value: CommonSchemas.DynamicStringList,
       disabled: CommonSchemas.DynamicBoolean.optional(),
     }),
   },
-  ({ props }) => (
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const options = resolveDynamicArray(
+      rawProps,
+      "options",
+      context,
+      z.array(optionSchema),
+    );
+
+    return (
     <Select
       className="a2ui-select-field"
       disabled={Boolean(props.disabled)}
       label={props.label}
       onUpdate={props.setValue}
-      options={props.options.map((option) => ({
+      options={options.map((option) => ({
         content: option.label,
         text: option.label,
         value: option.value,
@@ -1267,7 +1484,8 @@ const SelectFieldSurface = createComponentImplementation(
       value={Array.isArray(props.value) ? props.value : []}
       width="max"
     />
-  ),
+    );
+  },
 );
 
 const SliderFieldSurface = createComponentImplementation(
@@ -1275,7 +1493,7 @@ const SliderFieldSurface = createComponentImplementation(
     name: "SliderField",
     schema: z.object({
       ...commonProps,
-      label: z.string(),
+      label: dynamicStringSchema,
       value: CommonSchemas.DynamicNumber,
       min: z.number(),
       max: z.number(),
@@ -1308,18 +1526,30 @@ const ChoicePickerSurface = createComponentImplementation(
     name: "ChoicePicker",
     schema: z.object({
       ...commonProps,
-      label: z.string().optional(),
+      label: dynamicStringSchema.optional(),
       variant: z.enum(GRAVITY_CHOICE_PICKER_VARIANTS).optional(),
-      options: z.array(
+      options: dynamicArraySchema(z.array(
         z.object({
-          label: z.string(),
+          label: dynamicStringSchema,
           value: z.string(),
         }),
-      ),
+      )),
       value: CommonSchemas.DynamicStringList,
     }),
   },
-  ({ props }) => {
+  ({ props: rawProps, context }) => {
+    const props = resolveDynamicProps(rawProps, context);
+    const options = resolveDynamicArray(
+      rawProps,
+      "options",
+      context,
+      z.array(
+        z.object({
+          label: dynamicStringSchema,
+          value: z.string(),
+        }),
+      ),
+    );
     const values = Array.isArray(props.value) ? props.value : [];
 
     if (props.variant === "multiple") {
@@ -1331,7 +1561,7 @@ const ChoicePickerSurface = createComponentImplementation(
             </Text>
           ) : null}
           <div className="a2ui-choice-picker__options">
-            {props.options.map((option) => (
+            {options.map((option) => (
               <Checkbox
                 checked={values.includes(option.value)}
                 content={option.label}
@@ -1355,7 +1585,7 @@ const ChoicePickerSurface = createComponentImplementation(
         <RadioGroup
           direction="vertical"
           onUpdate={(value) => props.setValue([value])}
-          options={props.options.map((option) => ({
+          options={options.map((option) => ({
             content: option.label,
             value: option.value,
           }))}
@@ -1688,8 +1918,21 @@ function mapButtonView(value?: string) {
   return mapGravityButtonVariantToView(value);
 }
 
-function asResolvedAction(action: unknown): ResolvedAction | undefined {
-  return typeof action === "function" ? (action as ResolvedAction) : undefined;
+function asResolvedAction(
+  action: unknown,
+  context: ComponentContext,
+): ResolvedAction | undefined {
+  if (typeof action === "function") {
+    return action as ResolvedAction;
+  }
+
+  if (typeof action !== "object" || action === null || Array.isArray(action)) {
+    return undefined;
+  }
+
+  return () => {
+    void context.dispatchAction(resolveDynamicValue(action, context));
+  };
 }
 
 function mapCardTheme(value?: string) {

@@ -236,6 +236,109 @@ describe("A2UI contract validation", () => {
     );
   });
 
+  it("accepts data-bound HeroBlock copy and refresh icons", () => {
+    const message = {
+      version: "v0.9",
+      updateComponents: {
+        surfaceId: "main",
+        components: [
+          {
+            id: "root",
+            component: "Column",
+            children: ["hero"],
+          },
+          {
+            id: "hero",
+            component: "HeroBlock",
+            eyebrow: { path: "/eyebrow" },
+            title: { path: "/title" },
+            body: { path: "/body" },
+            imageLabel: { path: "/imageLabel" },
+            tone: "info",
+            labels: [],
+            actions: [
+              {
+                label: "Refresh",
+                icon: "refresh",
+                variant: "outlined",
+                action: {
+                  event: {
+                    name: "refresh",
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(validateGravityA2uiMessage(message)).toEqual(message);
+  });
+
+  it("accepts data-bound FilterBar display copy", () => {
+    const message = {
+      version: "v0.9",
+      updateComponents: {
+        surfaceId: "main",
+        components: [
+          {
+            id: "root",
+            component: "Column",
+            children: ["Filters"],
+          },
+          {
+            id: "Filters",
+            component: "FilterBar",
+            title: { path: "/filterTitle" },
+            searchPlaceholder: { path: "/searchPlaceholder" },
+            searchValue: { path: "/searchValue" },
+            filters: [
+              {
+                label: { path: "/filterLabel" },
+                value: "open",
+                active: true,
+              },
+            ],
+            sortLabel: { path: "/sortLabel" },
+            sortValue: { path: "/sortValue" },
+            sortOptions: [
+              {
+                label: { path: "/sortOptionLabel" },
+                value: "newest",
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(validateGravityA2uiMessage(message)).toEqual(message);
+  });
+
+  it("accepts data-bound list props", () => {
+    const message = {
+      version: "v0.9",
+      updateComponents: {
+        surfaceId: "main",
+        components: [
+          {
+            id: "root",
+            component: "Column",
+            children: ["ValidationProgress"],
+          },
+          {
+            id: "ValidationProgress",
+            component: "ProgressList",
+            items: { path: "/validationProgress" },
+          },
+        ],
+      },
+    };
+
+    expect(validateGravityA2uiMessage(message)).toEqual(message);
+  });
+
   it("resolves nested card actions to click handlers", async () => {
     const schema = z.object({
       items: z.array(

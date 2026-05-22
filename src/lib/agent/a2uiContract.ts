@@ -104,6 +104,15 @@ const dynamicStringSchema = z.union([
   z.string().max(2400),
   dataBindingSchema,
 ]);
+const dynamicStringSchemaOfMax = (maxLength: number) =>
+  z.union([z.string().max(maxLength), dataBindingSchema]);
+const dynamicStringSchemaWithBounds = (minLength: number, maxLength: number) =>
+  z.union([z.string().min(minLength).max(maxLength), dataBindingSchema]);
+const nullableDynamicStringSchemaOfMax = (maxLength: number) =>
+  dynamicStringSchemaOfMax(maxLength).nullable();
+const dynamicArraySchema = <ArraySchema extends z.ZodArray<z.ZodTypeAny>>(
+  schema: ArraySchema,
+) => z.union([schema, dataBindingSchema]);
 const dynamicBooleanSchema = z.union([z.boolean(), dataBindingSchema]);
 const dynamicNumberSchema = z.union([
   z.number().min(-1_000_000_000).max(1_000_000_000),
@@ -221,8 +230,8 @@ const textFieldComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("TextField"),
-    label: z.string().max(120).optional(),
-    placeholder: z.string().max(160).optional(),
+    label: dynamicStringSchemaOfMax(120).optional(),
+    placeholder: dynamicStringSchemaOfMax(160).optional(),
     value: dynamicStringSchema,
     textFieldType: z.enum(GRAVITY_TEXT_FIELD_TYPES).optional(),
     disabled: dynamicBooleanSchema.optional(),
@@ -233,7 +242,7 @@ const checkboxComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("CheckBox"),
-    label: z.string().min(1).max(180),
+    label: dynamicStringSchemaWithBounds(1, 180),
     value: dynamicBooleanSchema,
     disabled: dynamicBooleanSchema.optional(),
   })
@@ -243,19 +252,19 @@ const choicePickerComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("ChoicePicker"),
-    label: z.string().max(120).optional(),
+    label: dynamicStringSchemaOfMax(120).optional(),
     variant: z.enum(GRAVITY_CHOICE_PICKER_VARIANTS).optional(),
-    options: z
+    options: dynamicArraySchema(z
       .array(
         z
           .object({
-            label: z.string().min(1).max(100),
+            label: dynamicStringSchemaWithBounds(1, 100),
             value: z.string().min(1).max(100),
           })
           .strict(),
       )
       .min(1)
-      .max(12),
+      .max(12)),
     value: dynamicStringListSchema,
   })
   .strict();
@@ -280,17 +289,17 @@ const alertBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("AlertBlock"),
-    title: z.string().max(240),
-    message: z.string().max(1600),
+    title: dynamicStringSchemaOfMax(240),
+    message: dynamicStringSchemaOfMax(1600),
     tone: z.enum(GRAVITY_STATUS_TONES),
   })
   .strict();
 
 const metricItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    value: z.string().min(1).max(240),
-    description: z.string().max(240).nullable(),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: dynamicStringSchemaWithBounds(1, 240),
+    description: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
     icon: iconNameSchema.nullable(),
   })
@@ -300,14 +309,14 @@ const metricGridComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("MetricGrid"),
-    items: z.array(metricItemSchema).min(1).max(8),
+    items: dynamicArraySchema(z.array(metricItemSchema).min(1).max(8)),
   })
   .strict();
 
 const tableColumnSchema = z
   .object({
     id: componentIdSchema,
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     align: z.enum(GRAVITY_TABLE_ALIGN),
   })
   .strict();
@@ -316,26 +325,26 @@ const dataTableComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("DataTable"),
-    title: z.string().max(240),
-    columns: z.array(tableColumnSchema).min(1).max(6),
-    rows: z
+    title: dynamicStringSchemaOfMax(240),
+    columns: dynamicArraySchema(z.array(tableColumnSchema).min(1).max(6)),
+    rows: dynamicArraySchema(z
       .array(
         z
           .object({
-            cells: z.array(z.string().max(240)).max(6),
+            cells: z.array(dynamicStringSchemaOfMax(240)).max(6),
           })
           .strict(),
       )
-      .max(12),
-    emptyMessage: z.string().max(240),
+      .max(12)),
+    emptyMessage: dynamicStringSchemaOfMax(240),
   })
   .strict();
 
 const progressItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    value: z.number().min(0).max(100),
-    text: z.string().max(240).nullable(),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: z.union([z.number().min(0).max(100), dataBindingSchema]),
+    text: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
   })
   .strict();
@@ -344,14 +353,14 @@ const progressListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("ProgressList"),
-    items: z.array(progressItemSchema).min(1).max(6),
+    items: dynamicArraySchema(z.array(progressItemSchema).min(1).max(6)),
   })
   .strict();
 
 const definitionItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    value: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: dynamicStringSchemaWithBounds(1, 240),
   })
   .strict();
 
@@ -359,20 +368,20 @@ const definitionListBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("DefinitionListBlock"),
-    title: z.string().max(240),
-    items: z.array(definitionItemSchema).min(1).max(10),
+    title: dynamicStringSchemaOfMax(240),
+    items: dynamicArraySchema(z.array(definitionItemSchema).min(1).max(10)),
   })
   .strict();
 
 const linkItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     href: z
       .string()
       .min(1)
       .max(500)
       .regex(/^(https?:\/\/|mailto:|tel:|\/|#)/),
-    description: z.string().max(240).nullable(),
+    description: nullableDynamicStringSchemaOfMax(240),
   })
   .strict();
 
@@ -380,14 +389,14 @@ const linkListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("LinkList"),
-    items: z.array(linkItemSchema).min(1).max(8),
+    items: dynamicArraySchema(z.array(linkItemSchema).min(1).max(8)),
   })
   .strict();
 
 const userItemSchema = z
   .object({
-    name: z.string().min(1).max(240),
-    description: z.string().max(240).nullable(),
+    name: dynamicStringSchemaWithBounds(1, 240),
+    description: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
   })
   .strict();
@@ -396,7 +405,7 @@ const userListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("UserList"),
-    items: z.array(userItemSchema).min(1).max(8),
+    items: dynamicArraySchema(z.array(userItemSchema).min(1).max(8)),
   })
   .strict();
 
@@ -404,7 +413,7 @@ const switchFieldComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("SwitchField"),
-    label: z.string().min(1).max(180),
+    label: dynamicStringSchemaWithBounds(1, 180),
     value: dynamicBooleanSchema,
     disabled: dynamicBooleanSchema.optional(),
   })
@@ -414,19 +423,19 @@ const selectFieldComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("SelectField"),
-    label: z.string().max(120),
-    placeholder: z.string().max(160).optional(),
-    options: z
+    label: dynamicStringSchemaOfMax(120),
+    placeholder: dynamicStringSchemaOfMax(160).optional(),
+    options: dynamicArraySchema(z
       .array(
         z
           .object({
-            label: z.string().min(1).max(100),
+            label: dynamicStringSchemaWithBounds(1, 100),
             value: z.string().min(1).max(100),
           })
           .strict(),
       )
       .min(1)
-      .max(12),
+      .max(12)),
     value: dynamicStringListSchema,
     disabled: dynamicBooleanSchema.optional(),
   })
@@ -436,7 +445,7 @@ const sliderFieldComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("SliderField"),
-    label: z.string().min(1).max(180),
+    label: dynamicStringSchemaWithBounds(1, 180),
     value: dynamicNumberSchema,
     min: z.number().min(-1_000_000).max(1_000_000),
     max: z.number().min(-1_000_000).max(1_000_000),
@@ -447,8 +456,8 @@ const sliderFieldComponentSchema = z
 
 const labelItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    value: z.string().max(240).nullable(),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
     type: z.enum(GRAVITY_LABEL_TYPES),
   })
@@ -458,13 +467,13 @@ const labelGroupComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("LabelGroup"),
-    items: z.array(labelItemSchema).min(1).max(12),
+    items: dynamicArraySchema(z.array(labelItemSchema).min(1).max(12)),
   })
   .strict();
 
 const cardGridActionSchema = z
   .object({
-    label: z.string().min(1).max(120),
+    label: dynamicStringSchemaWithBounds(1, 120),
     icon: iconNameSchema.nullable(),
     action: actionSchema,
     variant: z.enum(GRAVITY_BUTTON_VARIANTS),
@@ -476,15 +485,15 @@ const cardGridActionSchema = z
 
 const cardGridItemSchema = z
   .object({
-    title: z.string().min(1).max(240),
-    subtitle: z.string().max(240).nullable(),
-    body: z.string().max(800),
-    imageLabel: z.string().max(80).nullable(),
-    value: z.string().max(120).nullable(),
-    meta: z.string().max(240).nullable(),
+    title: dynamicStringSchemaWithBounds(1, 240),
+    subtitle: nullableDynamicStringSchemaOfMax(240),
+    body: dynamicStringSchemaOfMax(800),
+    imageLabel: nullableDynamicStringSchemaOfMax(80),
+    value: nullableDynamicStringSchemaOfMax(120),
+    meta: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
-    labels: z.array(labelItemSchema).max(4),
-    actions: z.array(cardGridActionSchema).max(2),
+    labels: dynamicArraySchema(z.array(labelItemSchema).max(4)),
+    actions: dynamicArraySchema(z.array(cardGridActionSchema).max(2)),
   })
   .strict();
 
@@ -492,19 +501,19 @@ const heroBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("HeroBlock"),
-    eyebrow: z.string().max(240).nullable(),
-    title: z.string().max(240),
-    body: z.string().max(1600),
-    imageLabel: z.string().max(80).nullable(),
+    eyebrow: dynamicStringSchemaOfMax(240).nullable(),
+    title: dynamicStringSchemaOfMax(240),
+    body: dynamicStringSchemaOfMax(1600),
+    imageLabel: dynamicStringSchemaOfMax(80).nullable(),
     tone: z.enum(GRAVITY_TONES),
-    labels: z.array(labelItemSchema).max(4),
-    actions: z.array(cardGridActionSchema).max(2),
+    labels: dynamicArraySchema(z.array(labelItemSchema).max(4)),
+    actions: dynamicArraySchema(z.array(cardGridActionSchema).max(2)),
   })
   .strict();
 
 const filterOptionSchema = z
   .object({
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     value: z.string().min(1).max(100),
     active: z.boolean(),
   })
@@ -514,33 +523,33 @@ const filterBarComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("FilterBar"),
-    title: z.string().max(240),
-    searchPlaceholder: z.string().max(240).nullable(),
-    searchValue: z.string().max(240).nullable(),
-    filters: z.array(filterOptionSchema).max(10),
-    sortLabel: z.string().max(240).nullable(),
-    sortValue: z.string().max(100).nullable(),
-    sortOptions: z
+    title: dynamicStringSchemaOfMax(240),
+    searchPlaceholder: nullableDynamicStringSchemaOfMax(240),
+    searchValue: nullableDynamicStringSchemaOfMax(240),
+    filters: dynamicArraySchema(z.array(filterOptionSchema).max(10)),
+    sortLabel: nullableDynamicStringSchemaOfMax(240),
+    sortValue: nullableDynamicStringSchemaOfMax(100),
+    sortOptions: dynamicArraySchema(z
       .array(
         z
           .object({
-            label: z.string().min(1).max(100),
+            label: dynamicStringSchemaWithBounds(1, 100),
             value: z.string().min(1).max(100),
           })
           .strict(),
       )
-      .max(8),
+      .max(8)),
   })
   .strict();
 
 const featurePanelItemSchema = z
   .object({
-    title: z.string().max(240),
-    body: z.string().max(1600),
+    title: dynamicStringSchemaOfMax(240),
+    body: dynamicStringSchemaOfMax(1600),
     icon: iconNameSchema.nullable(),
     tone: z.enum(GRAVITY_TONES),
-    value: z.string().max(240).nullable(),
-    labels: z.array(labelItemSchema).max(3),
+    value: nullableDynamicStringSchemaOfMax(240),
+    labels: dynamicArraySchema(z.array(labelItemSchema).max(3)),
   })
   .strict();
 
@@ -548,7 +557,7 @@ const featurePanelGridComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("FeaturePanelGrid"),
-    items: z.array(featurePanelItemSchema).min(1).max(8),
+    items: dynamicArraySchema(z.array(featurePanelItemSchema).min(1).max(8)),
   })
   .strict();
 
@@ -556,20 +565,20 @@ const cardGridComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("CardGrid"),
-    title: z.string().max(240).optional(),
-    description: z.string().max(1600).nullable().optional(),
+    title: dynamicStringSchemaOfMax(240).optional(),
+    description: nullableDynamicStringSchemaOfMax(1600).optional(),
     variant: z.enum(GRAVITY_CARD_GRID_VARIANTS).optional(),
     columns: z.enum(GRAVITY_CARD_GRID_COLUMNS).optional(),
-    items: z.array(cardGridItemSchema).min(1).max(12),
+    items: dynamicArraySchema(z.array(cardGridItemSchema).min(1).max(12)),
   })
   .strict();
 
 const tabItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     value: componentIdSchema,
-    body: z.string().min(1).max(1600),
-    counter: z.string().max(240).nullable(),
+    body: dynamicStringSchemaWithBounds(1, 1600),
+    counter: nullableDynamicStringSchemaOfMax(240),
     tone: z.enum(GRAVITY_TONES),
     active: z.boolean(),
   })
@@ -579,16 +588,16 @@ const tabsBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("TabsBlock"),
-    title: z.string().max(240),
+    title: dynamicStringSchemaOfMax(240),
     size: z.enum(GRAVITY_TAB_SIZES),
-    items: z.array(tabItemSchema).min(2).max(8),
+    items: dynamicArraySchema(z.array(tabItemSchema).min(2).max(8)),
   })
   .strict();
 
 const emptyStateItemSchema = z
   .object({
-    title: z.string().max(240),
-    description: z.string().max(1600),
+    title: dynamicStringSchemaOfMax(240),
+    description: dynamicStringSchemaOfMax(1600),
     icon: iconNameSchema.nullable(),
     tone: z.enum(GRAVITY_TONES),
     size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
@@ -599,14 +608,14 @@ const emptyStateListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("EmptyStateList"),
-    items: z.array(emptyStateItemSchema).min(1).max(2),
+    items: dynamicArraySchema(z.array(emptyStateItemSchema).min(1).max(2)),
   })
   .strict();
 
 const loadingStateItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    description: z.string().max(240).nullable(),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    description: nullableDynamicStringSchemaOfMax(240),
     size: z.enum(GRAVITY_LOADING_SIZES),
   })
   .strict();
@@ -615,13 +624,13 @@ const loadingStateListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("LoadingStateList"),
-    items: z.array(loadingStateItemSchema).min(1).max(4),
+    items: dynamicArraySchema(z.array(loadingStateItemSchema).min(1).max(4)),
   })
   .strict();
 
 const breadcrumbItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     href: z
       .string()
       .min(1)
@@ -635,15 +644,15 @@ const breadcrumbTrailComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("BreadcrumbTrail"),
-    title: z.string().max(240),
+    title: dynamicStringSchemaOfMax(240),
     showRoot: z.boolean(),
-    items: z.array(breadcrumbItemSchema).min(2).max(8),
+    items: dynamicArraySchema(z.array(breadcrumbItemSchema).min(2).max(8)),
   })
   .strict();
 
 const stepperItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
+    label: dynamicStringSchemaWithBounds(1, 240),
     value: componentIdSchema,
     view: z.enum(GRAVITY_STEPPER_VIEWS),
     disabled: z.boolean(),
@@ -655,16 +664,16 @@ const stepperBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("StepperBlock"),
-    title: z.string().max(240),
+    title: dynamicStringSchemaOfMax(240),
     size: z.enum(GRAVITY_STEPPER_SIZES),
-    items: z.array(stepperItemSchema).min(2).max(8),
+    items: dynamicArraySchema(z.array(stepperItemSchema).min(2).max(8)),
   })
   .strict();
 
 const accordionItemSchema = z
   .object({
-    title: z.string().min(1).max(240),
-    body: z.string().min(1).max(1600),
+    title: dynamicStringSchemaWithBounds(1, 240),
+    body: dynamicStringSchemaWithBounds(1, 1600),
     expanded: z.boolean(),
     disabled: z.boolean(),
   })
@@ -674,19 +683,19 @@ const accordionBlockComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("AccordionBlock"),
-    title: z.string().max(240),
+    title: dynamicStringSchemaOfMax(240),
     size: z.enum(GRAVITY_ACCORDION_SIZES),
     view: z.enum(GRAVITY_ACCORDION_VIEWS),
     arrowPosition: z.enum(GRAVITY_ACCORDION_ARROW_POSITIONS),
-    items: z.array(accordionItemSchema).min(1).max(8),
+    items: dynamicArraySchema(z.array(accordionItemSchema).min(1).max(8)),
   })
   .strict();
 
 const copyListItemSchema = z
   .object({
-    label: z.string().min(1).max(240),
-    value: z.string().min(1).max(240),
-    copyText: z.string().min(1).max(1000),
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: dynamicStringSchemaWithBounds(1, 240),
+    copyText: dynamicStringSchemaWithBounds(1, 1000),
   })
   .strict();
 
@@ -694,8 +703,8 @@ const copyListComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("CopyList"),
-    title: z.string().max(240),
-    items: z.array(copyListItemSchema).min(1).max(8),
+    title: dynamicStringSchemaOfMax(240),
+    items: dynamicArraySchema(z.array(copyListItemSchema).min(1).max(8)),
   })
   .strict();
 

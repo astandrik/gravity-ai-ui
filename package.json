@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --incremental false",
+    "generate:gallery-thumbnails": "tsx scripts/generate-gallery-thumbnails.ts",
     "generate:gravity-capabilities": "node scripts/generate-gravity-capabilities.mjs",
     "check:gravity-capabilities": "node scripts/generate-gravity-capabilities.mjs --check"
   },
@@ -25,8 +26,10 @@
     "@ydbjs/value": "^6.0.7",
     "next": "^16.0.10",
     "openai": "^6.38.0",
+    "playwright-core": "^1.60.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "sharp": "^0.34.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -36,6 +39,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.0.10",
     "sass": "^1.99.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.7"
   },

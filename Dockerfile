@@ -23,7 +23,7 @@ ENV PORT=3000
 RUN apt-get update \
   -o Acquire::ForceIPv4=true \
   -o Acquire::Retries=3 \
-  && apt-get install -y --no-install-recommends fonts-dejavu-core \
+  && apt-get install -y --no-install-recommends chromium fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/package.json ./package.json

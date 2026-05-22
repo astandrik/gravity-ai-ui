@@ -20,6 +20,7 @@ const iconImportByName: Record<
   list: { exportName: "ListUl", localName: "ListIcon" },
   person: { exportName: "Person", localName: "PersonIcon" },
   plus: { exportName: "Plus", localName: "PlusIcon" },
+  refresh: { exportName: "ArrowRotateRight", localName: "RefreshIcon" },
   rocket: { exportName: "Rocket", localName: "RocketIcon" },
   search: { exportName: "Magnifier", localName: "SearchIcon" },
   shield: { exportName: "Shield", localName: "ShieldIcon" },
@@ -267,7 +268,7 @@ function renderMetricGrid(items: unknown) {
 function renderDataTable(props: Record<string, unknown>) {
   const columns = arrayRecords(props.columns).map((column) => ({
     id: String(column.id),
-    name: String(column.label),
+    name: formatValue(column.label),
     align: column.align === "end" ? "right" : column.align === "center" ? "center" : "left",
   }));
   const data = arrayRecords(props.rows).map((row, rowIndex) => ({
@@ -289,7 +290,7 @@ function renderProgressList(items: unknown) {
       {arrayRecords(items).map((item) => (
         <div key={String(item.label)} style={{ display: "grid", gap: 4 }}>
           <Text variant="body-2">{formatValue(item.label)}</Text>
-          <Progress value={numberProp(item.value, 0)} theme={stringProp(item.tone, "info")} />
+          <Progress value={numberProp(resolve(item.value), 0)} theme={stringProp(item.tone, "info")} />
           {item.text ? <Text variant="caption-2" color="secondary">{formatValue(item.text)}</Text> : null}
         </div>
       ))}
@@ -363,7 +364,7 @@ function renderFilterBar(props: Record<string, unknown>) {
         <Button key={String(filter.value)} view={filter.active ? "action" : "outlined"}>{formatValue(filter.label)}</Button>
       ))}
       {arrayRecords(props.sortOptions).length > 0 ? (
-        <Select label={stringProp(props.sortLabel)} value={props.sortValue ? [String(props.sortValue)] : []} options={optionList(props.sortOptions)} onUpdate={() => undefined} />
+        <Select label={stringProp(props.sortLabel)} value={stringProp(props.sortValue) ? [stringProp(props.sortValue)] : []} options={optionList(props.sortOptions)} onUpdate={() => undefined} />
       ) : null}
     </div>
   );
@@ -625,11 +626,15 @@ function optionList(value: unknown) {
 }
 
 function arrayRecords(value: unknown) {
-  return Array.isArray(value) ? value.filter(isRecord) : [];
+  const resolved = resolve(value);
+
+  return Array.isArray(resolved) ? resolved.filter(isRecord) : [];
 }
 
 function arrayValues(value: unknown) {
-  return Array.isArray(value) ? value : [];
+  const resolved = resolve(value);
+
+  return Array.isArray(resolved) ? resolved : [];
 }
 
 function arrayValue(value: unknown) {
@@ -715,7 +720,35 @@ function collectUsedIcons(payload: ComposedInterfacePayload) {
     }
   }
 
+  collectIconsFromDataModel(icons, payload.dataModel);
+
   return [...icons];
+}
+
+function collectIconsFromDataModel(
+  icons: Set<GravityIconName>,
+  value: unknown,
+  key?: string,
+) {
+  if (key === "icon") {
+    addIcon(icons, value);
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectIconsFromDataModel(icons, item);
+    }
+
+    return;
+  }
+
+  if (!isRecord(value)) {
+    return;
+  }
+
+  for (const [childKey, childValue] of Object.entries(value)) {
+    collectIconsFromDataModel(icons, childValue, childKey);
+  }
 }
 
 function addIcon(icons: Set<GravityIconName>, value: unknown) {

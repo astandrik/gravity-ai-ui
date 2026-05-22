@@ -111,7 +111,7 @@ const payload = {
             actions: [
               {
                 label: "Buy",
-                icon: "check",
+                icon: "refresh",
                 action: { event: { name: "confirm" } },
                 variant: "primary",
               },
@@ -152,6 +152,8 @@ describe("React code generator", () => {
     expect(code).toContain("Linen tote");
     expect(code).toContain("handleAction");
     expect(code).toContain("@gravity-ui/icons");
+    expect(code).toContain("ArrowRotateRight as RefreshIcon");
+    expect(code).toContain('"refresh": RefreshIcon');
     expect(code).not.toContain("Dislike");
   });
 

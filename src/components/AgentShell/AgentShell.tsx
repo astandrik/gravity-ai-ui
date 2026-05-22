@@ -11,26 +11,18 @@ import {
   Flex,
   Icon,
   Label,
-  Tab,
-  TabList,
-  TabProvider,
   Text,
   TextInput,
 } from "@/components/GravityUI/GravityUI";
+import { InterfaceInspector } from "@/components/InterfaceInspector/InterfaceInspector";
 import type { GravityA2uiMessage } from "@/lib/agent/a2uiContract";
 import type { ComposedInterfacePayload } from "@/lib/agent/composedInterface";
-import { buildReactCode } from "@/lib/agent/reactCode";
 import type {
   AgentRequest,
   AgentSseEvent,
   ConversationContext,
 } from "@/lib/agent/protocol";
 import { trackGoal } from "@/lib/metrics/yandex";
-import {
-  A2uiSurface,
-  createGravityA2uiProcessor,
-  type GravitySurface,
-} from "./gravityA2uiCatalog";
 
 type UserTurn = {
   id: string;
@@ -49,7 +41,6 @@ type AssistantTurn = {
 };
 
 type ChatTurn = UserTurn | AssistantTurn;
-type InspectorTab = "preview" | "react" | "a2ui" | "data" | "payload";
 type PromptSource = "manual" | "starter";
 
 export function AgentShell({
@@ -301,10 +292,11 @@ export function AgentShell({
             conversationId,
             turnId: turn.id,
             rating: 1,
+            publish: true,
             prompt: getPromptBeforeTurn(turns, turn.id),
             payload,
-            messages: turn.messages,
-            dataModel: getLatestDataModel(turn.messages),
+            messages: [],
+            dataModel: payload.dataModel,
           }),
         });
 
@@ -519,37 +511,6 @@ function AssistantMessage({
   onAction: (action: A2uiClientAction) => void;
   turn: AssistantTurn;
 }) {
-  const [activeTab, setActiveTab] = useState<InspectorTab>("preview");
-  const dataModel = getLatestDataModel(turn.messages);
-  const reactCode = turn.payload ? buildReactCode(turn.payload) : null;
-  const hasRenderablePreview = turn.messages.length > 0;
-  const updateActiveTab = useCallback(
-    (value: string) => {
-      const nextTab = value as InspectorTab;
-
-      if (nextTab !== activeTab) {
-        trackGoal("inspector_tab_change", {
-          tab: nextTab,
-          surfaceId: turn.payload?.surfaceId,
-        });
-      }
-
-      setActiveTab(nextTab);
-    },
-    [activeTab, turn.payload?.surfaceId],
-  );
-  const tabs: Array<{
-    id: InspectorTab;
-    label: string;
-    disabled?: boolean;
-  }> = [
-    { id: "preview", label: "Preview", disabled: !hasRenderablePreview },
-    { id: "react", label: "React", disabled: !reactCode },
-    { id: "a2ui", label: "A2UI", disabled: turn.messages.length === 0 },
-    { id: "data", label: "Data", disabled: dataModel === undefined },
-    { id: "payload", label: "Payload", disabled: !turn.payload },
-  ];
-
   return (
     <article className="agent-turn agent-turn_assistant">
       <div className="agent-turn__meta">
@@ -559,47 +520,21 @@ function AssistantMessage({
             <span className="agent-feedback__error">{feedbackError}</span>
           ) : null}
           <Button
-            disabled={!turn.payload}
+            disabled={!turn.payload || isLiked}
             onClick={() => onFeedback(turn)}
             size="s"
             view={isLiked ? "action" : "flat"}
           >
-            Like
+            {isLiked ? "Published" : "Like & publish"}
           </Button>
         </div>
       </div>
       {turn.payload || turn.messages.length > 0 ? (
-        <Card type="container" view="outlined" className="agent-inspector">
-          <TabProvider
-            value={activeTab}
-            onUpdate={updateActiveTab}
-          >
-            <TabList className="agent-inspector__tabs" size="m">
-              {tabs.map((tab) => (
-                <Tab key={tab.id} value={tab.id} disabled={tab.disabled}>
-                  {tab.label}
-                </Tab>
-              ))}
-            </TabList>
-          </TabProvider>
-          <Divider orientation="horizontal" />
-          <div className="agent-inspector__panel" role="tabpanel">
-            {activeTab === "preview" && hasRenderablePreview ? (
-              <A2uiMessageRenderer
-                messages={turn.messages}
-                onAction={onAction}
-              />
-            ) : null}
-            {activeTab === "a2ui" ? <JsonPanel value={turn.messages} /> : null}
-            {activeTab === "react" && reactCode ? (
-              <CodePanel value={reactCode} />
-            ) : null}
-            {activeTab === "data" ? <JsonPanel value={dataModel} /> : null}
-            {activeTab === "payload" ? (
-              <JsonPanel value={turn.payload ?? null} />
-            ) : null}
-          </div>
-        </Card>
+        <InterfaceInspector
+          messages={turn.messages}
+          onAction={onAction}
+          payload={turn.payload}
+        />
       ) : null}
       {turn.error ? (
         <div className="agent-error" role="alert">
@@ -631,115 +566,6 @@ function EmptyPreview() {
         </Text>
       </Flex>
     </Card>
-  );
-}
-
-function JsonPanel({ value }: { value: unknown }) {
-  return (
-    <pre className="agent-json">
-      <code>{formatJson(value)}</code>
-    </pre>
-  );
-}
-
-function CodePanel({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyCode = useCallback(async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    trackGoal("react_code_copy", {
-      codeLength: value.length,
-    });
-    window.setTimeout(() => setCopied(false), 1200);
-  }, [value]);
-
-  return (
-    <div className="agent-code-panel">
-      <div className="agent-code-panel__toolbar">
-        <Button onClick={copyCode} size="s" view={copied ? "action" : "outlined"}>
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
-      <pre className="agent-json">
-        <code>{value}</code>
-      </pre>
-    </div>
-  );
-}
-
-function A2uiMessageRenderer({
-  messages,
-  onAction,
-}: {
-  messages: GravityA2uiMessage[];
-  onAction: (action: A2uiClientAction) => void;
-}) {
-  const processedCountRef = useRef(0);
-  const [error, setError] = useState<string | null>(null);
-  const [processor] = useState(() => createGravityA2uiProcessor(onAction));
-  const [renderVersion, setRenderVersion] = useState(0);
-  const [surfaces, setSurfaces] = useState<GravitySurface[]>(() =>
-    Array.from(processor.model.surfacesMap.values()),
-  );
-
-  useEffect(() => {
-    const syncSurfaces = () =>
-      setSurfaces(Array.from(processor.model.surfacesMap.values()));
-    const createdSubscription = processor.onSurfaceCreated(syncSurfaces);
-    const deletedSubscription = processor.onSurfaceDeleted(syncSurfaces);
-
-    return () => {
-      createdSubscription.unsubscribe();
-      deletedSubscription.unsubscribe();
-    };
-  }, [processor]);
-
-  useEffect(() => {
-    const nextMessages = messages.slice(processedCountRef.current);
-
-    if (nextMessages.length === 0) {
-      return;
-    }
-
-    try {
-      processor.processMessages(nextMessages);
-      processedCountRef.current = messages.length;
-      queueMicrotask(() => {
-        setSurfaces(Array.from(processor.model.surfacesMap.values()));
-        setRenderVersion((currentVersion) => currentVersion + 1);
-      });
-    } catch (processingError) {
-      const nextError =
-        processingError instanceof Error
-          ? processingError.message
-          : "A2UI rendering failed.";
-
-      queueMicrotask(() => setError(nextError));
-    }
-  }, [messages, processor]);
-
-  if (error) {
-    return (
-      <div className="agent-error" role="alert">
-        <Text as="h2" variant="subheader-2">
-          Renderer error
-        </Text>
-        <Text as="p" variant="body-2" color="secondary">
-          {error}
-        </Text>
-      </div>
-    );
-  }
-
-  return (
-    <div className="agent-surfaces">
-      {surfaces.map((surface) => (
-        <div className="agent-surface" key={`${surface.id}-${renderVersion}`}>
-          <A2uiSurface surface={surface} />
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1117,10 +943,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function truncateForContext(value: string) {
   return value.length > 2000 ? `${value.slice(0, 1997)}...` : value;
-}
-
-function formatJson(value: unknown) {
-  return JSON.stringify(value, null, 2);
 }
 
 function createId(prefix: string) {

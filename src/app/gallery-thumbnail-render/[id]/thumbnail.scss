@@ -1,0 +1,27 @@
+.gallery-thumbnail-render-shell {
+  display: grid;
+  width: 960px;
+  min-height: 600px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #111418;
+}
+
+.gallery-thumbnail-capture {
+  width: 960px;
+  height: 600px;
+  overflow: hidden;
+  background: #111418;
+
+  .interface-preview_thumbnail {
+    width: 960px;
+    height: 600px;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .interface-preview_thumbnail .interface-preview__content {
+    width: 1120px;
+  }
+}

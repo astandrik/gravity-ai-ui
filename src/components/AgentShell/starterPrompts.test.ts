@@ -5,9 +5,9 @@ import {
 } from "./starterPrompts";
 
 describe("starter prompts", () => {
-  it("contains exactly 200 unique prompts", () => {
-    expect(POPULAR_STARTER_PROMPTS).toHaveLength(200);
-    expect(new Set(POPULAR_STARTER_PROMPTS).size).toBe(200);
+  it("contains exactly 300 unique prompts", () => {
+    expect(POPULAR_STARTER_PROMPTS).toHaveLength(300);
+    expect(new Set(POPULAR_STARTER_PROMPTS).size).toBe(300);
     expect(POPULAR_STARTER_PROMPTS.every((prompt) => prompt.length > 20)).toBe(
       true,
     );

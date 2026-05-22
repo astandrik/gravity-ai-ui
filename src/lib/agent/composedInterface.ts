@@ -98,7 +98,9 @@ export function buildComposedInterfaceFromJson(
   argumentsJson: string,
 ): BuiltComposedInterface {
   return buildComposedInterface(
-    composedInterfaceArgumentsSchema.parse(JSON.parse(argumentsJson)),
+    composedInterfaceArgumentsSchema.parse(
+      sanitizeComposedInterfaceInput(JSON.parse(argumentsJson)),
+    ),
     "strict",
   );
 }
@@ -166,7 +168,7 @@ export function buildComposedInterface(
   mode: MaterializeMode = "strict",
 ): BuiltComposedInterface {
   const payload = normalizeContainerTextProps(
-    composedInterfaceArgumentsSchema.parse(args),
+    composedInterfaceArgumentsSchema.parse(sanitizeComposedInterfaceInput(args)),
   );
   const tree = materializeComponentTree(payload, mode);
   const messages = [
@@ -209,9 +211,20 @@ export function materializeComposedComponents(
   payload: ComposedInterfacePayload,
 ): GravityA2uiComponent[] {
   return materializeComponentTree(
-    composedInterfaceArgumentsSchema.parse(payload),
+    composedInterfaceArgumentsSchema.parse(sanitizeComposedInterfaceInput(payload)),
     "strict",
   ).components;
+}
+
+function sanitizeComposedInterfaceInput(input: unknown): unknown {
+  if (!isRecord(input) || !Array.isArray(input.nodes)) {
+    return input;
+  }
+
+  return {
+    ...input,
+    nodes: input.nodes.filter(isRecord),
+  };
 }
 
 export function buildProgressivePlaceholderInterface({
@@ -795,12 +808,14 @@ function createSyntheticId(baseId: string, usedIds: Set<string>) {
 function isRenderableTextValue(value: unknown) {
   return (
     (typeof value === "string" && value.trim() !== "") ||
-    (typeof value === "object" &&
-      value !== null &&
-      !Array.isArray(value) &&
+    (isRecord(value) &&
       "path" in value &&
       typeof value.path === "string")
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function parseField<T>(schema: z.ZodType<T>, value: unknown, fallback: T): T {

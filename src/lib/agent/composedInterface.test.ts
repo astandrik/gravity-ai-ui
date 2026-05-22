@@ -80,6 +80,202 @@ describe("composed interface builder", () => {
     });
   });
 
+  it("accepts data-bound HeroBlock props with refresh actions", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        dataModel: {
+          eyebrow: "Live catalog",
+          title: "Checkout QA",
+          body: "Review current approval state before publishing.",
+          imageLabel: "QA",
+        },
+        nodes: [
+          {
+            id: "hero",
+            parentId: "root",
+            order: 0,
+            component: "HeroBlock",
+            props: {
+              eyebrow: { path: "/eyebrow" },
+              title: { path: "/title" },
+              body: { path: "/body" },
+              imageLabel: { path: "/imageLabel" },
+              tone: "info",
+              labels: [],
+              actions: [
+                {
+                  label: "Refresh",
+                  icon: "refresh",
+                  variant: "outlined",
+                  action: { event: { name: "refresh" } },
+                },
+              ],
+            },
+          },
+        ],
+      } satisfies ComposedInterfacePayload),
+    );
+    const updateComponents = built.messages.find(
+      (message) => "updateComponents" in message,
+    );
+
+    expect(updateComponents).toMatchObject({
+      updateComponents: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "hero",
+            component: "HeroBlock",
+            title: { path: "/title" },
+            body: { path: "/body" },
+            actions: [
+              expect.objectContaining({
+                icon: "refresh",
+                action: { event: { name: "refresh" } },
+              }),
+            ],
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("accepts data-bound display copy in FilterBar", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        dataModel: {
+          filterTitle: "Filters",
+          searchPlaceholder: "Search requests",
+          searchValue: "urgent",
+          filterLabel: "Open",
+          sortLabel: "Sort",
+          sortValue: "newest",
+          sortOptionLabel: "Newest first",
+        },
+        nodes: [
+          {
+            id: "Filters",
+            parentId: "root",
+            order: 0,
+            component: "FilterBar",
+            props: {
+              title: { path: "/filterTitle" },
+              searchPlaceholder: { path: "/searchPlaceholder" },
+              searchValue: { path: "/searchValue" },
+              filters: [
+                {
+                  label: { path: "/filterLabel" },
+                  value: "open",
+                  active: true,
+                },
+              ],
+              sortLabel: { path: "/sortLabel" },
+              sortValue: { path: "/sortValue" },
+              sortOptions: [
+                {
+                  label: { path: "/sortOptionLabel" },
+                  value: "newest",
+                },
+              ],
+            },
+          },
+        ],
+      } satisfies ComposedInterfacePayload),
+    );
+    const updateComponents = built.messages.find(
+      (message) => "updateComponents" in message,
+    );
+
+    expect(updateComponents).toMatchObject({
+      updateComponents: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "Filters",
+            component: "FilterBar",
+            title: { path: "/filterTitle" },
+            filters: [
+              expect.objectContaining({
+                label: { path: "/filterLabel" },
+              }),
+            ],
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("drops accidental string entries from nodes", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        nodes: [simplePayload.nodes[0], "orphan_child_id", simplePayload.nodes[1]],
+      }),
+    );
+    const updateComponents = built.messages.find(
+      (message) => "updateComponents" in message,
+    );
+
+    expect(built.payload.nodes).toEqual([
+      expect.objectContaining({ id: "title" }),
+      expect.objectContaining({ id: "approve" }),
+    ]);
+    expect(updateComponents).toMatchObject({
+      updateComponents: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "root",
+            children: ["title", "approve"],
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("accepts data-bound list props", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        dataModel: {
+          validationProgress: [
+            {
+              label: "Schema validation",
+              value: 85,
+              text: "Checking generated interface props.",
+              tone: "info",
+            },
+          ],
+        },
+        nodes: [
+          {
+            id: "ValidationProgress",
+            parentId: "root",
+            order: 0,
+            component: "ProgressList",
+            props: {
+              items: { path: "/validationProgress" },
+            },
+          },
+        ],
+      } satisfies ComposedInterfacePayload),
+    );
+    const updateComponents = built.messages.find(
+      (message) => "updateComponents" in message,
+    );
+
+    expect(updateComponents).toMatchObject({
+      updateComponents: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "ValidationProgress",
+            component: "ProgressList",
+            items: { path: "/validationProgress" },
+          }),
+        ]),
+      },
+    });
+  });
+
   it("accepts nested cards and wraps multiple card children", () => {
     const built = buildComposedInterfaceFromJson(
       JSON.stringify({

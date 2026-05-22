@@ -22,6 +22,7 @@ export const ALLOWED_GRAVITY_ICONS = [
   "list",
   "person",
   "plus",
+  "refresh",
   "rocket",
   "search",
   "shield",

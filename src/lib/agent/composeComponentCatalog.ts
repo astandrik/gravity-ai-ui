@@ -53,6 +53,21 @@ const dataBindingSchema = objectSchema({
 const dynamicStringSchema = {
   oneOf: [{ type: "string", maxLength: 2400 }, dataBindingSchema],
 };
+const dynamicStringSchemaOfMax = (maxLength: number) => ({
+  oneOf: [{ type: "string", maxLength }, dataBindingSchema],
+});
+const dynamicStringSchemaWithBounds = (
+  minLength: number,
+  maxLength: number,
+) => ({
+  oneOf: [{ type: "string", minLength, maxLength }, dataBindingSchema],
+});
+const nullableDynamicStringSchemaOfMax = (maxLength: number) => ({
+  oneOf: [{ type: ["string", "null"], maxLength }, dataBindingSchema],
+});
+const dynamicArraySchema = (arraySchema: JsonSchema) => ({
+  oneOf: [arraySchema, dataBindingSchema],
+});
 const dynamicBooleanSchema = {
   oneOf: [{ type: "boolean" }, dataBindingSchema],
 };
@@ -91,15 +106,15 @@ const actionSchema = objectSchema({
 });
 const optionSchema = objectSchema(
   {
-    label: { type: "string", minLength: 1, maxLength: 100 },
+    label: dynamicStringSchemaWithBounds(1, 100),
     value: { type: "string", minLength: 1, maxLength: 100 },
   },
   ["label", "value"],
 );
 const labelItemSchema = objectSchema(
   {
-    label: { type: "string", minLength: 1, maxLength: 240 },
-    value: { type: ["string", "null"], maxLength: 240 },
+    label: dynamicStringSchemaWithBounds(1, 240),
+    value: nullableDynamicStringSchemaOfMax(240),
     tone: enumSchema(GRAVITY_TONES),
     type: enumSchema(GRAVITY_LABEL_TYPES),
   },
@@ -107,7 +122,7 @@ const labelItemSchema = objectSchema(
 );
 const cardActionSchema = objectSchema(
   {
-    label: { type: "string", minLength: 1, maxLength: 120 },
+    label: dynamicStringSchemaWithBounds(1, 120),
     icon: { type: ["string", "null"], enum: [...ALLOWED_GRAVITY_ICONS, null] },
     action: actionSchema,
     variant: enumSchema(GRAVITY_BUTTON_VARIANTS),
@@ -119,15 +134,23 @@ const cardActionSchema = objectSchema(
 );
 const cardGridItemSchema = objectSchema(
   {
-    title: { type: "string", minLength: 1, maxLength: 240 },
-    subtitle: { type: ["string", "null"], maxLength: 240 },
-    body: { type: "string", maxLength: 800 },
-    imageLabel: { type: ["string", "null"], maxLength: 80 },
-    value: { type: ["string", "null"], maxLength: 120 },
-    meta: { type: ["string", "null"], maxLength: 240 },
+    title: dynamicStringSchemaWithBounds(1, 240),
+    subtitle: nullableDynamicStringSchemaOfMax(240),
+    body: dynamicStringSchemaOfMax(800),
+    imageLabel: nullableDynamicStringSchemaOfMax(80),
+    value: nullableDynamicStringSchemaOfMax(120),
+    meta: nullableDynamicStringSchemaOfMax(240),
     tone: enumSchema(GRAVITY_TONES),
-    labels: { type: "array", maxItems: 4, items: labelItemSchema },
-    actions: { type: "array", maxItems: 2, items: cardActionSchema },
+    labels: dynamicArraySchema({
+      type: "array",
+      maxItems: 4,
+      items: labelItemSchema,
+    }),
+    actions: dynamicArraySchema({
+      type: "array",
+      maxItems: 2,
+      items: cardActionSchema,
+    }),
   },
   [
     "title",
@@ -194,8 +217,8 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   TextField: props(
     {
-      label: { type: "string", maxLength: 120 },
-      placeholder: { type: "string", maxLength: 160 },
+      label: dynamicStringSchemaOfMax(120),
+      placeholder: dynamicStringSchemaOfMax(160),
       value: dynamicStringSchema,
       textFieldType: enumSchema(GRAVITY_TEXT_FIELD_TYPES),
       disabled: dynamicBooleanSchema,
@@ -204,7 +227,7 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   CheckBox: props(
     {
-      label: { type: "string", minLength: 1, maxLength: 180 },
+      label: dynamicStringSchemaWithBounds(1, 180),
       value: dynamicBooleanSchema,
       disabled: dynamicBooleanSchema,
     },
@@ -212,9 +235,14 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   ChoicePicker: props(
     {
-      label: { type: "string", maxLength: 120 },
+      label: dynamicStringSchemaOfMax(120),
       variant: enumSchema(GRAVITY_CHOICE_PICKER_VARIANTS),
-      options: { type: "array", minItems: 1, maxItems: 12, items: optionSchema },
+      options: dynamicArraySchema({
+        type: "array",
+        minItems: 1,
+        maxItems: 12,
+        items: optionSchema,
+      }),
       value: dynamicStringListSchema,
     },
     ["options", "value"],
@@ -225,23 +253,23 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   NavigationBar: props({}),
   AlertBlock: props(
     {
-      title: { type: "string", maxLength: 240 },
-      message: { type: "string", maxLength: 1600 },
+      title: dynamicStringSchemaOfMax(240),
+      message: dynamicStringSchemaOfMax(1600),
       tone: enumSchema(GRAVITY_STATUS_TONES),
     },
     ["title", "message", "tone"],
   ),
   MetricGrid: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
-            value: { type: "string", minLength: 1, maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
+            value: dynamicStringSchemaWithBounds(1, 240),
+            description: nullableDynamicStringSchemaOfMax(240),
             tone: enumSchema(GRAVITY_TONES),
             icon: {
               type: ["string", "null"],
@@ -250,117 +278,122 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
           },
           ["label", "value", "description", "tone", "icon"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   DataTable: props(
     {
-      title: { type: "string", maxLength: 240 },
-      columns: {
+      title: dynamicStringSchemaOfMax(240),
+      columns: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 6,
         items: objectSchema(
           {
             id: idSchema,
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             align: enumSchema(GRAVITY_TABLE_ALIGN),
           },
           ["id", "label", "align"],
         ),
-      },
-      rows: {
+      }),
+      rows: dynamicArraySchema({
         type: "array",
         maxItems: 12,
         items: objectSchema({
           cells: {
             type: "array",
             maxItems: 6,
-            items: { type: "string", maxLength: 240 },
+            items: dynamicStringSchemaOfMax(240),
           },
         }),
-      },
-      emptyMessage: { type: "string", maxLength: 240 },
+      }),
+      emptyMessage: dynamicStringSchemaOfMax(240),
     },
     ["title", "columns", "rows", "emptyMessage"],
   ),
   ProgressList: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 6,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
-            value: { type: "number", minimum: 0, maximum: 100 },
-            text: { type: ["string", "null"], maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
+            value: {
+              oneOf: [
+                { type: "number", minimum: 0, maximum: 100 },
+                dataBindingSchema,
+              ],
+            },
+            text: nullableDynamicStringSchemaOfMax(240),
             tone: enumSchema(GRAVITY_TONES),
           },
           ["label", "value", "text", "tone"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   DefinitionListBlock: props(
     {
-      title: { type: "string", maxLength: 240 },
-      items: {
+      title: dynamicStringSchemaOfMax(240),
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 10,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
-            value: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
+            value: dynamicStringSchemaWithBounds(1, 240),
           },
           ["label", "value"],
         ),
-      },
+      }),
     },
     ["title", "items"],
   ),
   LinkList: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             href: { type: "string", minLength: 1, maxLength: 500 },
-            description: { type: ["string", "null"], maxLength: 240 },
+            description: nullableDynamicStringSchemaOfMax(240),
           },
           ["label", "href", "description"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   UserList: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            name: { type: "string", minLength: 1, maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
+            name: dynamicStringSchemaWithBounds(1, 240),
+            description: nullableDynamicStringSchemaOfMax(240),
             tone: enumSchema(GRAVITY_TONES),
           },
           ["name", "description", "tone"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   SwitchField: props(
     {
-      label: { type: "string", minLength: 1, maxLength: 180 },
+      label: dynamicStringSchemaWithBounds(1, 180),
       value: dynamicBooleanSchema,
       disabled: dynamicBooleanSchema,
     },
@@ -368,9 +401,14 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   SelectField: props(
     {
-      label: { type: "string", maxLength: 120 },
-      placeholder: { type: "string", maxLength: 160 },
-      options: { type: "array", minItems: 1, maxItems: 12, items: optionSchema },
+      label: dynamicStringSchemaOfMax(120),
+      placeholder: dynamicStringSchemaOfMax(160),
+      options: dynamicArraySchema({
+        type: "array",
+        minItems: 1,
+        maxItems: 12,
+        items: optionSchema,
+      }),
       value: dynamicStringListSchema,
       disabled: dynamicBooleanSchema,
     },
@@ -378,7 +416,7 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   SliderField: props(
     {
-      label: { type: "string", minLength: 1, maxLength: 180 },
+      label: dynamicStringSchemaWithBounds(1, 180),
       value: dynamicNumberSchema,
       min: { type: "number", minimum: -1_000_000, maximum: 1_000_000 },
       max: { type: "number", minimum: -1_000_000, maximum: 1_000_000 },
@@ -389,42 +427,59 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   LabelGroup: props(
     {
-      items: { type: "array", minItems: 1, maxItems: 12, items: labelItemSchema },
+      items: dynamicArraySchema({
+        type: "array",
+        minItems: 1,
+        maxItems: 12,
+        items: labelItemSchema,
+      }),
     },
     ["items"],
   ),
   HeroBlock: props(
     {
-      eyebrow: { type: ["string", "null"], maxLength: 240 },
-      title: { type: "string", maxLength: 240 },
-      body: { type: "string", maxLength: 1600 },
-      imageLabel: { type: ["string", "null"], maxLength: 80 },
+      eyebrow: nullableDynamicStringSchemaOfMax(240),
+      title: dynamicStringSchemaOfMax(240),
+      body: dynamicStringSchemaOfMax(1600),
+      imageLabel: nullableDynamicStringSchemaOfMax(80),
       tone: enumSchema(GRAVITY_TONES),
-      labels: { type: "array", maxItems: 4, items: labelItemSchema },
-      actions: { type: "array", maxItems: 2, items: cardActionSchema },
+      labels: dynamicArraySchema({
+        type: "array",
+        maxItems: 4,
+        items: labelItemSchema,
+      }),
+      actions: dynamicArraySchema({
+        type: "array",
+        maxItems: 2,
+        items: cardActionSchema,
+      }),
     },
     ["eyebrow", "title", "body", "imageLabel", "tone", "labels", "actions"],
   ),
   FilterBar: props(
     {
-      title: { type: "string", maxLength: 240 },
-      searchPlaceholder: { type: ["string", "null"], maxLength: 240 },
-      searchValue: { type: ["string", "null"], maxLength: 240 },
-      filters: {
+      title: dynamicStringSchemaOfMax(240),
+      searchPlaceholder: nullableDynamicStringSchemaOfMax(240),
+      searchValue: nullableDynamicStringSchemaOfMax(240),
+      filters: dynamicArraySchema({
         type: "array",
         maxItems: 10,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             value: { type: "string", minLength: 1, maxLength: 100 },
             active: { type: "boolean" },
           },
           ["label", "value", "active"],
         ),
-      },
-      sortLabel: { type: ["string", "null"], maxLength: 240 },
-      sortValue: { type: ["string", "null"], maxLength: 100 },
-      sortOptions: { type: "array", maxItems: 8, items: optionSchema },
+      }),
+      sortLabel: nullableDynamicStringSchemaOfMax(240),
+      sortValue: nullableDynamicStringSchemaOfMax(100),
+      sortOptions: dynamicArraySchema({
+        type: "array",
+        maxItems: 8,
+        items: optionSchema,
+      }),
     },
     [
       "title",
@@ -438,71 +493,80 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
   ),
   FeaturePanelGrid: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            title: { type: "string", maxLength: 240 },
-            body: { type: "string", maxLength: 1600 },
+            title: dynamicStringSchemaOfMax(240),
+            body: dynamicStringSchemaOfMax(1600),
             icon: {
               type: ["string", "null"],
               enum: [...ALLOWED_GRAVITY_ICONS, null],
             },
             tone: enumSchema(GRAVITY_TONES),
-            value: { type: ["string", "null"], maxLength: 240 },
-            labels: { type: "array", maxItems: 3, items: labelItemSchema },
+            value: nullableDynamicStringSchemaOfMax(240),
+            labels: dynamicArraySchema({
+              type: "array",
+              maxItems: 3,
+              items: labelItemSchema,
+            }),
           },
           ["title", "body", "icon", "tone", "value", "labels"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   CardGrid: props(
     {
-      title: { type: "string", maxLength: 240 },
-      description: { type: ["string", "null"], maxLength: 1600 },
+      title: dynamicStringSchemaOfMax(240),
+      description: nullableDynamicStringSchemaOfMax(1600),
       variant: enumSchema(GRAVITY_CARD_GRID_VARIANTS),
       columns: enumSchema(GRAVITY_CARD_GRID_COLUMNS),
-      items: { type: "array", minItems: 1, maxItems: 12, items: cardGridItemSchema },
+      items: dynamicArraySchema({
+        type: "array",
+        minItems: 1,
+        maxItems: 12,
+        items: cardGridItemSchema,
+      }),
     },
     ["items"],
   ),
   TabsBlock: props(
     {
-      title: { type: "string", maxLength: 240 },
+      title: dynamicStringSchemaOfMax(240),
       size: enumSchema(GRAVITY_TAB_SIZES),
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 2,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             value: idSchema,
-            body: { type: "string", minLength: 1, maxLength: 1600 },
-            counter: { type: ["string", "null"], maxLength: 240 },
+            body: dynamicStringSchemaWithBounds(1, 1600),
+            counter: nullableDynamicStringSchemaOfMax(240),
             tone: enumSchema(GRAVITY_TONES),
             active: { type: "boolean" },
           },
           ["label", "value", "body", "counter", "tone", "active"],
         ),
-      },
+      }),
     },
     ["title", "size", "items"],
   ),
   EmptyStateList: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 2,
         items: objectSchema(
           {
-            title: { type: "string", maxLength: 240 },
-            description: { type: "string", maxLength: 1600 },
+            title: dynamicStringSchemaOfMax(240),
+            description: dynamicStringSchemaOfMax(1600),
             icon: {
               type: ["string", "null"],
               enum: [...ALLOWED_GRAVITY_ICONS, null],
@@ -512,58 +576,58 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
           },
           ["title", "description", "icon", "tone", "size"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   LoadingStateList: props(
     {
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 4,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
+            description: nullableDynamicStringSchemaOfMax(240),
             size: enumSchema(GRAVITY_LOADING_SIZES),
           },
           ["label", "description", "size"],
         ),
-      },
+      }),
     },
     ["items"],
   ),
   BreadcrumbTrail: props(
     {
-      title: { type: "string", maxLength: 240 },
+      title: dynamicStringSchemaOfMax(240),
       showRoot: { type: "boolean" },
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 2,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             href: { type: ["string", "null"], maxLength: 500 },
           },
           ["label", "href"],
         ),
-      },
+      }),
     },
     ["title", "showRoot", "items"],
   ),
   StepperBlock: props(
     {
-      title: { type: "string", maxLength: 240 },
+      title: dynamicStringSchemaOfMax(240),
       size: enumSchema(GRAVITY_STEPPER_SIZES),
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 2,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
+            label: dynamicStringSchemaWithBounds(1, 240),
             value: idSchema,
             view: enumSchema(GRAVITY_STEPPER_VIEWS),
             disabled: { type: "boolean" },
@@ -571,49 +635,49 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
           },
           ["label", "value", "view", "disabled", "active"],
         ),
-      },
+      }),
     },
     ["title", "size", "items"],
   ),
   AccordionBlock: props(
     {
-      title: { type: "string", maxLength: 240 },
+      title: dynamicStringSchemaOfMax(240),
       size: enumSchema(GRAVITY_ACCORDION_SIZES),
       view: enumSchema(GRAVITY_ACCORDION_VIEWS),
       arrowPosition: enumSchema(GRAVITY_ACCORDION_ARROW_POSITIONS),
-      items: {
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            title: { type: "string", minLength: 1, maxLength: 240 },
-            body: { type: "string", minLength: 1, maxLength: 1600 },
+            title: dynamicStringSchemaWithBounds(1, 240),
+            body: dynamicStringSchemaWithBounds(1, 1600),
             expanded: { type: "boolean" },
             disabled: { type: "boolean" },
           },
           ["title", "body", "expanded", "disabled"],
         ),
-      },
+      }),
     },
     ["title", "size", "view", "arrowPosition", "items"],
   ),
   CopyList: props(
     {
-      title: { type: "string", maxLength: 240 },
-      items: {
+      title: dynamicStringSchemaOfMax(240),
+      items: dynamicArraySchema({
         type: "array",
         minItems: 1,
         maxItems: 8,
         items: objectSchema(
           {
-            label: { type: "string", minLength: 1, maxLength: 240 },
-            value: { type: "string", minLength: 1, maxLength: 240 },
-            copyText: { type: "string", minLength: 1, maxLength: 1000 },
+            label: dynamicStringSchemaWithBounds(1, 240),
+            value: dynamicStringSchemaWithBounds(1, 240),
+            copyText: dynamicStringSchemaWithBounds(1, 1000),
           },
           ["label", "value", "copyText"],
         ),
-      },
+      }),
     },
     ["title", "items"],
   ),

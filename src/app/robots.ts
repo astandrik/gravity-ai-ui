@@ -9,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: [
           withBasePath("/"),
+          withBasePath("/gallery"),
           withBasePath("/docs"),
           withBasePath("/llm.txt"),
           withBasePath("/llms.txt"),
@@ -19,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
         disallow: [
           withBasePath("/api"),
+          withBasePath("/gallery-thumbnail-render"),
           withBasePath("/__openai"),
           withBasePath("/_next"),
         ],
@@ -27,12 +29,14 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "OAI-SearchBot",
         allow: [
           withBasePath("/"),
+          withBasePath("/gallery"),
           withBasePath("/docs"),
           withBasePath("/llm.txt"),
           withBasePath("/llms.txt"),
         ],
         disallow: [
           withBasePath("/api"),
+          withBasePath("/gallery-thumbnail-render"),
           withBasePath("/__openai"),
           withBasePath("/_next"),
         ],
@@ -41,12 +45,14 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "GPTBot",
         allow: [
           withBasePath("/"),
+          withBasePath("/gallery"),
           withBasePath("/docs"),
           withBasePath("/llm.txt"),
           withBasePath("/llms.txt"),
         ],
         disallow: [
           withBasePath("/api"),
+          withBasePath("/gallery-thumbnail-render"),
           withBasePath("/__openai"),
           withBasePath("/_next"),
         ],

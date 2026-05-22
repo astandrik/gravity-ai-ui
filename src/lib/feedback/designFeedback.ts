@@ -1,18 +1,31 @@
 import { z } from "zod";
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import {
   composedInterfaceArgumentsSchema,
   type ComposedInterfacePayload,
 } from "@/lib/agent/composedInterface";
 import type { GravityA2uiMessage } from "@/lib/agent/a2uiContract";
 
+const MAX_STORED_FEEDBACK_MESSAGES = 12;
+
+const feedbackMessagesSchema = z.preprocess(
+  (value) =>
+    Array.isArray(value)
+      ? value.slice(-MAX_STORED_FEEDBACK_MESSAGES)
+      : value,
+  z.array(z.unknown()).max(MAX_STORED_FEEDBACK_MESSAGES).default([]),
+);
+
 export const designFeedbackSchema = z
   .object({
     conversationId: z.string().min(1).max(120),
     turnId: z.string().min(1).max(160),
     rating: z.literal(1),
+    publish: z.literal(true),
     prompt: z.string().max(6000).optional(),
     payload: composedInterfaceArgumentsSchema,
-    messages: z.array(z.unknown()).max(12),
+    messages: feedbackMessagesSchema,
     dataModel: z.unknown().optional(),
   })
   .strict();
@@ -21,6 +34,7 @@ export type DesignFeedbackInput = z.infer<typeof designFeedbackSchema>;
 
 export type SavedDesignFeedback = DesignFeedbackInput & {
   feedbackId: string;
+  gallerySlug: string;
   createdAtMs: number;
 };
 
@@ -31,12 +45,37 @@ export type LikedDesignExample = {
   payload: ComposedInterfacePayload;
 };
 
+export type PublishedDesign = {
+  id: string;
+  title: string;
+  summary: string;
+  prompt?: string;
+  payload: ComposedInterfacePayload;
+  surfaceId: string;
+  createdAtMs: number;
+  thumbnail?: PublishedDesignThumbnail;
+};
+
+export type PublishedDesignThumbnail = {
+  width: number;
+  height: number;
+  generatedAtMs: number;
+  webpPath: string;
+  pngPath: string;
+};
+
 export function toSavedFeedback(
   input: DesignFeedbackInput,
 ): SavedDesignFeedback {
+  const feedbackId = createFeedbackId(input);
+
   return {
     ...input,
-    feedbackId: createFeedbackId(input),
+    feedbackId,
+    gallerySlug: createPublishedDesignSlug(
+      getFeedbackPayloadTitle(input.payload),
+      feedbackId,
+    ),
     createdAtMs: Date.now(),
     messages: input.messages as GravityA2uiMessage[],
   };
@@ -49,6 +88,66 @@ function createFeedbackId(input: DesignFeedbackInput) {
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   return `${input.conversationId}:${input.turnId}:${input.rating}:${suffix}`;
+}
+
+export function encodePublishedDesignId(feedbackId: string) {
+  return Buffer.from(feedbackId, "utf8").toString("base64url");
+}
+
+export function createPublishedDesignSlug(title: string, feedbackId: string) {
+  const base = slugifyTitle(title);
+  const token = getFeedbackIdToken(feedbackId);
+
+  return `${base}-${token}`;
+}
+
+export function isPublishedDesignSlug(id: string) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*-[a-z0-9]{10,16}$/.test(id);
+}
+
+export function decodePublishedDesignId(id: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+    return null;
+  }
+
+  const feedbackId = Buffer.from(id, "base64url").toString("utf8");
+
+  if (
+    !feedbackId ||
+    feedbackId.length > 512 ||
+    /[\u0000-\u001f]/.test(feedbackId) ||
+    encodePublishedDesignId(feedbackId) !== id
+  ) {
+    return null;
+  }
+
+  return feedbackId;
+}
+
+function slugifyTitle(title: string) {
+  const slug = title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+    .slice(0, 72)
+    .replace(/-+$/g, "");
+
+  return slug || "interface";
+}
+
+function getFeedbackIdToken(feedbackId: string) {
+  const suffix = feedbackId.split(":").at(-1) ?? feedbackId;
+  const compactSuffix = suffix.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (compactSuffix.length >= 10) {
+    return compactSuffix.slice(0, 12);
+  }
+
+  return createHash("sha256").update(feedbackId).digest("hex").slice(0, 12);
 }
 
 export function getFeedbackPayloadTitle(payload: ComposedInterfacePayload) {
