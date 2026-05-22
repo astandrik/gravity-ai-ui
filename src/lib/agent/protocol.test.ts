@@ -1,6 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { agentRequestSchema, encodeSseEvent } from "./protocol";
 
+const payload = {
+  sequence: 0,
+  surfaceId: "main",
+  dataModel: {
+    title: "Review",
+  },
+  root: {
+    component: "Column" as const,
+    props: {
+      gap: "normal" as const,
+      align: "stretch" as const,
+    },
+  },
+  nodes: [
+    {
+      id: "title",
+      parentId: "root",
+      order: 0,
+      component: "Text" as const,
+      props: {
+        text: { path: "/title" },
+        variant: "h2",
+      },
+    },
+  ],
+};
+
 describe("agent SSE protocol", () => {
   it("encodes named server-sent events", () => {
     expect(encodeSseEvent({ type: "status", message: "Rendering" })).toBe(
@@ -8,40 +35,7 @@ describe("agent SSE protocol", () => {
     );
   });
 
-  it("encodes fixed interface payload events", () => {
-    const payload = {
-      sequence: 0,
-      surfaceId: "main",
-      title: "Review",
-      titleIcon: null,
-      summary: "Generated shell payload",
-      tone: "info" as const,
-      layout: {
-        density: "comfortable" as const,
-        sectionDividers: "minimal" as const,
-      },
-      alerts: [],
-      metrics: [],
-      sections: [],
-      fields: [],
-      tables: [],
-      progress: [],
-      descriptions: [],
-      links: [],
-      users: [],
-      labels: [],
-      cards: [],
-      tabs: [],
-      emptyStates: [],
-      loadingStates: [],
-      breadcrumbs: [],
-      steppers: [],
-      accordions: [],
-      copyLists: [],
-      actions: [],
-      navigation: [],
-    };
-
+  it("encodes composed interface payload events", () => {
     expect(encodeSseEvent({ type: "payload", payload })).toBe(
       `event: payload\ndata: ${JSON.stringify({ type: "payload", payload })}\n\n`,
     );
@@ -61,43 +55,12 @@ describe("agent SSE protocol", () => {
             },
             {
               role: "assistant",
-              text: "Launch checklist\nActions: Continue",
+              text: "Launch checklist\nComponents: Text x1",
               surfaceId: "main",
             },
           ],
           latestSurfaceId: "main",
-          latestPayload: {
-            sequence: 0,
-            surfaceId: "main",
-            title: "Launch checklist",
-            titleIcon: null,
-            summary: "Review launch readiness.",
-            tone: "info",
-            layout: {
-              density: "comfortable",
-              sectionDividers: "minimal",
-            },
-            alerts: [],
-            metrics: [],
-            sections: [],
-            fields: [],
-            tables: [],
-            progress: [],
-            descriptions: [],
-            links: [],
-            users: [],
-            labels: [],
-            cards: [],
-            tabs: [],
-            emptyStates: [],
-            loadingStates: [],
-            breadcrumbs: [],
-            steppers: [],
-            accordions: [],
-            copyLists: [],
-            actions: [],
-            navigation: [],
-          },
+          latestPayload: payload,
           latestDataModel: {
             title: "Launch checklist",
           },

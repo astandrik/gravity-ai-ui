@@ -1,15 +1,5 @@
+import type { ComposedInterfacePayload } from "./composedInterface";
 import type { GravityIconName } from "./gravityCapabilities";
-import type { RenderInterfaceArguments } from "./fixedInterface";
-
-type FieldWithKey = RenderInterfaceArguments["fields"][number] & {
-  key: string;
-};
-
-const densitySpacing = {
-  compact: { gap: 12, padding: 16 },
-  comfortable: { gap: 16, padding: 20 },
-  spacious: { gap: 24, padding: 24 },
-} as const;
 
 const iconImportByName: Record<
   GravityIconName,
@@ -39,948 +29,640 @@ const iconImportByName: Record<
   },
 };
 
-export function buildReactCode(payload: RenderInterfaceArguments) {
-  const fields = withUniqueFieldKeys(payload.fields);
+export function buildReactCode(payload: ComposedInterfacePayload) {
+  const componentName = createComponentName(getPayloadTitle(payload));
   const usedIcons = collectUsedIcons(payload);
-  const hasCardActions = payload.cards.some((card) => card.actions.length > 0);
-  const hasCardLabels = payload.cards.some((card) => card.labels.length > 0);
-  const needsClient =
-    fields.length > 0 ||
-    payload.tabs.length > 0 ||
-    payload.steppers.length > 0 ||
-    payload.copyLists.length > 0 ||
-    hasCardActions ||
-    payload.actions.length > 0 ||
-    payload.navigation.length > 0;
-  const usedComponents = new Set(["Card", "Text"]);
-
-  if (payload.alerts.length > 0) {
-    usedComponents.add("Alert");
-  }
-
-  if (payload.metrics.length > 0) {
-    usedComponents.add("Label");
-  }
-
-  if (payload.tables.length > 0) {
-    usedComponents.add("Table");
-  }
-
-  if (payload.progress.length > 0) {
-    usedComponents.add("Progress");
-  }
-
-  if (payload.descriptions.length > 0) {
-    usedComponents.add("DefinitionList");
-  }
-
-  if (payload.links.length > 0) {
-    usedComponents.add("Link");
-  }
-
-  if (payload.users.length > 0) {
-    usedComponents.add("Label");
-    usedComponents.add("User");
-  }
-
-  if (payload.labels.length > 0) {
-    usedComponents.add("Label");
-  }
-
-  if (hasCardLabels) {
-    usedComponents.add("Label");
-  }
-
-  if (hasCardActions) {
-    usedComponents.add("Button");
-  }
-
-  if (payload.tabs.length > 0) {
-    usedComponents.add("Label");
-    usedComponents.add("Tab");
-    usedComponents.add("TabList");
-    usedComponents.add("TabPanel");
-    usedComponents.add("TabProvider");
-  }
-
-  if (payload.emptyStates.length > 0) {
-    usedComponents.add("PlaceholderContainer");
-  }
-
-  if (payload.loadingStates.length > 0) {
-    usedComponents.add("Spin");
-  }
-
-  if (payload.breadcrumbs.length > 0) {
-    usedComponents.add("Breadcrumbs");
-  }
-
-  if (payload.steppers.length > 0) {
-    usedComponents.add("Stepper");
-  }
-
-  if (payload.accordions.length > 0) {
-    usedComponents.add("Accordion");
-  }
-
-  if (payload.copyLists.length > 0) {
-    usedComponents.add("Button");
-    usedComponents.add("CopyToClipboard");
-  }
-
-  if (
-    fields.some(
-      (field) =>
-        field.type !== "checkbox" &&
-        field.type !== "switch" &&
-        field.type !== "singleChoice" &&
-        field.type !== "multipleChoice" &&
-        field.type !== "select" &&
-        field.type !== "slider",
-    )
-  ) {
-    usedComponents.add("TextInput");
-  }
-
-  if (
-    fields.some(
-      (field) => field.type === "checkbox" || field.type === "multipleChoice",
-    )
-  ) {
-    usedComponents.add("Checkbox");
-  }
-
-  if (fields.some((field) => field.type === "switch")) {
-    usedComponents.add("Switch");
-  }
-
-  if (fields.some((field) => field.type === "singleChoice")) {
-    usedComponents.add("RadioGroup");
-  }
-
-  if (fields.some((field) => field.type === "select")) {
-    usedComponents.add("Select");
-  }
-
-  if (fields.some((field) => field.type === "slider")) {
-    usedComponents.add("Label");
-    usedComponents.add("Slider");
-  }
-
-  if (payload.actions.length > 0 || payload.navigation.length > 0) {
-    usedComponents.add("Button");
-  }
-
-  if (usedIcons.length > 0) {
-    usedComponents.add("Icon");
-  }
-
-  const imports = [
-    needsClient ? '"use client";\n' : "",
-    fields.length > 0 || payload.tabs.length > 0 || payload.steppers.length > 0
-      ? 'import { useState } from "react";\n'
-      : "",
-    payload.navigation.length > 0
-      ? 'import { ActionBar } from "@gravity-ui/navigation";\n'
-      : "",
-    iconImportLine(usedIcons),
-    `import {\n${[...usedComponents]
-      .sort()
-      .map((component) => `  ${component},`)
-      .join("\n")}\n} from "@/components/GravityUI/GravityUI";`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-  const componentName = createComponentName(payload.title);
-  const spacing = densitySpacing[payload.layout.density];
-  const bodyLines = [
-    fieldStateLine(fields),
-    ...tabStateLines(payload.tabs),
-    ...stepperStateLines(payload.steppers),
-    actionHandlerLine(
-      fields,
-      hasCardActions ||
-        payload.actions.length > 0 ||
-        payload.navigation.length > 0,
-    ),
-    "  return (",
-    '    <Card theme="normal" view="filled" size="l" type="container">',
-    `      <div style={{ display: "grid", gap: ${spacing.gap}, padding: ${spacing.padding} }}>`,
-    titleLine(payload),
-    payload.summary
-      ? `        <Text as="p" variant="body-2" color="secondary">${jsxText(payload.summary)}</Text>`
-      : null,
-    ...navigationLines(payload.navigation),
-    ...breadcrumbLines(payload.breadcrumbs),
-    ...alertLines(payload.alerts),
-    ...metricLines(payload.metrics),
-    ...labelLines(payload.labels),
-    ...cardLines(payload.cards),
-    ...stepperLines(payload.steppers),
-    ...sectionLines(payload),
-    ...tabLines(payload.tabs),
-    ...accordionLines(payload.accordions),
-    ...descriptionLines(payload.descriptions),
-    ...tableLines(payload.tables),
-    ...progressLines(payload.progress),
-    ...loadingStateLines(payload.loadingStates),
-    ...emptyStateLines(payload.emptyStates),
-    ...userLines(payload.users),
-    ...linkLines(payload.links),
-    ...copyListLines(payload.copyLists),
-    ...fieldLines(fields),
-    ...actionLines(payload.actions),
-    "      </div>",
-    "    </Card>",
-    "  );",
-  ].filter((line): line is string => Boolean(line));
-
-  return `${imports}\n\nexport function ${componentName}() {\n${bodyLines.join("\n")}\n}\n`;
-}
-
-function fieldStateLine(fields: FieldWithKey[]) {
-  if (fields.length === 0) {
-    return null;
-  }
-
-  return `  const [form, setForm] = useState<Record<string, string | boolean | string[] | number>>(${jsonForCode(
-    Object.fromEntries(fields.map((field) => [field.key, initialFieldValue(field)])),
-    2,
-  ).replace(/\n/g, "\n  ")});`;
-}
-
-function actionHandlerLine(fields: FieldWithKey[], hasActions: boolean) {
-  if (!hasActions) {
-    return null;
-  }
-
-  const payload = fields.length > 0 ? "form" : "{}";
+  const iconImports = iconImportLine(usedIcons);
 
   return [
+    '"use client";',
     "",
-    "  const handleAction = (action: string) => {",
-    `    console.log("Action", action, ${payload});`,
-    "  };",
-  ].join("\n");
-}
-
-function tabStateLines(tabs: RenderInterfaceArguments["tabs"]) {
-  return tabs.map(
-    (tab, index) =>
-      `  const [activeTab${index}, setActiveTab${index}] = useState(${jsString(
-        tab.items.find((item) => item.active)?.value ?? tab.items[0]?.value ?? "",
-      )});`,
-  );
-}
-
-function stepperStateLines(steppers: RenderInterfaceArguments["steppers"]) {
-  return steppers.map(
-    (stepper, index) =>
-      `  const [activeStep${index}, setActiveStep${index}] = useState(${jsString(
-        stepper.items.find((item) => item.active)?.value ??
-          stepper.items[0]?.value ??
-          "",
-      )});`,
-  );
-}
-
-function titleLine(payload: RenderInterfaceArguments) {
-  if (!payload.titleIcon) {
-    return `        <Text as="h2" variant="subheader-3">${jsxText(payload.title)}</Text>`;
-  }
-
-  return [
-    '        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>',
-    `          ${iconElement(payload.titleIcon, 18)}`,
-    `          <Text as="h2" variant="subheader-3">${jsxText(payload.title)}</Text>`,
-    "        </div>",
-  ].join("\n");
-}
-
-function navigationLines(
-  navigation: RenderInterfaceArguments["navigation"],
-) {
-  if (navigation.length === 0) {
-    return [];
-  }
-
-  return [
+    'import { Fragment, type ReactNode } from "react";',
+    iconImports,
+    'import { ActionBar } from "@gravity-ui/navigation";',
+    "import {",
+    "  Accordion,",
+    "  Alert,",
+    "  Breadcrumbs,",
+    "  Button,",
+    "  Card,",
+    "  Checkbox,",
+    "  CopyToClipboard,",
+    "  DefinitionList,",
+    "  Divider,",
+    "  Icon,",
+    "  Label,",
+    "  Link,",
+    "  PlaceholderContainer,",
+    "  Progress,",
+    "  RadioGroup,",
+    "  Select,",
+    "  Slider,",
+    "  Spin,",
+    "  Stepper,",
+    "  Switch,",
+    "  Tab,",
+    "  TabList,",
+    "  TabPanel,",
+    "  TabProvider,",
+    "  Table,",
+    "  Text,",
+    "  TextInput,",
+    "  User,",
+    '} from "@/components/GravityUI/GravityUI";',
+    "",
+    "type Node = {",
+    "  id: string;",
+    "  parentId: string | null;",
+    "  order: number;",
+    "  component: string;",
+    "  props: Record<string, unknown>;",
+    "};",
+    "",
+    `const root = ${jsValue(payload.root)};`,
+    `const nodes: Node[] = ${jsValue(payload.nodes)};`,
+    `const dataModel = ${jsValue(payload.dataModel ?? {})};`,
+    "",
+    iconMapLine(usedIcons),
+    "",
+    `export function ${componentName}() {`,
+    "  const childrenByParent = groupChildren(nodes);",
+    "  const renderChildren = (parentId: string) =>",
+    "    (childrenByParent.get(parentId) ?? []).map((node) => (",
+    "      <Fragment key={node.id}>{renderNode(node, childrenByParent, renderChildren)}</Fragment>",
+    "    ));",
+    "",
+    "  return renderLayout(root.component, root.props ?? {}, renderChildren(\"root\"));",
+    "}",
+    "",
+    "function renderNode(",
+    "  node: Node,",
+    "  childrenByParent: Map<string, Node[]>,",
+    "  renderChildren: (parentId: string) => ReactNode[],",
+    ") {",
+    "  const props = node.props ?? {};",
+    "  const children = renderChildren(node.id);",
+    "",
+    "  switch (node.component) {",
+    '    case "Column":',
+    '    case "Row":',
+    "      return renderLayout(node.component, props, children);",
+    '    case "NavigationBar":',
+    "      return (",
     '        <ActionBar aria-label="Generated navigation">',
     "          <ActionBar.Section>",
-    "            <ActionBar.Group>",
-    ...navigation.flatMap((item) => [
-      "              <ActionBar.Item>",
-      `                <Button view=${jsxString(item.active ? "action" : "flat")} onClick={() => handleAction(${jsString(item.action)})}>`,
-      item.icon ? `                  ${iconElement(item.icon, 16)}` : null,
-      `                  ${jsxText(item.label)}`,
-      "                </Button>",
-      "              </ActionBar.Item>",
-    ]),
-    "            </ActionBar.Group>",
+    "            <ActionBar.Group>{children}</ActionBar.Group>",
     "          </ActionBar.Section>",
     "        </ActionBar>",
-  ].filter((line): line is string => Boolean(line));
+    "      );",
+    '    case "Card":',
+    "      return (",
+    "        <Card theme={stringProp(props.theme, \"normal\")} view={stringProp(props.view, \"filled\")} size=\"l\" type=\"container\">",
+    "          <div style={{ padding: padding(stringProp(props.padding, \"normal\")) }}>{children}</div>",
+    "        </Card>",
+    "      );",
+    '    case "Text":',
+    "      return (",
+    "        <Text as={textElement(props.variant)} variant={textVariant(props.variant)} color={textColor(props.color)}>",
+    "          {formatValue(resolve(props.text))}",
+    "        </Text>",
+    "      );",
+    '    case "Icon":',
+    "      return icon(props.name, props.size);",
+    '    case "Button":',
+    "      return (",
+    "        <Button",
+    "          view={buttonView(props.variant)}",
+    "          disabled={Boolean(resolve(props.disabled))}",
+    "          loading={Boolean(resolve(props.loading))}",
+    "          selected={Boolean(resolve(props.selected))}",
+    "          onClick={() => handleAction(props.action)}",
+    "        >",
+    "          {props.icon ? icon(props.icon, \"s\") : null}",
+    "          {formatValue(resolve(props.text))}",
+    "        </Button>",
+    "      );",
+    '    case "TextField":',
+    "      return (",
+    "        <label style={{ display: \"grid\", gap: 6 }}>",
+    "          {props.label ? <Text variant=\"body-2\">{formatValue(props.label)}</Text> : null}",
+    "          <TextInput value={String(resolve(props.value) ?? \"\")} placeholder={stringProp(props.placeholder)} disabled={Boolean(resolve(props.disabled))} onUpdate={() => undefined} />",
+    "        </label>",
+    "      );",
+    '    case "CheckBox":',
+    "      return <Checkbox checked={Boolean(resolve(props.value))} disabled={Boolean(resolve(props.disabled))} onUpdate={() => undefined}>{formatValue(props.label)}</Checkbox>;",
+    '    case "SwitchField":',
+    "      return <Switch checked={Boolean(resolve(props.value))} disabled={Boolean(resolve(props.disabled))} onUpdate={() => undefined}>{formatValue(props.label)}</Switch>;",
+    '    case "ChoicePicker":',
+    "      return renderChoicePicker(props);",
+    '    case "SelectField":',
+    "      return <Select label={stringProp(props.label)} value={arrayValue(resolve(props.value))} options={optionList(props.options)} placeholder={stringProp(props.placeholder)} disabled={Boolean(resolve(props.disabled))} onUpdate={() => undefined} />;",
+    '    case "SliderField":',
+    "      return (",
+    "        <label style={{ display: \"grid\", gap: 8 }}>",
+    "          <Text variant=\"body-2\">{formatValue(props.label)}</Text>",
+    "          <Slider value={numberProp(resolve(props.value), 0)} min={numberProp(props.min, 0)} max={numberProp(props.max, 100)} step={numberProp(props.step, 1)} disabled={Boolean(resolve(props.disabled))} onUpdate={() => undefined} />",
+    "        </label>",
+    "      );",
+    '    case "Divider":',
+    "      return <Divider orientation={props.axis === \"vertical\" ? \"vertical\" : \"horizontal\"} />;",
+    '    case "AlertBlock":',
+    "      return <Alert layout=\"horizontal\" theme={stringProp(props.tone, \"info\")} view=\"filled\" title={stringProp(props.title)} message={stringProp(props.message)} />;",
+    '    case "MetricGrid":',
+    "      return renderMetricGrid(props.items);",
+    '    case "DataTable":',
+    "      return renderDataTable(props);",
+    '    case "ProgressList":',
+    "      return renderProgressList(props.items);",
+    '    case "DefinitionListBlock":',
+    "      return renderDefinitionList(props);",
+    '    case "LinkList":',
+    "      return renderLinkList(props.items);",
+    '    case "UserList":',
+    "      return renderUserList(props.items);",
+    '    case "LabelGroup":',
+    "      return renderLabels(props.items);",
+    '    case "HeroBlock":',
+    "      return renderHeroBlock(props);",
+    '    case "FilterBar":',
+    "      return renderFilterBar(props);",
+    '    case "FeaturePanelGrid":',
+    "      return renderFeaturePanels(props.items);",
+    '    case "CardGrid":',
+    "      return renderCardGrid(props);",
+    '    case "TabsBlock":',
+    "      return renderTabs(props);",
+    '    case "EmptyStateList":',
+    "      return renderEmptyStates(props.items);",
+    '    case "LoadingStateList":',
+    "      return renderLoadingStates(props.items);",
+    '    case "BreadcrumbTrail":',
+    "      return renderBreadcrumbs(props);",
+    '    case "StepperBlock":',
+    "      return renderStepper(props);",
+    '    case "AccordionBlock":',
+    "      return renderAccordion(props);",
+    '    case "CopyList":',
+    "      return renderCopyList(props);",
+    "    default:",
+    "      return null;",
+    "  }",
+    "}",
+    "",
+    generatedHelpers(),
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
 }
 
-function breadcrumbLines(breadcrumbs: RenderInterfaceArguments["breadcrumbs"]) {
-  return breadcrumbs.flatMap((trail) => [
-    "        <section>",
-    trail.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(trail.title)}</Text>`
-      : null,
-    `          <Breadcrumbs showRoot={${trail.showRoot}}>`,
-    ...trail.items.flatMap((item) => [
-      `            <Breadcrumbs.Item${item.href ? ` href=${jsxString(item.href)}` : ""}>`,
-      `              ${jsxText(item.label)}`,
-      "            </Breadcrumbs.Item>",
-    ]),
-    "          </Breadcrumbs>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
-}
-
-function alertLines(alerts: RenderInterfaceArguments["alerts"]) {
-  return alerts.map(
-    (alert) =>
-      `        <Alert theme=${jsxString(alert.tone)} view="filled" layout="horizontal" title=${jsxString(alert.title)} message=${jsxString(alert.message)} />`,
+function generatedHelpers() {
+  return String.raw`function renderLayout(component: string, props: Record<string, unknown>, children: ReactNode[]) {
+  return (
+    <div
+      style={{
+        alignItems: align(props.align),
+        display: "flex",
+        flexDirection: component === "Row" ? "row" : "column",
+        flexWrap: component === "Row" ? "wrap" : undefined,
+        gap: gap(props.gap),
+        justifyContent: justify(props.justify),
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
-function metricLines(metrics: RenderInterfaceArguments["metrics"]) {
-  if (metrics.length === 0) {
-    return [];
+function renderChoicePicker(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {props.label ? <Text variant="body-2">{formatValue(props.label)}</Text> : null}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {optionList(props.options).map((option) => (
+          <Button key={option.value} view={arrayValue(resolve(props.value)).includes(option.value) ? "action" : "outlined"}>
+            {option.content}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderMetricGrid(items: unknown) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+      {arrayRecords(items).map((item) => (
+        <Card key={String(item.label) + "-" + String(item.value)} theme="normal" view="filled" type="container">
+          <div style={{ display: "grid", gap: 6, padding: 14 }}>
+            <Text variant="caption-2" color="secondary">{formatValue(item.label)}</Text>
+            <Text variant="header-1">{formatValue(item.value)}</Text>
+            {item.description ? <Text variant="caption-2" color="secondary">{formatValue(item.description)}</Text> : null}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function renderDataTable(props: Record<string, unknown>) {
+  const columns = arrayRecords(props.columns).map((column) => ({
+    id: String(column.id),
+    name: String(column.label),
+    align: column.align === "end" ? "right" : column.align === "center" ? "center" : "left",
+  }));
+  const data = arrayRecords(props.rows).map((row, rowIndex) => ({
+    id: rowIndex,
+    ...Object.fromEntries(arrayValues(row.cells).map((cell, index) => [String(columns[index]?.id ?? index), formatValue(cell)])),
+  }));
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {props.title ? <Text as="h3" variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      <Table columns={columns} data={data} emptyMessage={stringProp(props.emptyMessage, "No data")} />
+    </div>
+  );
+}
+
+function renderProgressList(items: unknown) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {arrayRecords(items).map((item) => (
+        <div key={String(item.label)} style={{ display: "grid", gap: 4 }}>
+          <Text variant="body-2">{formatValue(item.label)}</Text>
+          <Progress value={numberProp(item.value, 0)} theme={stringProp(item.tone, "info")} />
+          {item.text ? <Text variant="caption-2" color="secondary">{formatValue(item.text)}</Text> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function renderDefinitionList(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {props.title ? <Text as="h3" variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      <DefinitionList>
+        {arrayRecords(props.items).map((item) => (
+          <DefinitionList.Item key={String(item.label)} name={formatValue(item.label)}>{formatValue(item.value)}</DefinitionList.Item>
+        ))}
+      </DefinitionList>
+    </div>
+  );
+}
+
+function renderLinkList(items: unknown) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {arrayRecords(items).map((item) => (
+        <Link key={String(item.label)} href={stringProp(item.href, "#")}>{formatValue(item.label)}</Link>
+      ))}
+    </div>
+  );
+}
+
+function renderUserList(items: unknown) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {arrayRecords(items).map((item) => (
+        <User key={String(item.name)} name={stringProp(item.name)} description={stringProp(item.description)} />
+      ))}
+    </div>
+  );
+}
+
+function renderLabels(items: unknown) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {arrayRecords(items).map((item) => (
+        <Label key={String(item.label) + "-" + String(item.value ?? "")} theme={stringProp(item.tone, "normal")} type={stringProp(item.type, "default")}>
+          {formatValue(item.label)}{item.value ? ": " + formatValue(item.value) : ""}
+        </Label>
+      ))}
+    </div>
+  );
+}
+
+function renderHeroBlock(props: Record<string, unknown>) {
+  return (
+    <section style={{ display: "grid", gap: 16, padding: 24, border: "1px solid var(--g-color-line-generic)", borderRadius: 12 }}>
+      {props.eyebrow ? <Text variant="caption-2" color="secondary">{formatValue(props.eyebrow)}</Text> : null}
+      <Text as="h1" variant="display-1">{formatValue(props.title)}</Text>
+      {props.body ? <Text variant="body-2" color="secondary">{formatValue(props.body)}</Text> : null}
+      {renderLabels(props.labels)}
+      {renderActionButtons(props.actions)}
+    </section>
+  );
+}
+
+function renderFilterBar(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+      {props.title ? <Text variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      <TextInput value={stringProp(props.searchValue)} placeholder={stringProp(props.searchPlaceholder, "Search")} onUpdate={() => undefined} />
+      {arrayRecords(props.filters).map((filter) => (
+        <Button key={String(filter.value)} view={filter.active ? "action" : "outlined"}>{formatValue(filter.label)}</Button>
+      ))}
+      {arrayRecords(props.sortOptions).length > 0 ? (
+        <Select label={stringProp(props.sortLabel)} value={props.sortValue ? [String(props.sortValue)] : []} options={optionList(props.sortOptions)} onUpdate={() => undefined} />
+      ) : null}
+    </div>
+  );
+}
+
+function renderFeaturePanels(items: unknown) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+      {arrayRecords(items).map((item) => (
+        <Card key={String(item.title)} theme="normal" view="filled" type="container">
+          <div style={{ display: "grid", gap: 8, padding: 14 }}>
+            <Text variant="subheader-2">{formatValue(item.title)}</Text>
+            {item.value ? <Text variant="header-1">{formatValue(item.value)}</Text> : null}
+            <Text variant="body-2" color="secondary">{formatValue(item.body)}</Text>
+            {renderLabels(item.labels)}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function renderCardGrid(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {props.title ? <Text as="h3" variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      {props.description ? <Text variant="body-2" color="secondary">{formatValue(props.description)}</Text> : null}
+      <div style={{ display: "grid", gridTemplateColumns: cardColumns(props.columns), gap: 12 }}>
+        {arrayRecords(props.items).map((item) => (
+          <Card key={String(item.title)} theme="normal" view="filled" type="container">
+            <div style={{ display: "grid", gap: 10, padding: 14 }}>
+              <Text variant="subheader-2">{formatValue(item.title)}</Text>
+              {item.subtitle ? <Text variant="body-2" color="secondary">{formatValue(item.subtitle)}</Text> : null}
+              {item.value ? <Text variant="header-1">{formatValue(item.value)}</Text> : null}
+              <Text variant="body-2">{formatValue(item.body)}</Text>
+              {renderLabels(item.labels)}
+              {renderActionButtons(item.actions)}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderTabs(props: Record<string, unknown>) {
+  const items = arrayRecords(props.items);
+  const active = String(items.find((item) => item.active)?.value ?? items[0]?.value ?? "");
+
+  return (
+    <TabProvider value={active}>
+      <div style={{ display: "grid", gap: 10 }}>
+        {props.title ? <Text variant="subheader-2">{formatValue(props.title)}</Text> : null}
+        <TabList size={stringProp(props.size, "m")}>{items.map((item) => <Tab key={String(item.value)} value={String(item.value)}>{formatValue(item.label)}</Tab>)}</TabList>
+        {items.map((item) => <TabPanel key={String(item.value)} value={String(item.value)}>{formatValue(item.body)}</TabPanel>)}
+      </div>
+    </TabProvider>
+  );
+}
+
+function renderEmptyStates(items: unknown) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {arrayRecords(items).map((item) => (
+        <PlaceholderContainer key={String(item.title)} size={stringProp(item.size, "m")}>
+          <Text variant="subheader-2">{formatValue(item.title)}</Text>
+          <Text variant="body-2" color="secondary">{formatValue(item.description)}</Text>
+        </PlaceholderContainer>
+      ))}
+    </div>
+  );
+}
+
+function renderLoadingStates(items: unknown) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {arrayRecords(items).map((item) => (
+        <div key={String(item.label)} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Spin size={stringProp(item.size, "s")} />
+          <Text variant="body-2">{formatValue(item.label)}</Text>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function renderBreadcrumbs(props: Record<string, unknown>) {
+  return <Breadcrumbs items={arrayRecords(props.items).map((item) => ({ text: formatValue(item.label), href: stringProp(item.href, undefined) }))} />;
+}
+
+function renderStepper(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {props.title ? <Text variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      <Stepper size={stringProp(props.size, "m")} items={arrayRecords(props.items).map((item) => ({ id: String(item.value), title: formatValue(item.label), view: stringProp(item.view, "idle"), disabled: Boolean(item.disabled) }))} activeStep={String(arrayRecords(props.items).find((item) => item.active)?.value ?? "")} />
+    </div>
+  );
+}
+
+function renderAccordion(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {props.title ? <Text variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      <Accordion view={stringProp(props.view, "solid")} size={stringProp(props.size, "m")}>
+        {arrayRecords(props.items).map((item) => (
+          <Accordion.Item key={String(item.title)} title={formatValue(item.title)} disabled={Boolean(item.disabled)}>
+            {formatValue(item.body)}
+          </Accordion.Item>
+        ))}
+      </Accordion>
+    </div>
+  );
+}
+
+function renderCopyList(props: Record<string, unknown>) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {props.title ? <Text variant="subheader-2">{formatValue(props.title)}</Text> : null}
+      {arrayRecords(props.items).map((item) => (
+        <CopyToClipboard key={String(item.label)} text={stringProp(item.copyText)}>
+          <Button view="outlined">{formatValue(item.label)}: {formatValue(item.value)}</Button>
+        </CopyToClipboard>
+      ))}
+    </div>
+  );
+}
+
+function renderActionButtons(actions: unknown) {
+  const items = arrayRecords(actions);
+
+  if (items.length === 0) {
+    return null;
   }
 
-  return [
-    '        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>',
-    ...metrics.flatMap((metric) => [
-      '          <Card view="filled" size="m" type="container">',
-      '            <div style={{ display: "grid", gap: 6, padding: 12 }}>',
-      '              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
-      `                <Text variant="caption-2" color="secondary">${jsxText(metric.label)}</Text>`,
-      metric.icon ? `                ${iconElement(metric.icon, 14)}` : null,
-      "              </div>",
-      `              <Text variant="header-1">${jsxText(metric.value)}</Text>`,
-      metric.description
-        ? `              <Text variant="caption-2" color="secondary">${jsxText(metric.description)}</Text>`
-        : null,
-      `              <Label theme=${jsxString(mapLabelTheme(metric.tone))} size="xs">${jsxText(mapToneLabel(metric.tone))}</Label>`,
-      "            </div>",
-      "          </Card>",
-    ]),
-    "        </div>",
-  ].filter((line): line is string => Boolean(line));
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {items.map((action) => (
+        <Button key={String(action.label)} view={buttonView(action.variant)} disabled={Boolean(action.disabled)} loading={Boolean(action.loading)} selected={Boolean(action.selected)} onClick={() => handleAction(action.action)}>
+          {action.icon ? icon(action.icon, "s") : null}
+          {formatValue(action.label)}
+        </Button>
+      ))}
+    </div>
+  );
 }
 
-function labelLines(labels: RenderInterfaceArguments["labels"]) {
-  if (labels.length === 0) {
-    return [];
+function handleAction(action: unknown) {
+  console.log("A2UI action", action);
+}
+
+function groupChildren(nodes: Node[]) {
+  const map = new Map<string, Node[]>();
+
+  for (const node of nodes) {
+    const parentId = node.parentId ?? "root";
+    const list = map.get(parentId) ?? [];
+    list.push(node);
+    map.set(parentId, list);
   }
 
-  return [
-    '        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>',
-    ...labels.flatMap((item) => [
-      `          <Label theme=${jsxString(mapLabelTheme(item.tone))} type=${jsxString(item.type)} size="s"${item.value ? ` value=${jsxString(item.value)}` : ""}${item.type === "copy" ? ` copyText=${jsxString(item.value ?? item.label)}` : ""}>`,
-      `            ${jsxText(item.label)}`,
-      "          </Label>",
-    ]),
-    "        </div>",
-  ];
-}
-
-function cardLines(cards: RenderInterfaceArguments["cards"]) {
-  if (cards.length === 0) {
-    return [];
+  for (const list of map.values()) {
+    list.sort((left, right) => left.order === right.order ? left.id.localeCompare(right.id) : left.order - right.order);
   }
 
-  return [
-    '        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>',
-    ...cards.flatMap((card) => [
-      `          <Card theme=${jsxString(mapCardTheme(card.tone))} view="filled" size="m" type="container">`,
-      card.imageLabel
-        ? [
-            '            <div style={{ minHeight: 128, display: "grid", placeItems: "center", padding: 16, background: "linear-gradient(135deg, rgba(255, 190, 92, 0.28), rgba(80, 188, 169, 0.2)), rgba(255, 255, 255, 0.04)" }}>',
-            `              <Text variant="subheader-1">${jsxText(card.imageLabel)}</Text>`,
-            "            </div>",
-          ].join("\n")
-        : null,
-      '            <div style={{ display: "grid", gap: 10, padding: 14 }}>',
-      '              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>',
-      '                <div style={{ display: "grid", gap: 2, minWidth: 0 }}>',
-      card.subtitle
-        ? `                  <Text variant="caption-2" color="secondary">${jsxText(card.subtitle)}</Text>`
-        : null,
-      `                  <Text as="h3" variant="subheader-2">${jsxText(card.title)}</Text>`,
-      "                </div>",
-      card.value
-        ? `                <Text variant="subheader-2">${jsxText(card.value)}</Text>`
-        : null,
-      "              </div>",
-      card.body
-        ? `              <Text variant="body-2" color="secondary">${jsxText(card.body)}</Text>`
-        : null,
-      ...cardLabelLines(card.labels),
-      card.meta
-        ? `              <Text variant="caption-2" color="secondary">${jsxText(card.meta)}</Text>`
-        : null,
-      ...cardActionLines(card.actions),
-      "            </div>",
-      "          </Card>",
-    ]),
-    "        </div>",
-  ].filter((line): line is string => Boolean(line));
+  return map;
 }
 
-function cardLabelLines(labels: RenderInterfaceArguments["cards"][number]["labels"]) {
-  if (labels.length === 0) {
-    return [];
+function resolve(value: unknown): unknown {
+  if (isRecord(value) && typeof value.path === "string") {
+    return getPath(dataModel, value.path);
   }
 
-  return [
-    '              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>',
-    ...labels.flatMap((label) => [
-      `                <Label theme=${jsxString(mapLabelTheme(label.tone))} type=${jsxString(label.type)} size="xs"${label.value ? ` value=${jsxString(label.value)}` : ""}${label.type === "copy" ? ` copyText=${jsxString(label.value ?? label.label)}` : ""}>`,
-      `                  ${jsxText(label.label)}`,
-      "                </Label>",
-    ]),
-    "              </div>",
-  ];
+  return value;
 }
 
-function cardActionLines(
-  actions: RenderInterfaceArguments["cards"][number]["actions"],
-) {
-  if (actions.length === 0) {
-    return [];
+function getPath(source: unknown, path: string): unknown {
+  if (path === "/") {
+    return source;
   }
 
-  return [
-    '              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 4 }}>',
-    ...actions.flatMap((action) => [
-      `                <Button size="s" view=${jsxString(mapButtonView(action.variant))} onClick={() => handleAction(${jsString(action.action)})}${buttonStateProps(action)}>`,
-      action.icon ? `                  ${iconElement(action.icon, 14)}` : null,
-      `                  ${jsxText(action.label)}`,
-      "                </Button>",
-    ]),
-    "              </div>",
-  ].filter((line): line is string => Boolean(line));
-}
-
-function stepperLines(steppers: RenderInterfaceArguments["steppers"]) {
-  return steppers.flatMap((stepper, index) => [
-    "        <section>",
-    stepper.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(stepper.title)}</Text>`
-      : null,
-    `          <Stepper value={activeStep${index}} onUpdate={(value) => setActiveStep${index}(String(value ?? activeStep${index}))} size=${jsxString(stepper.size)}>`,
-    ...stepper.items.flatMap((item) => [
-      `            <Stepper.Item id=${jsxString(item.value)} view=${jsxString(item.view)}${item.disabled ? " disabled" : ""}>`,
-      `              ${jsxText(item.label)}`,
-      "            </Stepper.Item>",
-    ]),
-    "          </Stepper>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
-}
-
-function sectionLines(payload: RenderInterfaceArguments) {
-  return payload.sections.flatMap((section, index) => {
-    const lines: string[] = [];
-
-    if (shouldAddSectionDivider(payload.layout.sectionDividers, index)) {
-      lines.push(
-        '        <div style={{ height: 1, background: "var(--g-color-line-generic)" }} />',
-      );
-    }
-
-    lines.push("        <section>");
-
-    if (section.title) {
-      if (section.icon) {
-        lines.push(
-          '          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>',
-          `            ${iconElement(section.icon, 16)}`,
-          `            <Text as="h3" variant="subheader-2">${jsxText(section.title)}</Text>`,
-          "          </div>",
-        );
-      } else {
-        lines.push(
-          `          <Text as="h3" variant="subheader-2">${jsxText(section.title)}</Text>`,
-        );
+  return path
+    .split("/")
+    .slice(1)
+    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"))
+    .reduce<unknown>((current, key) => {
+      if (!isRecord(current) && !Array.isArray(current)) {
+        return undefined;
       }
-    }
 
-    if (section.body) {
-      lines.push(
-        `          <Text as="p" variant="body-2" color="secondary">${jsxText(section.body)}</Text>`,
-      );
-    }
-
-    if (section.items.length > 0) {
-      lines.push("          <ul>");
-      section.items.forEach((item) => {
-        lines.push(`            <li>${jsxText(item)}</li>`);
-      });
-      lines.push("          </ul>");
-    }
-
-    lines.push("        </section>");
-
-    return lines;
-  });
+      return (current as Record<string, unknown>)[key];
+    }, source);
 }
 
-function tabLines(tabs: RenderInterfaceArguments["tabs"]) {
-  return tabs.flatMap((tab, index) => [
-    "        <section>",
-    tab.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(tab.title)}</Text>`
-      : null,
-    `          <TabProvider value={activeTab${index}} onUpdate={setActiveTab${index}}>`,
-    `            <TabList size=${jsxString(tab.size)}>`,
-    ...tab.items.flatMap((item) => [
-      `              <Tab value=${jsxString(item.value)}${item.counter ? ` counter=${jsxString(item.counter)}` : ""}${item.tone === "normal" ? "" : ` label={{ content: ${jsString(mapToneLabel(item.tone))}, theme: ${jsString(mapLabelTheme(item.tone))} }}`}>`,
-      `                ${jsxText(item.label)}`,
-      "              </Tab>",
-    ]),
-    "            </TabList>",
-    ...tab.items.flatMap((item) => [
-      `            <TabPanel value=${jsxString(item.value)}>`,
-      `              <Text variant="body-2" color="secondary">${jsxText(item.body)}</Text>`,
-      "            </TabPanel>",
-    ]),
-    "          </TabProvider>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
+function icon(name: unknown, size: unknown) {
+  const data = typeof name === "string" ? iconData[name] : undefined;
+
+  return data ? <Icon data={data} size={size === "l" ? 20 : size === "m" ? 16 : 14} /> : null;
 }
 
-function accordionLines(accordions: RenderInterfaceArguments["accordions"]) {
-  return accordions.flatMap((accordion) => [
-    "        <section>",
-    accordion.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(accordion.title)}</Text>`
-      : null,
-    `          <Accordion multiple defaultValue={${jsonForCode(
-      accordion.items
-        .map((item, index) => (item.expanded ? `${index}_${item.title}` : null))
-        .filter(Boolean),
-      12,
-    ).replace(/\n/g, "\n          ")}} size=${jsxString(accordion.size)} view=${jsxString(accordion.view)} arrowPosition=${jsxString(accordion.arrowPosition)}>`,
-    ...accordion.items.flatMap((item, index) => [
-      `            <Accordion.Item value=${jsxString(`${index}_${item.title}`)} summary=${jsxString(item.title)}${item.disabled ? " disabled" : ""}>`,
-      `              <Text variant="body-2" color="secondary">${jsxText(item.body)}</Text>`,
-      "            </Accordion.Item>",
-    ]),
-    "          </Accordion>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
+function buttonView(value: unknown) {
+  return value === "primary" ? "action" : stringProp(value, "normal");
 }
 
-function descriptionLines(
-  descriptions: RenderInterfaceArguments["descriptions"],
-) {
-  return descriptions.flatMap((description) => [
-    "        <section>",
-    description.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(description.title)}</Text>`
-      : null,
-    '          <DefinitionList direction="horizontal" responsive>',
-    ...description.items.flatMap((item) => [
-      `            <DefinitionList.Item name=${jsxString(item.label)}>`,
-      `              ${jsxText(item.value)}`,
-      "            </DefinitionList.Item>",
-    ]),
-    "          </DefinitionList>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
+function textVariant(value: unknown) {
+  const variants: Record<string, string> = {
+    h1: "display-1",
+    h2: "subheader-3",
+    h3: "subheader-2",
+    h4: "subheader-2",
+    h5: "subheader-2",
+    body: "body-2",
+    caption: "caption-2",
+  };
+
+  return variants[stringProp(value, "body")] ?? "body-2";
 }
 
-function tableLines(tables: RenderInterfaceArguments["tables"]) {
-  return tables.flatMap((table) => [
-    "        <section>",
-    table.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(table.title)}</Text>`
-      : null,
-    "          <Table",
-    `            columns={${jsonForCode(
-      table.columns.map((column) => ({
-        id: column.id,
-        name: column.label,
-        align: column.align,
-      })),
-      14,
-    ).replace(/\n/g, "\n            ")}}`,
-    `            data={${jsonForCode(
-      table.rows.map((row, rowIndex) =>
-        Object.fromEntries([
-          ["_rowId", String(rowIndex)],
-          ...table.columns.map((column, columnIndex) => [
-            column.id,
-            row.cells[columnIndex] ?? "",
-          ]),
-        ]),
-      ),
-      14,
-    ).replace(/\n/g, "\n            ")}}`,
-    "            edgePadding",
-    `            emptyMessage=${jsxString(table.emptyMessage)}`,
-    "            wordWrap",
-    "          />",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
+function textElement(value: unknown) {
+  return ["h1", "h2", "h3", "h4", "h5"].includes(String(value)) ? String(value) : "span";
 }
 
-function progressLines(progress: RenderInterfaceArguments["progress"]) {
-  if (progress.length === 0) {
-    return [];
+function textColor(value: unknown) {
+  return stringProp(value, "primary");
+}
+
+function align(value: unknown) {
+  return value === "stretch" ? "stretch" : value === "center" ? "center" : value === "end" ? "flex-end" : "flex-start";
+}
+
+function justify(value: unknown) {
+  return value === "spaceBetween" ? "space-between" : value === "center" ? "center" : value === "end" ? "flex-end" : "flex-start";
+}
+
+function gap(value: unknown) {
+  return value === "spacious" ? 24 : value === "compact" ? 8 : 14;
+}
+
+function padding(value: unknown) {
+  return value === "spacious" ? 24 : value === "comfortable" ? 20 : value === "compact" ? 12 : 16;
+}
+
+function cardColumns(value: unknown) {
+  if (value === "three") {
+    return "repeat(3, minmax(0, 1fr))";
   }
 
-  return [
-    '        <div style={{ display: "grid", gap: 10 }}>',
-    ...progress.flatMap((item) => [
-      '          <div style={{ display: "grid", gap: 6 }}>',
-      '            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
-      `              <Text variant="body-1">${jsxText(item.label)}</Text>`,
-      `              <Text variant="caption-2" color=${jsxString(mapProgressTextColor(item.tone))}>${item.value}%</Text>`,
-      "            </div>",
-      ...(item.text
-        ? [
-            `            <Text variant="caption-2" color="secondary">${jsxText(item.text)}</Text>`,
-          ]
-        : []),
-      `            <Progress value={${item.value}} theme=${jsxString(mapProgressTheme(item.tone))} size="s" text="" />`,
-      "          </div>",
-    ]),
-    "        </div>",
-  ];
-}
-
-function loadingStateLines(
-  loadingStates: RenderInterfaceArguments["loadingStates"],
-) {
-  if (loadingStates.length === 0) {
-    return [];
+  if (value === "two") {
+    return "repeat(2, minmax(0, 1fr))";
   }
 
-  return [
-    '        <div style={{ display: "grid", gap: 10 }}>',
-    ...loadingStates.flatMap((item) => [
-      '          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>',
-      `            <Spin size=${jsxString(item.size)} />`,
-      '            <div style={{ display: "grid", gap: 2 }}>',
-      `              <Text variant="body-1">${jsxText(item.label)}</Text>`,
-      item.description
-        ? `              <Text variant="caption-2" color="secondary">${jsxText(item.description)}</Text>`
-        : null,
-      "            </div>",
-      "          </div>",
-    ]),
-    "        </div>",
-  ].filter((line): line is string => Boolean(line));
+  return "repeat(auto-fit, minmax(220px, 1fr))";
 }
 
-function emptyStateLines(emptyStates: RenderInterfaceArguments["emptyStates"]) {
-  if (emptyStates.length === 0) {
-    return [];
+function optionList(value: unknown) {
+  return arrayRecords(value).map((option) => ({
+    value: String(option.value),
+    content: formatValue(option.label),
+  }));
+}
+
+function arrayRecords(value: unknown) {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function arrayValues(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function arrayValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map(String);
   }
 
-  return [
-    '        <div style={{ display: "grid", gap: 12 }}>',
-    ...emptyStates.flatMap((item) => [
-      "          <PlaceholderContainer",
-      '            align="center"',
-      `            description=${jsxString(item.description)}`,
-      '            direction="column"',
-      `            image={${iconElement(item.icon ?? "info", mapEmptyStateIconSize(item.size))}}`,
-      `            size=${jsxString(item.size)}`,
-      `            title=${jsxString(item.title)}`,
-      "          />",
-    ]),
-    "        </div>",
-  ];
+  return typeof value === "string" && value ? [value] : [];
 }
 
-function userLines(users: RenderInterfaceArguments["users"]) {
-  if (users.length === 0) {
-    return [];
+function numberProp(value: unknown, fallback: number) {
+  return typeof value === "number" ? value : fallback;
+}
+
+function stringProp(value: unknown, fallback = "") {
+  const resolved = resolve(value);
+
+  return typeof resolved === "string" ? resolved : fallback;
+}
+
+function formatValue(value: unknown) {
+  const resolved = resolve(value);
+
+  if (resolved === null || resolved === undefined) {
+    return "";
   }
 
-  return [
-    '        <div style={{ display: "grid", gap: 10 }}>',
-    ...users.flatMap((user) => [
-      '          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>',
-      `            <User name=${jsxString(user.name)} description=${jsxString(user.description ?? "")} avatar={{ text: ${jsString(createInitials(user.name))} }} size="m" />`,
-      `            <Label theme=${jsxString(mapLabelTheme(user.tone))} size="xs">${jsxText(mapToneLabel(user.tone))}</Label>`,
-      "          </div>",
-    ]),
-    "        </div>",
-  ];
+  return String(resolved);
 }
 
-function linkLines(links: RenderInterfaceArguments["links"]) {
-  if (links.length === 0) {
-    return [];
-  }
-
-  return [
-    '        <div style={{ display: "grid", gap: 8 }}>',
-    ...links.flatMap((link) => [
-      "          <div>",
-      `            <Link href=${jsxString(link.href)} view="primary">${jsxText(link.label)}</Link>`,
-      link.description
-        ? `            <Text variant="caption-2" color="secondary">${jsxText(link.description)}</Text>`
-        : null,
-      "          </div>",
-    ]),
-    "        </div>",
-  ].filter((line): line is string => Boolean(line));
-}
-
-function copyListLines(copyLists: RenderInterfaceArguments["copyLists"]) {
-  return copyLists.flatMap((copyList) => [
-    "        <section>",
-    copyList.title
-      ? `          <Text as="h3" variant="subheader-2">${jsxText(copyList.title)}</Text>`
-      : null,
-    '          <div style={{ display: "grid", gap: 8 }}>',
-    ...copyList.items.flatMap((item) => [
-      '            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>',
-      '              <div style={{ minWidth: 0 }}>',
-      `                <Text variant="caption-2" color="secondary">${jsxText(item.label)}</Text>`,
-      `                <Text variant="body-1">${jsxText(item.value)}</Text>`,
-      "              </div>",
-      `              <CopyToClipboard text=${jsxString(item.copyText)} timeout={1200}>`,
-      '                {(status) => (',
-      '                  <Button size="s" view="flat-secondary">',
-      "                    {status === \"success\" ? \"Copied\" : \"Copy\"}",
-      "                  </Button>",
-      "                )}",
-      "              </CopyToClipboard>",
-      "            </div>",
-    ]),
-    "          </div>",
-    "        </section>",
-  ].filter((line): line is string => Boolean(line)));
-}
-
-function fieldLines(fields: FieldWithKey[]) {
-  return fields.flatMap((field) => {
-    if (field.type === "checkbox") {
-      return [
-        "        <Checkbox",
-        `          checked={Boolean(form.${field.key})}`,
-        `          content=${jsxString(field.label)}`,
-        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
-        '          size="l"',
-        "        />",
-      ];
-    }
-
-    if (field.type === "switch") {
-      return [
-        "        <Switch",
-        `          checked={Boolean(form.${field.key})}`,
-        `          content=${jsxString(field.label)}`,
-        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
-        '          size="l"',
-        "        />",
-      ];
-    }
-
-    if (field.type === "select" && field.options.length > 0) {
-      return [
-        "        <Select",
-        `          label=${jsxString(field.label)}`,
-        field.placeholder
-          ? `          placeholder=${jsxString(field.placeholder)}`
-          : null,
-        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
-        `          options={${jsonForCode(
-          field.options.map((option) => ({
-            content: option.label,
-            text: option.label,
-            value: option.value,
-          })),
-          10,
-        ).replace(/\n/g, "\n          ")}}`,
-        '          size="l"',
-        `          value={Array.isArray(form.${field.key}) ? form.${field.key} : []}`,
-        '          width="max"',
-        "        />",
-      ].filter((line): line is string => Boolean(line));
-    }
-
-    if (field.type === "slider") {
-      return [
-        '        <div style={{ display: "grid", gap: 6 }}>',
-        '          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>',
-        `            <Text variant="body-1">${jsxText(field.label)}</Text>`,
-        `            <Label theme="normal" size="xs">{Number(form.${field.key})}</Label>`,
-        "          </div>",
-        "          <Slider",
-        `            min={${field.min ?? 0}}`,
-        `            max={${field.max ?? 100}}`,
-        `            step={${field.step ?? 1}}`,
-        `            value={Number(form.${field.key})}`,
-        `            onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
-        "          />",
-        "        </div>",
-      ];
-    }
-
-    if (field.type === "singleChoice" && field.options.length > 0) {
-      return [
-        "        <RadioGroup",
-        '          direction="vertical"',
-        `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: [value] }))}`,
-        `          options={${jsonForCode(
-          field.options.map((option) => ({
-            content: option.label,
-            value: option.value,
-          })),
-          10,
-        ).replace(/\n/g, "\n          ")}}`,
-        '          size="m"',
-        `          value={Array.isArray(form.${field.key}) ? form.${field.key}[0] ?? null : null}`,
-        "        />",
-      ];
-    }
-
-    if (field.type === "multipleChoice" && field.options.length > 0) {
-      return [
-        "        <div>",
-        `          <Text variant="body-1" color="secondary">${jsxText(field.label)}</Text>`,
-        ...field.options.flatMap((option) => [
-          "          <Checkbox",
-          `            checked={Array.isArray(form.${field.key}) && form.${field.key}.includes(${jsString(option.value)})}`,
-          `            content=${jsxString(option.label)}`,
-          "            onUpdate={() => setForm((current) => {",
-          `              const values = Array.isArray(current.${field.key}) ? current.${field.key} : [];`,
-          `              return { ...current, ${field.key}: values.includes(${jsString(option.value)}) ? values.filter((item) => item !== ${jsString(option.value)}) : [...values, ${jsString(option.value)}] };`,
-          "            })}",
-          '            size="m"',
-          "          />",
-        ]),
-        "        </div>",
-      ];
-    }
-
-    return [
-      "        <TextInput",
-      `          label=${jsxString(field.label)}`,
-      field.placeholder
-        ? `          placeholder=${jsxString(field.placeholder)}`
-        : null,
-      `          onUpdate={(value) => setForm((current) => ({ ...current, ${field.key}: value }))}`,
-      '          size="l"',
-      field.type !== "shortText" ? `          type=${jsxString(field.type)}` : null,
-      `          value={String(form.${field.key} ?? "")}`,
-      "        />",
-    ].filter((line): line is string => Boolean(line));
-  });
-}
-
-function actionLines(actions: RenderInterfaceArguments["actions"]) {
-  if (actions.length === 0) {
-    return [];
-  }
-
-  return [
-    '        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>',
-    ...actions.flatMap((action) => [
-      `          <Button view=${jsxString(mapButtonView(action.variant))} onClick={() => handleAction(${jsString(action.action)})}${buttonStateProps(action)}>`,
-      action.icon ? `            ${iconElement(action.icon, 16)}` : null,
-      `            ${jsxText(action.label)}`,
-      "          </Button>",
-    ]),
-    "        </div>",
-  ].filter((line): line is string => Boolean(line));
-}
-
-function buttonStateProps(action: {
-  disabled?: boolean;
-  loading?: boolean;
-  selected?: boolean;
-}) {
-  return [
-    action.disabled ? " disabled={true}" : "",
-    action.loading ? " loading={true}" : "",
-    action.selected ? " selected={true}" : "",
-  ].join("");
-}
-
-function initialFieldValue(field: FieldWithKey) {
-  if (field.type === "checkbox" || field.type === "switch") {
-    return Boolean(field.checked);
-  }
-
-  if (field.type === "singleChoice" || field.type === "select") {
-    return field.value ? [field.value] : [];
-  }
-
-  if (field.type === "multipleChoice") {
-    return field.value
-      ? field.value
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean)
-      : [];
-  }
-
-  if (field.type === "slider") {
-    const parsedValue = Number(field.value);
-
-    return Number.isFinite(parsedValue) ? parsedValue : field.min ?? 0;
-  }
-
-  return field.value || "";
-}
-
-function withUniqueFieldKeys(fields: RenderInterfaceArguments["fields"]) {
-  const used = new Set<string>();
-
-  return fields.map((field, index) => {
-    let key = toPropertyName(field.id);
-
-    if (used.has(key)) {
-      key = `${key}_${index}`;
-    }
-
-    used.add(key);
-
-    return { ...field, key };
-  });
-}
-
-function shouldAddSectionDivider(
-  mode: RenderInterfaceArguments["layout"]["sectionDividers"],
-  sectionIndex: number,
-) {
-  if (mode === "none") {
-    return false;
-  }
-
-  if (mode === "minimal") {
-    return sectionIndex > 0;
-  }
-
-  return true;
-}
-
-function collectUsedIcons(payload: RenderInterfaceArguments) {
-  return [
-    payload.titleIcon,
-    ...payload.navigation.map((item) => item.icon),
-    ...payload.metrics.map((metric) => metric.icon),
-    ...payload.sections.map((section) => section.icon),
-    ...payload.cards.flatMap((card) => card.actions.map((action) => action.icon)),
-    ...payload.emptyStates.map((item) => item.icon ?? "info"),
-    ...payload.actions.map((action) => action.icon),
-  ].filter((icon): icon is GravityIconName => Boolean(icon));
-}
-
-function iconElement(icon: GravityIconName, size: number) {
-  return `<Icon data={${iconImportByName[icon].localName}} size={${size}} />`;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}`;
 }
 
 function iconImportLine(icons: GravityIconName[]) {
@@ -988,139 +670,137 @@ function iconImportLine(icons: GravityIconName[]) {
     return "";
   }
 
-  const uniqueIcons = [...new Set(icons)];
-
-  return `import {\n${uniqueIcons
-    .sort()
+  return `import {\n${icons
     .map((icon) => {
-      const item = iconImportByName[icon];
+      const data = iconImportByName[icon];
 
-      return `  ${item.exportName} as ${item.localName},`;
+      return `  ${data.exportName} as ${data.localName},`;
     })
-    .join("\n")}\n} from "@gravity-ui/icons";\n`;
+    .join("\n")}\n} from "@gravity-ui/icons";`;
 }
 
-function mapButtonView(
-  variant: RenderInterfaceArguments["actions"][number]["variant"],
-) {
-  return variant === "primary" ? "action" : variant;
+function iconMapLine(icons: GravityIconName[]) {
+  return `const iconData: Record<string, unknown> = {\n${icons
+    .map((icon) => `  ${jsString(icon)}: ${iconImportByName[icon].localName},`)
+    .join("\n")}\n};`;
 }
 
-function mapLabelTheme(value: string) {
-  return value === "danger" ||
-    value === "info" ||
-    value === "success" ||
-    value === "warning"
-    ? value
-    : "normal";
+function collectUsedIcons(payload: ComposedInterfacePayload) {
+  const icons = new Set<GravityIconName>();
+
+  for (const node of payload.nodes) {
+    addIcon(icons, node.props.icon);
+    addIcon(icons, node.props.name);
+
+    for (const value of [node.props.actions, node.props.items]) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+
+      for (const item of value) {
+        if (!isRecord(item)) {
+          continue;
+        }
+
+        addIcon(icons, item.icon);
+
+        if (Array.isArray(item.actions)) {
+          for (const action of item.actions) {
+            if (isRecord(action)) {
+              addIcon(icons, action.icon);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return [...icons];
 }
 
-function mapCardTheme(value: string) {
-  return value === "danger" ||
-    value === "info" ||
-    value === "success" ||
-    value === "warning"
-    ? value
-    : "normal";
-}
-
-function mapProgressTheme(value: string) {
-  switch (value) {
-    case "danger":
-      return "danger";
-    case "info":
-      return "info";
-    case "success":
-      return "success";
-    case "warning":
-      return "warning";
-    default:
-      return "default";
+function addIcon(icons: Set<GravityIconName>, value: unknown) {
+  if (typeof value === "string" && value in iconImportByName) {
+    icons.add(value as GravityIconName);
   }
 }
 
-function mapProgressTextColor(value: string) {
-  switch (value) {
-    case "danger":
-      return "danger";
-    case "success":
-      return "positive";
-    case "warning":
-      return "warning";
-    default:
-      return "secondary";
+function getPayloadTitle(payload: ComposedInterfacePayload) {
+  const heading = payload.nodes.find(
+    (node) =>
+      node.component === "Text" &&
+      (node.props.variant === "h1" ||
+        node.props.variant === "h2" ||
+        node.props.variant === "h3"),
+  );
+  const headingText = readPayloadString(heading?.props.text, payload.dataModel);
+
+  if (headingText) {
+    return headingText;
   }
+
+  for (const node of payload.nodes) {
+    const title = readPayloadString(node.props.title, payload.dataModel);
+
+    if (title) {
+      return title;
+    }
+  }
+
+  return "Generated interface";
 }
 
-function mapEmptyStateIconSize(value: string) {
-  switch (value) {
-    case "s":
-      return 28;
-    case "l":
-      return 44;
-    case "promo":
-      return 52;
-    default:
-      return 36;
-  }
-}
-
-function mapToneLabel(value: string) {
-  switch (value) {
-    case "danger":
-      return "Risk";
-    case "info":
-      return "Info";
-    case "success":
-      return "Good";
-    case "warning":
-      return "Watch";
-    default:
-      return "Neutral";
-  }
-}
-
-function createInitials(value: string) {
-  return value
+function createComponentName(title: string) {
+  const name = title
+    .replace(/[^A-Za-z0-9]+/g, " ")
+    .trim()
     .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.slice(0, 1).toUpperCase())
+    .slice(0, 6)
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
     .join("");
+
+  return /^[A-Za-z]/.test(name) ? name : "GeneratedGravityInterface";
 }
 
-function jsxText(value: string) {
-  return jsxString(value);
+function readStaticString(value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+
+  return text || null;
 }
 
-function jsxString(value: string) {
-  return `{${JSON.stringify(value)}}`;
+function readPayloadString(value: unknown, dataModel: unknown) {
+  if (isRecord(value) && typeof value.path === "string") {
+    return readStaticString(readJsonPointer(dataModel, value.path));
+  }
+
+  return readStaticString(value);
+}
+
+function readJsonPointer(source: unknown, path: string) {
+  if (path === "/") {
+    return source;
+  }
+
+  return path
+    .split("/")
+    .slice(1)
+    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"))
+    .reduce<unknown>((current, key) => {
+      if (!isRecord(current) && !Array.isArray(current)) {
+        return undefined;
+      }
+
+      return (current as Record<string, unknown>)[key];
+    }, source);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function jsValue(value: unknown) {
+  return JSON.stringify(value, null, 2);
 }
 
 function jsString(value: string) {
   return JSON.stringify(value);
-}
-
-function jsonForCode(value: unknown, spaces: number) {
-  return JSON.stringify(value, null, spaces);
-}
-
-function createComponentName(title: string) {
-  const words = title
-    .replace(/[^A-Za-z0-9 ]/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  const name = words.map(capitalize).join("");
-
-  return /^[A-Z]/.test(name) ? name : "GeneratedInterface";
-}
-
-function toPropertyName(value: string) {
-  return value.replace(/[^A-Za-z0-9_$]/g, "_");
-}
-
-function capitalize(value: string) {
-  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
 }

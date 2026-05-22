@@ -9,7 +9,7 @@ const MAX_USAGE_GUIDE_ITEMS_IN_PROMPT = 3;
 export function formatGravityComponentCatalogForPrompt() {
   return [
     `Generated Gravity UI component catalog from @gravity-ui/uikit ${GRAVITY_UI_COMPONENT_CATALOG_VERSION}.`,
-    "Use the component choice guide first to decide what component fits the user's intent, then use technical props/settings for exact configuration. The render tool still accepts the fixed-schema interface only.",
+    "Use the component choice guide first to decide what component fits the user's intent, then use technical props/settings for exact configuration. The compose tool accepts curated A2UI components only, not raw JSX.",
     "Component choice guide:",
     ...GRAVITY_UI_COMPONENT_CATALOG.map(formatComponentChoiceGuide).filter(
       isPromptLine,

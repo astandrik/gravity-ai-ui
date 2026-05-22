@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { GravityA2uiMessage } from "./a2uiContract";
 import {
-  renderInterfaceArgumentsSchema,
-  type RenderInterfaceArguments,
-} from "./fixedInterface";
+  composedInterfaceArgumentsSchema,
+  type ComposedInterfacePayload,
+} from "./composedInterface";
 
 const historyItemSchema = z
   .object({
@@ -17,7 +17,7 @@ const conversationContextSchema = z
   .object({
     history: z.array(historyItemSchema).max(12).optional(),
     latestSurfaceId: z.string().min(1).max(80).optional(),
-    latestPayload: renderInterfaceArgumentsSchema.optional(),
+    latestPayload: composedInterfaceArgumentsSchema.optional(),
     latestDataModel: z.unknown().optional(),
   })
   .strict();
@@ -53,7 +53,7 @@ export type ConversationContext = z.infer<typeof conversationContextSchema>;
 
 export type AgentSseEvent =
   | { type: "status"; message: string }
-  | { type: "payload"; payload: RenderInterfaceArguments }
+  | { type: "payload"; payload: ComposedInterfacePayload }
   | { type: "a2ui"; message: GravityA2uiMessage }
   | { type: "error"; message: string }
   | { type: "done" };

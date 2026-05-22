@@ -8,8 +8,12 @@ import type {
   LikedDesignExample,
   SavedDesignFeedback,
 } from "./designFeedback";
-import { toSavedFeedback } from "./designFeedback";
-import { renderInterfaceArgumentsSchema } from "@/lib/agent/fixedInterface";
+import {
+  getFeedbackPayloadSummary,
+  getFeedbackPayloadTitle,
+  toSavedFeedback,
+} from "./designFeedback";
+import { composedInterfaceArgumentsSchema } from "@/lib/agent/composedInterface";
 
 type YdbFeedbackClient = {
   driver: Driver;
@@ -33,6 +37,8 @@ export async function saveDesignFeedback(
   const client = await getClient();
 
   await ensureFeedbackTable(client);
+  const title = getFeedbackPayloadTitle(saved.payload);
+  const summary = getFeedbackPayloadSummary(saved.payload);
 
   await client.sql`
     UPSERT INTO ${client.sql.identifier(client.table)}
@@ -57,8 +63,8 @@ export async function saveDesignFeedback(
         ${new Utf8(saved.turnId)},
         ${new Int32(saved.rating)},
         ${new Utf8(saved.prompt ?? "")},
-        ${new Utf8(saved.payload.title)},
-        ${new Utf8(saved.payload.summary)},
+        ${new Utf8(title)},
+        ${new Utf8(summary)},
         ${new Utf8(saved.payload.surfaceId)},
         ${new Utf8(JSON.stringify(saved.payload))},
         ${new Utf8(JSON.stringify(saved.messages))},
@@ -149,7 +155,7 @@ function rowToLikedExample(row: FeedbackRow): LikedDesignExample[] {
     return [];
   }
 
-  const parsed = renderInterfaceArgumentsSchema.safeParse(payload);
+  const parsed = composedInterfaceArgumentsSchema.safeParse(payload);
 
   if (!parsed.success) {
     return [];
@@ -157,8 +163,8 @@ function rowToLikedExample(row: FeedbackRow): LikedDesignExample[] {
 
   return [
     {
-      title: parsed.data.title,
-      summary: parsed.data.summary,
+      title: getFeedbackPayloadTitle(parsed.data),
+      summary: getFeedbackPayloadSummary(parsed.data),
       ...(row.prompt ? { prompt: row.prompt } : {}),
       payload: parsed.data,
     },

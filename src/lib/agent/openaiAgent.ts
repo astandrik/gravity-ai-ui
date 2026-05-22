@@ -3,33 +3,23 @@ import type { ResponseFunctionToolCall } from "openai/resources/responses/respon
 import type { ReasoningEffort } from "openai/resources/shared";
 import {
   ALLOWED_A2UI_ACTIONS,
+  ALLOWED_A2UI_COMPONENTS,
   A2UI_VERSION,
 } from "./a2uiContract";
 import {
-  buildFixedInterfaceFromJson,
-  buildFixedInterfaceFromPartialJson,
+  buildComposedInterfaceFromJson,
+  buildComposedInterfaceFromPartialJson,
   buildProgressivePlaceholderInterface,
   buildProgressiveStatusUpdate,
-} from "./fixedInterface";
-import type { BuiltFixedInterface } from "./fixedInterface";
+  type BuiltComposedInterface,
+} from "./composedInterface";
+import {
+  composeNodeToolSchema,
+  formatComposeComponentPropsForPrompt,
+} from "./composeComponentCatalog";
 import {
   ALLOWED_GRAVITY_ICONS,
-  GRAVITY_ACCORDION_ARROW_POSITIONS,
-  GRAVITY_ACCORDION_SIZES,
-  GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
-  GRAVITY_DENSITIES,
-  GRAVITY_EMPTY_STATE_SIZES,
-  GRAVITY_FIELD_TYPES,
-  GRAVITY_LABEL_TYPES,
-  GRAVITY_LOADING_SIZES,
-  GRAVITY_SECTION_DIVIDERS,
-  GRAVITY_STATUS_TONES,
-  GRAVITY_STEPPER_SIZES,
-  GRAVITY_STEPPER_VIEWS,
-  GRAVITY_TABLE_ALIGN,
-  GRAVITY_TAB_SIZES,
-  GRAVITY_TONES,
   formatGravityCapabilitiesForPrompt,
 } from "./gravityCapabilities";
 import { formatGravityComponentCatalogForPrompt } from "./gravityComponentCatalog";
@@ -38,10 +28,9 @@ import type {
   AgentSseEvent,
   ConversationContext,
 } from "./protocol";
-import type { LikedDesignExample } from "@/lib/feedback/designFeedback";
-import { listLikedDesignExamples } from "@/lib/feedback/ydbFeedbackStore";
 
-const RENDER_INTERFACE_TOOL_NAME = "render_agent_interface";
+export const COMPOSE_GRAVITY_INTERFACE_TOOL_NAME = "compose_gravity_interface";
+
 const DEFAULT_MODEL = "gpt-5.5";
 const DEFAULT_REASONING_EFFORT = "none";
 const DEFAULT_MAX_OUTPUT_TOKENS = 24_000;
@@ -54,7 +43,7 @@ const ALLOWED_REASONING_EFFORTS = new Set<NonNullable<ReasoningEffort>>([
   "high",
   "xhigh",
 ]);
-const TOOL_NAMES = new Set([RENDER_INTERFACE_TOOL_NAME]);
+const TOOL_NAMES = new Set([COMPOSE_GRAVITY_INTERFACE_TOOL_NAME]);
 
 type StreamAgentOptions = {
   request: AgentRequest;
@@ -79,7 +68,7 @@ export async function streamAgentResponse({
   let streamingStatusSent = false;
 
   const progressiveSurfaceId = getProgressiveSurfaceId(request);
-  const emitBuiltInterface = async (parsed: BuiltFixedInterface) => {
+  const emitBuiltInterface = async (parsed: BuiltComposedInterface) => {
     const payloadSignature = createPayloadSignature(parsed.payload);
 
     if (payloadSignature === lastRenderedPayloadSignature) {
@@ -97,19 +86,20 @@ export async function streamAgentResponse({
     status: "Contacting OpenAI",
     surfaceId: progressiveSurfaceId,
   });
-  const likedDesignExamples = await loadLikedDesignExamples();
 
   const stream = await client.responses.create(
     {
       model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-      input: buildInput(request, likedDesignExamples),
+      input: buildInput(request),
       instructions: buildInstructions(),
       reasoning: { effort: getReasoningEffort() },
-      tools: [renderInterfaceTool],
+      tools: [composeInterfaceTool],
       tool_choice: {
         type: "allowed_tools",
         mode: "required",
-        tools: [{ type: "function", name: RENDER_INTERFACE_TOOL_NAME }],
+        tools: [
+          { type: "function", name: COMPOSE_GRAVITY_INTERFACE_TOOL_NAME },
+        ],
       },
       parallel_tool_calls: false,
       service_tier: "priority",
@@ -135,7 +125,6 @@ export async function streamAgentResponse({
 
     if (event.type === "response.function_call_arguments.delta") {
       const accumulatedArguments = `${partialArgumentBuffers.get(event.item_id) ?? ""}${event.delta}`;
-
       partialArgumentBuffers.set(event.item_id, accumulatedArguments);
 
       if (!streamingStatusSent) {
@@ -148,7 +137,7 @@ export async function streamAgentResponse({
         streamingStatusSent = true;
       }
 
-      const partialInterface = buildFixedInterfaceFromPartialJson(
+      const partialInterface = buildComposedInterfaceFromPartialJson(
         accumulatedArguments,
         progressiveSurfaceId,
       );
@@ -247,11 +236,9 @@ export function parseFunctionCallArguments({
   }
 
   try {
-    const parsed = buildFixedInterfaceFromJson(argumentsJson);
+    const parsed = buildComposedInterfaceFromJson(argumentsJson);
 
-    if (parsed) {
-      processedToolCalls.add(id);
-    }
+    processedToolCalls.add(id);
 
     return parsed;
   } catch (error) {
@@ -278,14 +265,10 @@ function isResponseFunctionToolCall(
   );
 }
 
-export function buildInput(
-  request: AgentRequest,
-  likedDesignExamples: LikedDesignExample[] = [],
-) {
+export function buildInput(request: AgentRequest) {
   const conversationContext = formatConversationContext(
     request.conversationContext,
   );
-  const likedDesignContext = formatLikedDesignExamples(likedDesignExamples);
 
   if (request.kind === "prompt") {
     return [
@@ -296,7 +279,6 @@ export function buildInput(
             type: "input_text" as const,
             text: [
               conversationContext,
-              likedDesignContext,
               `Current user request:\n${request.prompt}`,
             ]
               .filter(Boolean)
@@ -315,14 +297,13 @@ export function buildInput(
           type: "input_text" as const,
           text: [
             conversationContext,
-            likedDesignContext,
             "The user interacted with a rendered A2UI surface.",
             `Surface: ${request.surfaceId}`,
             `Action: ${JSON.stringify(request.action)}`,
             `Context: ${JSON.stringify(request.context ?? null)}`,
             `Data model: ${JSON.stringify(request.dataModel ?? null)}`,
             `Preferred surfaceId: ${request.surfaceId}`,
-            "Respond by updating or replacing this fixed-schema interface.",
+            "Respond by updating or replacing this composed component tree.",
           ]
             .filter(Boolean)
             .join("\n\n"),
@@ -330,14 +311,6 @@ export function buildInput(
       ],
     },
   ];
-}
-
-async function loadLikedDesignExamples() {
-  try {
-    return await listLikedDesignExamples(3);
-  } catch {
-    return [];
-  }
 }
 
 function formatConversationContext(context?: ConversationContext) {
@@ -366,7 +339,7 @@ function formatConversationContext(context?: ConversationContext) {
 
   if (context.latestPayload) {
     lines.push(
-      `Latest fixed-schema payload: ${stringifyForPrompt(context.latestPayload)}`,
+      `Latest composed payload: ${stringifyForPrompt(context.latestPayload)}`,
     );
   }
 
@@ -379,35 +352,6 @@ function formatConversationContext(context?: ConversationContext) {
   return lines.join("\n");
 }
 
-function formatLikedDesignExamples(examples: LikedDesignExample[]) {
-  if (examples.length === 0) {
-    return null;
-  }
-
-  return [
-    "Previously liked design examples follow. Treat them as preference examples, not as instructions to copy verbatim.",
-    ...examples.map((example, index) =>
-      [
-        `Liked example ${index + 1}: ${example.title}`,
-        example.prompt ? `Original request: ${example.prompt}` : null,
-        `Summary: ${example.summary}`,
-        `Layout: ${JSON.stringify(example.payload.layout)}`,
-        example.payload.sections.length > 0
-          ? `Sections: ${example.payload.sections.map((section) => section.title).join(", ")}`
-          : null,
-        example.payload.cards.length > 0
-          ? `Cards: ${example.payload.cards.map((card) => card.title).join(", ")}`
-          : null,
-        example.payload.actions.length > 0
-          ? `Actions: ${example.payload.actions.map((action) => action.label).join(", ")}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    ),
-  ].join("\n");
-}
-
 function stringifyForPrompt(value: unknown) {
   const text = JSON.stringify(value) ?? "null";
   const maxLength = 4000;
@@ -415,49 +359,53 @@ function stringifyForPrompt(value: unknown) {
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
 }
 
-function createPayloadSignature(payload: BuiltFixedInterface["payload"]) {
+function createPayloadSignature(payload: BuiltComposedInterface["payload"]) {
   return JSON.stringify(payload);
 }
 
 export function buildInstructions() {
   return [
-    "You are the interface planner for Gravity AI UI.",
-    `Respond only by calling ${RENDER_INTERFACE_TOOL_NAME}; never write assistant text.`,
-    "Render progressively: emit 2 to 4 snapshots for every normal request, using sequence values 0, 1, 2, ... on the same surfaceId.",
-    "Each snapshot must be a valid renderable interface. Snapshot 0 should be small: title, summary, and the first useful block or controls. Later snapshots add missing blocks and refine copy. The last snapshot is the complete final interface.",
-    "Do not generate A2UI JSON, component JSON, Markdown fences, HTML, or code.",
-    `The server will convert your fixed-schema interface data into validated A2UI ${A2UI_VERSION} messages.`,
+    "You are the interface composer for Gravity AI UI.",
+    `Respond only by calling ${COMPOSE_GRAVITY_INTERFACE_TOOL_NAME}; never write assistant text.`,
+    "Build a finished interface by composing available curated A2UI components into a component tree.",
+    "Do not output raw JSX, HTML, CSS, Markdown, A2UI messages, or arbitrary Gravity UI components.",
+    `The server will materialize your normalized tree into validated A2UI ${A2UI_VERSION} messages.`,
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
     "For action follow-ups, preserve the preferred surfaceId from the user message.",
-    "Use sections for readable results, fields only when user input is needed, and actions only for clear next steps.",
-    "Use alerts for important status, metrics for dashboard KPIs, labels for compact tags/status chips, cards for product cards, pricing cards, offer tiles, seller listings, article previews, and other repeated card-like content, breadcrumbs for hierarchy paths, steppers for multi-step flows, tabs for alternate views, accordions for expandable detail groups, tables for comparable records, progress and loadingStates for completion states, emptyStates for no-data states, copyLists for copyable commands or IDs, descriptions for key-value details, links for resource lists, and users for people or owners.",
+    "Render progressively: emit nodes in useful visual order so complete ancestor chains can render while arguments stream.",
+    "Do not follow a fixed page template. Choose hierarchy, grouping, and controls based on the user's task.",
+    "Render a finished interface, not a proposal or implementation note. Never write copy like adding a block, can go to, buttons for navigation, or suggestions to proceed.",
+    "Use buttons only for real actions the user can take; avoid fake navigation suggestions and generic continue buttons on informational pages.",
+    "Use HeroBlock only when it is naturally a branded, catalog, seller/profile, landing, pricing, or object overview header.",
+    "Use FilterBar for searchable or filterable lists. Use CardGrid for repeated product, seller, plan, feature, or compact cards. Use FeaturePanelGrid for concise grouped details or highlights. These are optional components, not required slots.",
+    "Prefer Column, Row, and Card for structure; Text, LabelGroup, Icon, Divider, and AlertBlock for content; Button and fields for real actions and input; DataTable, MetricGrid, ProgressList, DefinitionListBlock, LinkList, UserList, TabsBlock, StepperBlock, AccordionBlock, EmptyStateList, LoadingStateList, BreadcrumbTrail, CopyList, HeroBlock, FilterBar, FeaturePanelGrid, and CardGrid when they fit the task.",
+    "Use dataModel for repeated, mutable, or action-relevant values, and bind component props with JSON pointer objects like {\"path\":\"/items/0/name\"} when useful.",
+    `Available components: ${ALLOWED_A2UI_COMPONENTS.join(", ")}.`,
+    formatComposeComponentPropsForPrompt(),
     `Available Gravity component capabilities: ${formatGravityCapabilitiesForPrompt()}`,
     formatGravityComponentCatalogForPrompt(),
-    "When the user asks to show, render, compare, or document UI components, controls, buttons, or variants, render the actual available controls instead of explaining them as prose.",
-    `For button or button-variant showcases, use actions as real Button examples with variants from this set: ${GRAVITY_BUTTON_VARIANTS.join(", ")}. Use action "noop", set disabled/loading/selected booleans for every action, use false unless the state is relevant, and do not list button labels in section.items.`,
-    "Do not represent controls as bullet lists when this schema has a matching block type.",
-    "For seller pages, marketplaces, product grids, plan comparisons, catalog pages, or any request that explicitly asks for cards, use cards instead of sections/items.",
-    `Allowed action names: ${ALLOWED_A2UI_ACTIONS.join(", ")}.`,
-    "Return empty arrays for every optional block array when it is not needed.",
-    "Keep title, summary, labels, and section copy concise and product-interface focused.",
+    "Component tree rules:",
+    "- root is controlled through the root argument and is materialized as component id root.",
+    "- nodes use unique ids, parentId links, order, component, and component-specific props.",
+    "- parentId must be root or another node id.",
+    "- Only Column, Row, Card, and NavigationBar can receive children.",
+    "- Card may contain one or many child nodes; the server will wrap multiple children in an inner Column.",
+    "- Do not put id, component, child, children, or props that are not listed for that component inside props; parent links define hierarchy.",
+    "- Column, Row, Card, and NavigationBar are structural containers. They do not have title, subtitle, body, or description props; create child Text nodes instead.",
+    `- Button actions must use one of: ${ALLOWED_A2UI_ACTIONS.join(", ")}.`,
+    `- Button variants include: ${GRAVITY_BUTTON_VARIANTS.join(", ")}. Use primary for the single strongest action; otherwise use normal, outlined, flat, warning, danger, and similar variants deliberately.`,
     "Follow these design rules:",
     "- Use one clear primary task per surface.",
-    "- Put the most important content first: title, short summary, grouped sections, fields, then actions.",
+    "- Put the most important content first, then supporting details, then required controls.",
     "- Remove decorative, redundant, or rarely needed information.",
+    "- Use concrete domain content instead of placeholder explanations.",
     "- Use familiar product language; avoid jargon, clever labels, and vague wording.",
-    "- Make the next step obvious through status, available actions, and expected outcome.",
-    "- Use at most one primary action; secondary actions must be clearly secondary.",
-    "- Prevent errors with safe defaults, explicit labels, and cancel/back paths when appropriate.",
-    "- Prefer recognition over recall by showing labels, options, selected values, and relevant context.",
-    "- Keep labels, action names, and control choices consistent across turns.",
+    "- Make the next step obvious only when the interface is a form, review, approval, QA, or workflow.",
     "- Forms must have labels; placeholders are supplementary.",
-    "- Use choice controls for choices and checkboxes for boolean values.",
+    "- Use choice controls for choices and checkboxes or switches for boolean values.",
     "- Do not rely on color alone for status; include text for warnings, success, errors, and disabled states.",
-    "- When continuing a conversation, preserve the previous surface structure unless the user asks for a different one.",
-    "- Choose layout.density and layout.sectionDividers deliberately for the content. Avoid cramped cards and accidental edge collisions.",
+    "- When continuing a conversation, preserve the previous structure only for iterative edits to the same interface. If the user asks for a new page or different interface, compose a fresh tree.",
     `- Use icons only when they improve scanning. Allowed icons: ${ALLOWED_GRAVITY_ICONS.join(", ")}.`,
-    "- Use navigation for multi-view shells, dashboards, setup flows, or app sections; return an empty navigation array when it is not useful.",
-    "- Use liked design examples to infer spacing, grouping, and hierarchy preferences.",
   ].join("\n");
 }
 
@@ -492,7 +440,7 @@ function isReasoningEffort(
 }
 
 async function emitParsedToolCall(
-  parsed: BuiltFixedInterface,
+  parsed: BuiltComposedInterface,
   onEvent: (event: AgentSseEvent) => void | Promise<void>,
   initializedSurfaceIds = new Set<string>(),
 ) {
@@ -561,12 +509,12 @@ function isValidSurfaceId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value);
 }
 
-const renderInterfaceTool = {
+const composeInterfaceTool = {
   type: "function" as const,
-  name: RENDER_INTERFACE_TOOL_NAME,
-  strict: true,
+  name: COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
+  strict: false,
   description:
-    "Describe one fixed-schema Gravity interface snapshot. Call it repeatedly to stream progressive snapshots; the server renders each snapshot as validated A2UI messages.",
+    "Compose one Gravity UI interface snapshot as a normalized component tree. Call repeatedly to stream progressive snapshots; the server renders each snapshot as validated A2UI messages.",
   parameters: {
     type: "object",
     additionalProperties: false,
@@ -581,719 +529,46 @@ const renderInterfaceTool = {
         pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
         description: 'Use "main" for initial prompts.',
       },
-      title: {
-        type: "string",
-        maxLength: 240,
+      dataModel: {
+        description:
+          "Optional JSON data used by bindings and actions. Use an object unless another shape is clearly needed.",
       },
-      titleIcon: {
-        type: ["string", "null"],
-        enum: [...ALLOWED_GRAVITY_ICONS, null],
-        description: "Optional icon for the main title.",
-      },
-      summary: {
-        type: "string",
-        maxLength: 1600,
-      },
-      tone: {
-        type: "string",
-        enum: GRAVITY_TONES,
-      },
-      layout: {
+      root: {
         type: "object",
         additionalProperties: false,
         properties: {
-          density: {
+          component: {
             type: "string",
-            enum: GRAVITY_DENSITIES,
-            description:
-              "Visual density for spacing and padding. Use comfortable by default.",
+            enum: ["Column", "Row"],
           },
-          sectionDividers: {
-            type: "string",
-            enum: GRAVITY_SECTION_DIVIDERS,
-            description:
-              "How much visible separation sections need. Use none for very short surfaces.",
-          },
-        },
-        required: ["density", "sectionDividers"],
-      },
-      alerts: {
-        type: "array",
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            message: { type: "string", maxLength: 1600 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_STATUS_TONES,
-            },
-          },
-          required: ["title", "message", "tone"],
-        },
-      },
-      metrics: {
-        type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            value: { type: "string", maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
-          },
-          required: ["label", "value", "description", "tone", "icon"],
-        },
-      },
-      sections: {
-        type: "array",
-        maxItems: 6,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
-            body: { type: "string", maxLength: 1600 },
-            items: {
-              type: "array",
-              maxItems: 8,
-              items: { type: "string", maxLength: 240 },
-            },
-          },
-          required: ["title", "icon", "body", "items"],
-        },
-      },
-      fields: {
-        type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            id: {
-              type: "string",
-              pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
-              maxLength: 48,
-            },
-            label: { type: "string", maxLength: 240 },
-            type: {
-              type: "string",
-              enum: GRAVITY_FIELD_TYPES,
-            },
-            placeholder: { type: ["string", "null"], maxLength: 240 },
-            value: { type: ["string", "null"], maxLength: 500 },
-            checked: { type: ["boolean", "null"] },
-            options: {
-              type: "array",
-              maxItems: 10,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: { type: "string", minLength: 1, maxLength: 100 },
-                },
-                required: ["label", "value"],
+          props: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              justify: {
+                type: "string",
+                enum: ["start", "center", "end", "spaceBetween"],
               },
-            },
-            min: { type: ["number", "null"] },
-            max: { type: ["number", "null"] },
-            step: { type: ["number", "null"], exclusiveMinimum: 0 },
-            required: { type: "boolean" },
-          },
-          required: [
-            "id",
-            "label",
-            "type",
-            "placeholder",
-            "value",
-            "checked",
-            "options",
-            "min",
-            "max",
-            "step",
-            "required",
-          ],
-        },
-      },
-      tables: {
-        type: "array",
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            columns: {
-              type: "array",
-              minItems: 1,
-              maxItems: 6,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  id: {
-                    type: "string",
-                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
-                    maxLength: 48,
-                  },
-                  label: { type: "string", maxLength: 240 },
-                  align: {
-                    type: "string",
-                    enum: GRAVITY_TABLE_ALIGN,
-                  },
-                },
-                required: ["id", "label", "align"],
+              align: {
+                type: "string",
+                enum: ["start", "center", "end", "stretch"],
               },
-            },
-            rows: {
-              type: "array",
-              maxItems: 12,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  cells: {
-                    type: "array",
-                    maxItems: 6,
-                    items: { type: "string", maxLength: 240 },
-                  },
-                },
-                required: ["cells"],
-              },
-            },
-            emptyMessage: { type: "string", maxLength: 240 },
-          },
-          required: ["title", "columns", "rows", "emptyMessage"],
-        },
-      },
-      progress: {
-        type: "array",
-        maxItems: 6,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            value: { type: "number", minimum: 0, maximum: 100 },
-            text: { type: ["string", "null"], maxLength: 240 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-          },
-          required: ["label", "value", "text", "tone"],
-        },
-      },
-      descriptions: {
-        type: "array",
-        maxItems: 4,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            items: {
-              type: "array",
-              minItems: 1,
-              maxItems: 10,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: { type: "string", maxLength: 240 },
-                },
-                required: ["label", "value"],
+              gap: {
+                type: "string",
+                enum: ["compact", "normal", "spacious"],
               },
             },
           },
-          required: ["title", "items"],
         },
+        required: ["component", "props"],
       },
-      links: {
+      nodes: {
         type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            href: {
-              type: "string",
-              maxLength: 500,
-              pattern: "^(https?:\\/\\/|mailto:|tel:|\\/|#)",
-            },
-            description: { type: ["string", "null"], maxLength: 240 },
-          },
-          required: ["label", "href", "description"],
-        },
-      },
-      users: {
-        type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            name: { type: "string", maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-          },
-          required: ["name", "description", "tone"],
-        },
-      },
-      labels: {
-        type: "array",
-        maxItems: 12,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            value: { type: ["string", "null"], maxLength: 240 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-            type: {
-              type: "string",
-              enum: GRAVITY_LABEL_TYPES,
-            },
-          },
-          required: ["label", "value", "tone", "type"],
-        },
-      },
-      cards: {
-        type: "array",
-        maxItems: 12,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            subtitle: { type: ["string", "null"], maxLength: 240 },
-            body: { type: "string", maxLength: 800 },
-            imageLabel: { type: ["string", "null"], maxLength: 80 },
-            value: { type: ["string", "null"], maxLength: 120 },
-            meta: { type: ["string", "null"], maxLength: 240 },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-            labels: {
-              type: "array",
-              maxItems: 4,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: { type: ["string", "null"], maxLength: 240 },
-                  tone: {
-                    type: "string",
-                    enum: GRAVITY_TONES,
-                  },
-                  type: {
-                    type: "string",
-                    enum: GRAVITY_LABEL_TYPES,
-                  },
-                },
-                required: ["label", "value", "tone", "type"],
-              },
-            },
-            actions: {
-              type: "array",
-              maxItems: 2,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  icon: {
-                    type: ["string", "null"],
-                    enum: [...ALLOWED_GRAVITY_ICONS, null],
-                  },
-                  action: {
-                    type: "string",
-                    enum: ALLOWED_A2UI_ACTIONS,
-                  },
-                  variant: {
-                    type: "string",
-                    enum: GRAVITY_BUTTON_VARIANTS,
-                  },
-                  disabled: { type: "boolean" },
-                  loading: { type: "boolean" },
-                  selected: { type: "boolean" },
-                },
-                required: [
-                  "label",
-                  "icon",
-                  "action",
-                  "variant",
-                  "disabled",
-                  "loading",
-                  "selected",
-                ],
-              },
-            },
-          },
-          required: [
-            "title",
-            "subtitle",
-            "body",
-            "imageLabel",
-            "value",
-            "meta",
-            "tone",
-            "labels",
-            "actions",
-          ],
-        },
-      },
-      tabs: {
-        type: "array",
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            size: {
-              type: "string",
-              enum: GRAVITY_TAB_SIZES,
-            },
-            items: {
-              type: "array",
-              minItems: 2,
-              maxItems: 8,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: {
-                    type: "string",
-                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
-                    maxLength: 48,
-                  },
-                  body: { type: "string", maxLength: 1600 },
-                  counter: { type: ["string", "null"], maxLength: 240 },
-                  tone: {
-                    type: "string",
-                    enum: GRAVITY_TONES,
-                  },
-                  active: { type: "boolean" },
-                },
-                required: [
-                  "label",
-                  "value",
-                  "body",
-                  "counter",
-                  "tone",
-                  "active",
-                ],
-              },
-            },
-          },
-          required: ["title", "size", "items"],
-        },
-      },
-      emptyStates: {
-        type: "array",
-        maxItems: 2,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            description: { type: "string", maxLength: 1600 },
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
-            tone: {
-              type: "string",
-              enum: GRAVITY_TONES,
-            },
-            size: {
-              type: "string",
-              enum: GRAVITY_EMPTY_STATE_SIZES,
-            },
-          },
-          required: ["title", "description", "icon", "tone", "size"],
-        },
-      },
-      loadingStates: {
-        type: "array",
-        maxItems: 4,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            description: { type: ["string", "null"], maxLength: 240 },
-            size: {
-              type: "string",
-              enum: GRAVITY_LOADING_SIZES,
-            },
-          },
-          required: ["label", "description", "size"],
-        },
-      },
-      breadcrumbs: {
-        type: "array",
-        maxItems: 2,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            showRoot: { type: "boolean" },
-            items: {
-              type: "array",
-              minItems: 2,
-              maxItems: 8,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  href: {
-                    type: ["string", "null"],
-                    maxLength: 500,
-                    pattern: "^(https?:\\/\\/|mailto:|tel:|\\/|#)",
-                  },
-                },
-                required: ["label", "href"],
-              },
-            },
-          },
-          required: ["title", "showRoot", "items"],
-        },
-      },
-      steppers: {
-        type: "array",
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            size: {
-              type: "string",
-              enum: GRAVITY_STEPPER_SIZES,
-            },
-            items: {
-              type: "array",
-              minItems: 2,
-              maxItems: 8,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: {
-                    type: "string",
-                    pattern: "^[A-Za-z][A-Za-z0-9_-]*$",
-                    maxLength: 48,
-                  },
-                  view: {
-                    type: "string",
-                    enum: GRAVITY_STEPPER_VIEWS,
-                  },
-                  disabled: { type: "boolean" },
-                  active: { type: "boolean" },
-                },
-                required: ["label", "value", "view", "disabled", "active"],
-              },
-            },
-          },
-          required: ["title", "size", "items"],
-        },
-      },
-      accordions: {
-        type: "array",
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            size: {
-              type: "string",
-              enum: GRAVITY_ACCORDION_SIZES,
-            },
-            view: {
-              type: "string",
-              enum: GRAVITY_ACCORDION_VIEWS,
-            },
-            arrowPosition: {
-              type: "string",
-              enum: GRAVITY_ACCORDION_ARROW_POSITIONS,
-            },
-            items: {
-              type: "array",
-              minItems: 1,
-              maxItems: 8,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  title: { type: "string", maxLength: 240 },
-                  body: { type: "string", maxLength: 1600 },
-                  expanded: { type: "boolean" },
-                  disabled: { type: "boolean" },
-                },
-                required: ["title", "body", "expanded", "disabled"],
-              },
-            },
-          },
-          required: ["title", "size", "view", "arrowPosition", "items"],
-        },
-      },
-      copyLists: {
-        type: "array",
-        maxItems: 4,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: { type: "string", maxLength: 240 },
-            items: {
-              type: "array",
-              minItems: 1,
-              maxItems: 8,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string", maxLength: 240 },
-                  value: { type: "string", maxLength: 240 },
-                  copyText: { type: "string", minLength: 1, maxLength: 1000 },
-                },
-                required: ["label", "value", "copyText"],
-              },
-            },
-          },
-          required: ["title", "items"],
-        },
-      },
-      actions: {
-        type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
-            action: {
-              type: "string",
-              enum: ALLOWED_A2UI_ACTIONS,
-            },
-            variant: {
-              type: "string",
-              enum: GRAVITY_BUTTON_VARIANTS,
-              description:
-                'Button appearance. "primary" maps to Gravity UI action view.',
-            },
-            disabled: {
-              type: "boolean",
-              description: "Whether the button is unavailable.",
-            },
-            loading: {
-              type: "boolean",
-              description: "Whether the button shows a loading state.",
-            },
-            selected: {
-              type: "boolean",
-              description: "Whether the button is selected or pressed.",
-            },
-          },
-          required: [
-            "label",
-            "icon",
-            "action",
-            "variant",
-            "disabled",
-            "loading",
-            "selected",
-          ],
-        },
-      },
-      navigation: {
-        type: "array",
-        maxItems: 8,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string", maxLength: 240 },
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
-            action: {
-              type: "string",
-              enum: ALLOWED_A2UI_ACTIONS,
-            },
-            active: { type: "boolean" },
-          },
-          required: ["label", "icon", "action", "active"],
-        },
+        maxItems: 120,
+        items: composeNodeToolSchema,
       },
     },
-    required: [
-      "sequence",
-      "surfaceId",
-      "title",
-      "titleIcon",
-      "summary",
-      "tone",
-      "layout",
-      "alerts",
-      "metrics",
-      "sections",
-      "fields",
-      "tables",
-      "progress",
-      "descriptions",
-      "links",
-      "users",
-      "labels",
-      "cards",
-      "tabs",
-      "emptyStates",
-      "loadingStates",
-      "breadcrumbs",
-      "steppers",
-      "accordions",
-      "copyLists",
-      "actions",
-      "navigation",
-    ],
+    required: ["sequence", "surfaceId", "dataModel", "root", "nodes"],
   },
 };
 

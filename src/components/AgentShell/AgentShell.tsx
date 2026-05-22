@@ -18,7 +18,7 @@ import {
   TextInput,
 } from "@/components/GravityUI/GravityUI";
 import type { GravityA2uiMessage } from "@/lib/agent/a2uiContract";
-import type { RenderInterfaceArguments } from "@/lib/agent/fixedInterface";
+import type { ComposedInterfacePayload } from "@/lib/agent/composedInterface";
 import { buildReactCode } from "@/lib/agent/reactCode";
 import type {
   AgentRequest,
@@ -42,7 +42,7 @@ type AssistantTurn = {
   id: string;
   role: "assistant";
   messages: GravityA2uiMessage[];
-  payload?: RenderInterfaceArguments;
+  payload?: ComposedInterfacePayload;
   status: string;
   error?: string;
   done: boolean;
@@ -497,7 +497,9 @@ function AssistantHistoryItem({ turn }: { turn: AssistantTurn }) {
           {turn.status}
         </Label>
         <Text variant="body-2" className="agent-history-item__text">
-          {turn.error ?? turn.payload?.title ?? "Generating interface"}
+          {turn.error ??
+            (turn.payload ? getPayloadTitle(turn.payload) : null) ??
+            "Generating interface"}
         </Text>
       </Flex>
     </Card>
@@ -904,34 +906,213 @@ function getPromptBeforeTurn(turns: ChatTurn[], turnId: string) {
   return latestPrompt;
 }
 
-function summarizePayload(payload: RenderInterfaceArguments) {
+function summarizePayload(payload: ComposedInterfacePayload) {
+  const componentCounts = new Map<string, number>();
+
+  for (const node of payload.nodes) {
+    componentCounts.set(
+      node.component,
+      (componentCounts.get(node.component) ?? 0) + 1,
+    );
+  }
+
+  const topLevel = payload.nodes
+    .filter((node) => node.parentId === "root" || node.parentId === null)
+    .sort((left, right) =>
+      left.order === right.order
+        ? left.id.localeCompare(right.id)
+        : left.order - right.order,
+    )
+    .map((node) => node.component);
+  const counts = [...componentCounts.entries()]
+    .sort((left, right) =>
+      right[1] === left[1]
+        ? left[0].localeCompare(right[0])
+        : right[1] - left[1],
+    )
+    .slice(0, 8)
+    .map(([component, count]) => `${component} x${count}`);
+  const snippets = collectVisibleText(payload).slice(0, 5);
+  const actions = collectActionLabels(payload).slice(0, 6);
   const parts = [
-    payload.title,
-    payload.summary,
-    payload.sections.length > 0
-      ? `Sections: ${payload.sections.map((section) => section.title).join(", ")}`
-      : "",
-    payload.cards.length > 0
-      ? `Cards: ${payload.cards.map((card) => card.title).join(", ")}`
-      : "",
-    payload.metrics.length > 0
-      ? `Metrics: ${payload.metrics.map((metric) => metric.label).join(", ")}`
-      : "",
-    payload.alerts.length > 0
-      ? `Alerts: ${payload.alerts.map((alert) => alert.title).join(", ")}`
-      : "",
-    payload.tables.length > 0
-      ? `Tables: ${payload.tables.map((table) => table.title).join(", ")}`
-      : "",
-    payload.fields.length > 0
-      ? `Fields: ${payload.fields.map((field) => field.label).join(", ")}`
-      : "",
-    payload.actions.length > 0
-      ? `Actions: ${payload.actions.map((action) => action.label).join(", ")}`
-      : "",
+    getPayloadTitle(payload),
+    `Components: ${payload.nodes.length}${counts.length ? ` (${counts.join(", ")})` : ""}`,
+    topLevel.length > 0 ? `Top level: ${topLevel.join(", ")}` : "",
+    snippets.length > 0 ? `Text: ${snippets.join(" · ")}` : "",
+    actions.length > 0 ? `Actions: ${actions.join(", ")}` : "",
   ].filter(Boolean);
 
   return truncateForContext(parts.join("\n"));
+}
+
+function getPayloadTitle(payload: ComposedInterfacePayload) {
+  const heading = payload.nodes.find((node) => {
+    if (node.component !== "Text") {
+      return false;
+    }
+
+    const variant = node.props.variant;
+
+    return variant === "h1" || variant === "h2" || variant === "h3";
+  });
+  const headingText = heading
+    ? readPayloadString(heading.props.text, payload.dataModel)
+    : null;
+
+  if (headingText) {
+    return headingText;
+  }
+
+  for (const node of payload.nodes) {
+    const title = readPayloadString(node.props.title, payload.dataModel);
+
+    if (title) {
+      return title;
+    }
+  }
+
+  for (const node of payload.nodes) {
+    if (node.component === "Text") {
+      const text = readPayloadString(node.props.text, payload.dataModel);
+
+      if (text) {
+        return text;
+      }
+    }
+  }
+
+  return "Generated interface";
+}
+
+function collectVisibleText(payload: ComposedInterfacePayload) {
+  const snippets: string[] = [];
+
+  for (const node of payload.nodes) {
+    for (const value of [
+      node.props.text,
+      node.props.title,
+      node.props.label,
+      node.props.body,
+      node.props.message,
+    ]) {
+      const text = readStaticString(value);
+
+      if (text) {
+        snippets.push(text);
+      }
+    }
+
+    if (Array.isArray(node.props.items)) {
+      for (const item of node.props.items) {
+        if (!isRecord(item)) {
+          continue;
+        }
+
+        const text = readStaticString(item.title ?? item.label ?? item.name);
+
+        if (text) {
+          snippets.push(text);
+        }
+      }
+    }
+  }
+
+  return [...new Set(snippets)].map((snippet) =>
+    snippet.length > 120 ? `${snippet.slice(0, 117)}...` : snippet,
+  );
+}
+
+function collectActionLabels(payload: ComposedInterfacePayload) {
+  const labels: string[] = [];
+
+  for (const node of payload.nodes) {
+    if (node.component === "Button") {
+      const text = readStaticString(node.props.text);
+      const actionName = readActionName(node.props.action);
+
+      if (text || actionName) {
+        labels.push(text ?? actionName ?? "");
+      }
+    }
+
+    for (const value of [node.props.actions, node.props.items]) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+
+      for (const item of value) {
+        if (!isRecord(item)) {
+          continue;
+        }
+
+        if (Array.isArray(item.actions)) {
+          for (const action of item.actions) {
+            if (!isRecord(action)) {
+              continue;
+            }
+
+            const label = readStaticString(action.label);
+
+            if (label) {
+              labels.push(label);
+            }
+          }
+        }
+
+        const label = readStaticString(item.label);
+
+        if (label && item.action) {
+          labels.push(label);
+        }
+      }
+    }
+  }
+
+  return [...new Set(labels.filter(Boolean))];
+}
+
+function readStaticString(value: unknown) {
+  const text = typeof value === "string" ? value.trim() : "";
+
+  return text || null;
+}
+
+function readPayloadString(value: unknown, dataModel: unknown) {
+  if (isRecord(value) && typeof value.path === "string") {
+    return readStaticString(readJsonPointer(dataModel, value.path));
+  }
+
+  return readStaticString(value);
+}
+
+function readJsonPointer(source: unknown, path: string) {
+  if (path === "/") {
+    return source;
+  }
+
+  return path
+    .split("/")
+    .slice(1)
+    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"))
+    .reduce<unknown>((current, key) => {
+      if (!isRecord(current) && !Array.isArray(current)) {
+        return undefined;
+      }
+
+      return (current as Record<string, unknown>)[key];
+    }, source);
+}
+
+function readActionName(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.event)) {
+    return null;
+  }
+
+  return readStaticString(value.event.name);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function truncateForContext(value: string) {

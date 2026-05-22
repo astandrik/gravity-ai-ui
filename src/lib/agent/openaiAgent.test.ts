@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { GRAVITY_A2UI_CATALOG_ID } from "./a2uiContract";
 import {
-  buildFixedInterfaceFromPartialJson,
+  buildComposedInterfaceFromPartialJson,
   buildProgressivePlaceholderInterface,
   buildProgressiveStatusUpdate,
-  type RenderInterfaceArguments,
-} from "./fixedInterface";
+  type ComposedInterfacePayload,
+} from "./composedInterface";
 import {
   buildInput,
   buildInstructions,
+  COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
   getMaxOutputTokens,
   getReasoningEffort,
   parseFunctionCallArguments,
@@ -33,257 +34,78 @@ afterEach(() => {
   process.env.OPENAI_MAX_OUTPUT_TOKENS = originalOpenAIMaxOutputTokens;
 });
 
-const interfaceArgs = {
+const composedPayload = {
   sequence: 0,
   surfaceId: "main",
-  title: "Deployment review",
-  titleIcon: "rocket",
-  summary: "Review the generated checklist before continuing.",
-  tone: "info",
-  layout: {
-    density: "comfortable",
-    sectionDividers: "minimal",
+  dataModel: {
+    title: "Deployment review",
+    owner: "Ada",
   },
-  alerts: [
-    {
-      title: "Risk noted",
-      message: "Production deploy requires an approver.",
-      tone: "warning",
+  root: {
+    component: "Column",
+    props: {
+      align: "stretch",
+      gap: "normal",
     },
-  ],
-  metrics: [
+  },
+  nodes: [
     {
-      label: "Readiness",
-      value: "82%",
-      description: "Automated checks completed",
-      tone: "success",
-      icon: "check",
+      id: "title",
+      parentId: "root",
+      order: 0,
+      component: "Text",
+      props: {
+        text: { path: "/title" },
+        variant: "h2",
+      },
     },
-  ],
-  sections: [
     {
-      title: "Checklist",
-      icon: "list",
-      body: "The shell will render this from fixed interface data.",
-      items: ["Validate config", "Run checks"],
+      id: "summary",
+      parentId: "root",
+      order: 1,
+      component: "Text",
+      props: {
+        text: "Review launch readiness before continuing.",
+        color: "secondary",
+      },
     },
-  ],
-  fields: [
     {
-      id: "approver",
-      label: "Approver",
-      type: "shortText",
-      placeholder: "Name",
-      value: "",
-      checked: null,
-      options: [],
-      min: null,
-      max: null,
-      step: null,
-      required: true,
+      id: "details",
+      parentId: "root",
+      order: 2,
+      component: "Card",
+      props: {
+        theme: "normal",
+        view: "filled",
+        padding: "comfortable",
+      },
     },
-  ],
-  tables: [
     {
-      title: "Open checks",
-      columns: [
-        { id: "name", label: "Check", align: "start" },
-        { id: "status", label: "Status", align: "end" },
-      ],
-      rows: [
-        { cells: ["Config", "Ready"] },
-        { cells: ["Rollback", "Pending"] },
-      ],
-      emptyMessage: "No checks",
+      id: "owner",
+      parentId: "details",
+      order: 0,
+      component: "Text",
+      props: {
+        text: { path: "/owner" },
+      },
     },
-  ],
-  progress: [
     {
-      label: "Deployment preparation",
-      value: 65,
-      text: "65%",
-      tone: "info",
-    },
-  ],
-  descriptions: [
-    {
-      title: "Metadata",
-      items: [
-        { label: "Environment", value: "Production" },
-        { label: "Window", value: "Today" },
-      ],
-    },
-  ],
-  links: [
-    {
-      label: "Runbook",
-      href: "/runbook",
-      description: "Operational steps",
-    },
-  ],
-  users: [
-    {
-      name: "Ada Lovelace",
-      description: "Primary approver",
-      tone: "info",
-    },
-  ],
-  labels: [
-    {
-      label: "Window",
-      value: "Today",
-      tone: "info",
-      type: "default",
-    },
-  ],
-  cards: [
-    {
-      title: "Rollback checklist",
-      subtitle: "Operational card",
-      body: "Confirm owner, rollback target, and monitoring links before starting.",
-      imageLabel: "RC",
-      value: "Ready",
-      meta: "Updated 2 min ago",
-      tone: "success",
-      labels: [
-        {
-          label: "Verified",
-          value: null,
-          tone: "success",
-          type: "default",
+      id: "approve",
+      parentId: "details",
+      order: 1,
+      component: "Button",
+      props: {
+        text: "Approve",
+        variant: "primary",
+        action: {
+          event: {
+            name: "confirm",
+          },
         },
-      ],
-      actions: [
-        {
-          label: "Open",
-          icon: "arrowRight",
-          action: "open_details",
-          variant: "outlined",
-          disabled: false,
-          loading: false,
-          selected: false,
-        },
-      ],
+      },
     },
   ],
-  tabs: [
-    {
-      title: "Views",
-      size: "m",
-      items: [
-        {
-          label: "Summary",
-          value: "summary",
-          body: "Readiness summary for the current deploy.",
-          counter: null,
-          tone: "normal",
-          active: true,
-        },
-        {
-          label: "Risks",
-          value: "risks",
-          body: "Production approval is still pending.",
-          counter: "1",
-          tone: "warning",
-          active: false,
-        },
-      ],
-    },
-  ],
-  emptyStates: [
-    {
-      title: "No blockers",
-      description: "Blocking checks will appear here.",
-      icon: "check",
-      tone: "success",
-      size: "m",
-    },
-  ],
-  loadingStates: [
-    {
-      label: "Checking deploy health",
-      description: "Waiting for the latest probe result.",
-      size: "s",
-    },
-  ],
-  breadcrumbs: [
-    {
-      title: "Location",
-      showRoot: true,
-      items: [
-        { label: "Deployments", href: "/deployments" },
-        { label: "Production", href: "/deployments/production" },
-        { label: "Review", href: null },
-      ],
-    },
-  ],
-  steppers: [
-    {
-      title: "Deploy flow",
-      size: "m",
-      items: [
-        {
-          label: "Plan",
-          value: "plan",
-          view: "success",
-          disabled: false,
-          active: false,
-        },
-        {
-          label: "Review",
-          value: "review",
-          view: "idle",
-          disabled: false,
-          active: true,
-        },
-      ],
-    },
-  ],
-  accordions: [
-    {
-      title: "Details",
-      size: "m",
-      view: "solid",
-      arrowPosition: "end",
-      items: [
-        {
-          title: "Rollback plan",
-          body: "Restore the previous release if health checks fail.",
-          expanded: true,
-          disabled: false,
-        },
-      ],
-    },
-  ],
-  copyLists: [
-    {
-      title: "Commands",
-      items: [
-        {
-          label: "Deploy",
-          value: "npm run build",
-          copyText: "npm run build",
-        },
-      ],
-    },
-  ],
-  actions: [
-    {
-      label: "Continue",
-      icon: "arrowRight",
-      action: "next",
-      variant: "primary",
-    },
-  ],
-  navigation: [
-    {
-      label: "Overview",
-      icon: "home",
-      action: "select",
-      active: true,
-    },
-  ],
-} satisfies RenderInterfaceArguments;
+} satisfies ComposedInterfacePayload;
 
 describe("OpenAI agent stream parsing", () => {
   it("disables reasoning by default", () => {
@@ -360,7 +182,9 @@ describe("OpenAI agent stream parsing", () => {
   });
 
   it("builds progressive status updates for an existing placeholder surface", () => {
-    expect(buildProgressiveStatusUpdate("main", "Composing interface")).toMatchObject({
+    expect(
+      buildProgressiveStatusUpdate("main", "Composing interface"),
+    ).toMatchObject({
       updateDataModel: {
         surfaceId: "main",
         path: "/status",
@@ -369,29 +193,25 @@ describe("OpenAI agent stream parsing", () => {
     });
   });
 
-  it("builds renderable snapshots from partial function argument JSON", () => {
-    const parsed = buildFixedInterfaceFromPartialJson(
+  it("builds renderable snapshots from partial composed argument JSON", () => {
+    const parsed = buildComposedInterfaceFromPartialJson(
       [
-        '{"sequence":0,"surfaceId":"main","title":"Button styles",',
-        '"titleIcon":null,"summary":"Available button variants.",',
-        '"tone":"info","layout":{"density":"comfortable","sectionDividers":"minimal"},',
-        '"alerts":[],"metrics":[],"sections":[],"fields":[],"tables":[],',
-        '"progress":[],"descriptions":[],"links":[],"users":[],',
-        '"actions":[{"label":"Primary","icon":null,"action":"noop",',
-        '"variant":"primary","disabled":false,"loading":false,"selected":false}]',
+        '{"sequence":0,"surfaceId":"main","dataModel":{"title":"Button styles"},',
+        '"root":{"component":"Column","props":{"gap":"normal","align":"stretch"}},',
+        '"nodes":[{"id":"title","parentId":"root","order":0,"component":"Text",',
+        '"props":{"text":{"path":"/title"},"variant":"h2"}},',
+        '{"id":"primary","parentId":"root","order":1,"component":"Button",',
+        '"props":{"text":"Primary","variant":"primary","action":{"event":{"name":"noop"}}}}',
       ].join(""),
       "main",
     );
 
     expect(parsed).toMatchObject({
       payload: {
-        title: "Button styles",
-        actions: [
-          expect.objectContaining({
-            label: "Primary",
-            variant: "primary",
-          }),
-        ],
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: "title" }),
+          expect.objectContaining({ id: "primary" }),
+        ]),
       },
       messages: expect.arrayContaining([
         expect.objectContaining({
@@ -403,20 +223,22 @@ describe("OpenAI agent stream parsing", () => {
     });
   });
 
-  it("builds canonical A2UI messages from fixed interface data", () => {
+  it("builds canonical A2UI messages from composed interface data", () => {
     expect(
       parseFunctionToolCallItem({
         type: "function_call",
-        id: "item_render",
-        call_id: "call_render",
-        name: "render_agent_interface",
-        arguments: JSON.stringify(interfaceArgs),
+        id: "item_compose",
+        call_id: "call_compose",
+        name: COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
+        arguments: JSON.stringify(composedPayload),
       }),
     ).toMatchObject({
       sequence: 0,
       payload: {
         surfaceId: "main",
-        title: "Deployment review",
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: "approve", component: "Button" }),
+        ]),
       },
       messages: [
         {
@@ -444,177 +266,16 @@ describe("OpenAI agent stream parsing", () => {
     });
   });
 
-  it("keeps the generated component tree valid and rooted", () => {
-    const parsed = parseFunctionToolCallItem({
-      type: "function_call",
-      id: "item_render",
-      call_id: "call_render",
-      name: "render_agent_interface",
-      arguments: JSON.stringify(interfaceArgs),
-    });
-
-    expect(parsed?.messages[1]).toMatchObject({
-      updateComponents: {
-        components: expect.arrayContaining([
-          expect.objectContaining({
-            id: "root",
-            component: "Column",
-          }),
-          expect.objectContaining({
-            id: "field_approver",
-            component: "TextField",
-          }),
-          expect.objectContaining({
-            id: "action_0",
-            component: "Button",
-          }),
-          expect.objectContaining({
-            id: "metrics",
-            component: "MetricGrid",
-          }),
-          expect.objectContaining({
-            id: "labels",
-            component: "LabelGroup",
-          }),
-          expect.objectContaining({
-            id: "cards",
-            component: "CardGrid",
-          }),
-          expect.objectContaining({
-            id: "tabs_0",
-            component: "TabsBlock",
-          }),
-          expect.objectContaining({
-            id: "empty_states",
-            component: "EmptyStateList",
-          }),
-          expect.objectContaining({
-            id: "loading_states",
-            component: "LoadingStateList",
-          }),
-          expect.objectContaining({
-            id: "breadcrumbs_0",
-            component: "BreadcrumbTrail",
-          }),
-          expect.objectContaining({
-            id: "stepper_0",
-            component: "StepperBlock",
-          }),
-          expect.objectContaining({
-            id: "accordion_0",
-            component: "AccordionBlock",
-          }),
-          expect.objectContaining({
-            id: "copy_list_0",
-            component: "CopyList",
-          }),
-          expect.objectContaining({
-            id: "table_0",
-            component: "DataTable",
-          }),
-        ]),
-      },
-    });
-  });
-
-  it("accepts the largest fixed-schema surface the builder can create", () => {
-    const sections = Array.from({ length: 6 }, (_, sectionIndex) => ({
-      title: `Section ${sectionIndex + 1}`,
-      icon: "info" as const,
-      body: `Body ${sectionIndex + 1}`,
-      items: Array.from(
-        { length: 8 },
-        (_, itemIndex) => `Item ${sectionIndex + 1}.${itemIndex + 1}`,
-      ),
-    }));
-    const fields = Array.from({ length: 8 }, (_, fieldIndex) => ({
-      id: `field_${fieldIndex + 1}`,
-      label: `Field ${fieldIndex + 1}`,
-      type: "shortText" as const,
-      placeholder: null,
-      value: "",
-      checked: null,
-      options: [],
-      min: null,
-      max: null,
-      step: null,
-      required: false,
-    }));
-    const actionVariants = [
-      "primary",
-      "normal",
-      "outlined",
-      "outlined-warning",
-      "flat-danger",
-      "raised",
-      "flat-action",
-      "normal-contrast",
-    ] as const;
-    const actions = actionVariants.map((variant, actionIndex) => ({
-      label: `Action ${actionIndex + 1}`,
-      icon: "arrowRight" as const,
-      action: "next" as const,
-      variant,
-      disabled: actionIndex === 3,
-      loading: actionIndex === 4,
-      selected: actionIndex === 5,
-    }));
-    const navigation = Array.from({ length: 8 }, (_, itemIndex) => ({
-      label: `Nav ${itemIndex + 1}`,
-      icon: "list" as const,
-      action: "select" as const,
-      active: itemIndex === 0,
-    }));
-    const parsed = parseFunctionToolCallItem({
-      type: "function_call",
-      id: "item_large_render",
-      call_id: "call_large_render",
-      name: "render_agent_interface",
-      arguments: JSON.stringify({
-        ...interfaceArgs,
-        layout: {
-          density: "comfortable",
-          sectionDividers: "betweenSections",
-        },
-        sections,
-        fields,
-        actions,
-        navigation,
-      } satisfies RenderInterfaceArguments),
-    });
-
-    const updateComponents = parsed?.messages.find(
-      (message) => "updateComponents" in message,
-    );
-
-    expect(updateComponents).toMatchObject({
-      updateComponents: {
-        components: expect.arrayContaining([
-          expect.objectContaining({
-            id: "content",
-            component: "Column",
-          }),
-          expect.objectContaining({
-            id: "action_3",
-            component: "Button",
-            variant: "outlined-warning",
-            disabled: true,
-          }),
-          expect.objectContaining({
-            id: "action_4",
-            component: "Button",
-            variant: "flat-danger",
-            loading: true,
-          }),
-          expect.objectContaining({
-            id: "action_5",
-            component: "Button",
-            variant: "raised",
-            selected: true,
-          }),
-        ]),
-      },
-    });
+  it("ignores the retired fixed-schema tool name", () => {
+    expect(
+      parseFunctionToolCallItem({
+        type: "function_call",
+        id: "item_render",
+        call_id: "call_render",
+        name: "render_agent_interface",
+        arguments: JSON.stringify({}),
+      }),
+    ).toBeNull();
   });
 
   it("deduplicates repeated function output items", () => {
@@ -623,8 +284,8 @@ describe("OpenAI agent stream parsing", () => {
       type: "function_call",
       id: "item_1",
       call_id: "call_1",
-      name: "render_agent_interface",
-      arguments: JSON.stringify(interfaceArgs),
+      name: COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
+      arguments: JSON.stringify(composedPayload),
     };
 
     expect(parseFunctionToolCallItem(item, processedToolCalls)).not.toBeNull();
@@ -633,7 +294,7 @@ describe("OpenAI agent stream parsing", () => {
 
   it("does not mark nameless function argument events as processed", () => {
     const processedToolCalls = new Set<string>();
-    const argumentsJson = JSON.stringify(interfaceArgs);
+    const argumentsJson = JSON.stringify(composedPayload);
 
     expect(
       parseFunctionCallArguments({
@@ -649,8 +310,8 @@ describe("OpenAI agent stream parsing", () => {
         {
           type: "function_call",
           id: "item_without_name",
-          call_id: "call_render",
-          name: "render_agent_interface",
+          call_id: "call_compose",
+          name: COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
           arguments: argumentsJson,
         },
         processedToolCalls,
@@ -683,17 +344,15 @@ describe("OpenAI agent stream parsing", () => {
           },
           {
             role: "assistant",
-            text: "Deployment review\nReview the generated checklist.",
+            text: "Deployment review\nComponents: Text x2, Button x1",
             surfaceId: "main",
           },
         ],
         latestSurfaceId: "main",
-        latestPayload: interfaceArgs,
+        latestPayload: composedPayload,
         latestDataModel: {
           title: "Deployment review",
-          fields: {
-            approver: "",
-          },
+          owner: "Ada",
         },
       },
     });
@@ -702,67 +361,49 @@ describe("OpenAI agent stream parsing", () => {
     expect(text).toContain("Previous conversation state follows");
     expect(text).toContain("Build a deployment review card");
     expect(text).toContain("Latest surfaceId: main");
+    expect(text).toContain("Latest composed payload");
     expect(text).toContain("Current user request");
     expect(text).toContain("owner field");
   });
 
-  it("includes liked design examples in prompt input", () => {
-    const input = buildInput(
-      {
-        kind: "prompt",
-        conversationId: "conversation_1",
-        prompt: "Build another review screen.",
-      },
-      [
-        {
-          title: "Deployment review",
-          summary: "Review the generated checklist before continuing.",
-          prompt: "Create a deployment review card.",
-          payload: interfaceArgs,
-        },
-      ],
-    );
+  it("does not inject liked design examples into prompt input", () => {
+    const input = buildInput({
+      kind: "prompt",
+      conversationId: "conversation_1",
+      prompt: "Build another review screen.",
+    });
     const text = input[0].content[0].text;
 
-    expect(text).toContain("Previously liked design examples");
-    expect(text).toContain("Deployment review");
-    expect(text).toContain('"density":"comfortable"');
+    expect(text).not.toContain("Previously liked design");
+    expect(text).not.toContain("Liked style hints");
+    expect(text).toContain("Build another review screen.");
   });
 
-  it("includes compact design rules in agent instructions", () => {
+  it("includes composition instructions without fixed page slots", () => {
     const instructions = buildInstructions();
     const guideIndex = instructions.indexOf("Component choice guide:");
     const technicalIndex = instructions.indexOf("Technical props/settings");
 
-    expect(instructions).toContain("Follow these design rules");
-    expect(instructions).toContain("Use one clear primary task per surface");
-    expect(instructions).toContain("Use at most one primary action");
-    expect(instructions).toContain("Do not rely on color alone");
-    expect(instructions).toContain("layout.density");
-    expect(instructions).toContain("Render progressively");
-    expect(instructions).toContain("2 to 4 snapshots");
-    expect(instructions).toContain("Allowed icons");
-    expect(instructions).toContain("Available Gravity component capabilities");
-    expect(instructions).toContain("labels for compact tags/status chips");
-    expect(instructions).toContain("cards for product cards");
-    expect(instructions).toContain("use cards instead of sections/items");
-    expect(instructions).toContain("breadcrumbs for hierarchy paths");
-    expect(instructions).toContain("steppers for multi-step flows");
-    expect(instructions).toContain("tabs for alternate views");
-    expect(instructions).toContain("accordions for expandable detail groups");
-    expect(instructions).toContain("emptyStates for no-data states");
-    expect(instructions).toContain("copyLists for copyable commands or IDs");
+    expect(instructions).toContain(COMPOSE_GRAVITY_INTERFACE_TOOL_NAME);
+    expect(instructions).toContain("Build a finished interface by composing");
+    expect(instructions).toContain("Do not follow a fixed page template");
+    expect(instructions).toContain("Only Column, Row, Card, and NavigationBar");
+    expect(instructions).toContain("Use HeroBlock only when it is naturally");
+    expect(instructions).toContain("Use buttons only for real actions");
+    expect(instructions).toContain("Available components");
+    expect(instructions).toContain("Curated A2UI node.props guide");
+    expect(instructions).toContain("Column(justify?, align?, gap?)");
+    expect(instructions).toContain("Row(justify?, align?, gap?)");
+    expect(instructions).toContain(
+      "Column, Row, Card, and NavigationBar do not accept title or subtitle props",
+    );
     expect(instructions).toContain("Generated Gravity UI component catalog");
     expect(guideIndex).toBeGreaterThan(-1);
     expect(technicalIndex).toBeGreaterThan(-1);
     expect(guideIndex).toBeLessThan(technicalIndex);
-    expect(instructions).toContain("Button: Buttons act as a trigger");
-    expect(instructions).toContain("Button(");
-    expect(instructions).toContain("Text(");
-    expect(instructions).toContain("outlined-warning");
-    expect(instructions).toContain("loading");
-    expect(instructions).toContain("render the actual available controls");
-    expect(instructions).toContain("button or button-variant showcases");
-    expect(instructions).toContain("Do not represent controls as bullet lists");
+    expect(instructions).not.toContain("layout.intent");
+    expect(instructions).not.toContain("hero + filterBar");
+    expect(instructions).not.toContain("liked design");
+    expect(instructions).not.toContain("fixed-schema");
   });
 });

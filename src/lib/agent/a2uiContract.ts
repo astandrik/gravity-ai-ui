@@ -6,6 +6,8 @@ import {
   GRAVITY_ACCORDION_SIZES,
   GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_CARD_GRID_COLUMNS,
+  GRAVITY_CARD_GRID_VARIANTS,
   GRAVITY_CARD_PADDING,
   GRAVITY_CARD_VIEWS,
   GRAVITY_CHOICE_PICKER_VARIANTS,
@@ -55,6 +57,9 @@ export const ALLOWED_A2UI_COMPONENTS = [
   "SelectField",
   "SliderField",
   "LabelGroup",
+  "HeroBlock",
+  "FilterBar",
+  "FeaturePanelGrid",
   "CardGrid",
   "TabsBlock",
   "EmptyStateList",
@@ -80,7 +85,7 @@ export const ALLOWED_A2UI_ACTIONS = [
 const MAX_COMPONENT_CHILDREN = 96;
 const MAX_COMPONENTS = 160;
 
-const componentIdSchema = z
+export const componentIdSchema = z
   .string()
   .min(1)
   .max(80)
@@ -483,10 +488,78 @@ const cardGridItemSchema = z
   })
   .strict();
 
+const heroBlockComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("HeroBlock"),
+    eyebrow: z.string().max(240).nullable(),
+    title: z.string().max(240),
+    body: z.string().max(1600),
+    imageLabel: z.string().max(80).nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    labels: z.array(labelItemSchema).max(4),
+    actions: z.array(cardGridActionSchema).max(2),
+  })
+  .strict();
+
+const filterOptionSchema = z
+  .object({
+    label: z.string().min(1).max(240),
+    value: z.string().min(1).max(100),
+    active: z.boolean(),
+  })
+  .strict();
+
+const filterBarComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("FilterBar"),
+    title: z.string().max(240),
+    searchPlaceholder: z.string().max(240).nullable(),
+    searchValue: z.string().max(240).nullable(),
+    filters: z.array(filterOptionSchema).max(10),
+    sortLabel: z.string().max(240).nullable(),
+    sortValue: z.string().max(100).nullable(),
+    sortOptions: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(100),
+            value: z.string().min(1).max(100),
+          })
+          .strict(),
+      )
+      .max(8),
+  })
+  .strict();
+
+const featurePanelItemSchema = z
+  .object({
+    title: z.string().max(240),
+    body: z.string().max(1600),
+    icon: iconNameSchema.nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    value: z.string().max(240).nullable(),
+    labels: z.array(labelItemSchema).max(3),
+  })
+  .strict();
+
+const featurePanelGridComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("FeaturePanelGrid"),
+    items: z.array(featurePanelItemSchema).min(1).max(8),
+  })
+  .strict();
+
 const cardGridComponentSchema = z
   .object({
     ...baseComponentSchema,
     component: z.literal("CardGrid"),
+    title: z.string().max(240).optional(),
+    description: z.string().max(1600).nullable().optional(),
+    variant: z.enum(GRAVITY_CARD_GRID_VARIANTS).optional(),
+    columns: z.enum(GRAVITY_CARD_GRID_COLUMNS).optional(),
     items: z.array(cardGridItemSchema).min(1).max(12),
   })
   .strict();
@@ -626,7 +699,7 @@ const copyListComponentSchema = z
   })
   .strict();
 
-const gravityComponentSchema = z.discriminatedUnion("component", [
+export const gravityComponentSchema = z.discriminatedUnion("component", [
   columnComponentSchema,
   rowComponentSchema,
   cardComponentSchema,
@@ -649,6 +722,9 @@ const gravityComponentSchema = z.discriminatedUnion("component", [
   selectFieldComponentSchema,
   sliderFieldComponentSchema,
   labelGroupComponentSchema,
+  heroBlockComponentSchema,
+  filterBarComponentSchema,
+  featurePanelGridComponentSchema,
   cardGridComponentSchema,
   tabsBlockComponentSchema,
   emptyStateListComponentSchema,

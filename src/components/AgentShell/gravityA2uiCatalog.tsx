@@ -64,6 +64,8 @@ import {
   GRAVITY_ACCORDION_SIZES,
   GRAVITY_ACCORDION_VIEWS,
   GRAVITY_BUTTON_VARIANTS,
+  GRAVITY_CARD_GRID_COLUMNS,
+  GRAVITY_CARD_GRID_VARIANTS,
   GRAVITY_CARD_PADDING,
   GRAVITY_CARD_VIEWS,
   GRAVITY_CHOICE_PICKER_VARIANTS,
@@ -200,6 +202,37 @@ const cardGridItemSchema = z.object({
   tone: toneSchema,
   labels: z.array(labelItemSchema),
   actions: z.array(cardActionSchema),
+});
+const heroBlockSchema = z.object({
+  eyebrow: z.string().nullable(),
+  title: z.string(),
+  body: z.string(),
+  imageLabel: z.string().nullable(),
+  tone: toneSchema,
+  labels: z.array(labelItemSchema),
+  actions: z.array(cardActionSchema),
+});
+const filterOptionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  active: z.boolean(),
+});
+const filterBarSchema = z.object({
+  title: z.string(),
+  searchPlaceholder: z.string().nullable(),
+  searchValue: z.string().nullable(),
+  filters: z.array(filterOptionSchema),
+  sortLabel: z.string().nullable(),
+  sortValue: z.string().nullable(),
+  sortOptions: z.array(optionSchema),
+});
+const featurePanelItemSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  icon: z.enum(iconNames).nullable(),
+  tone: toneSchema,
+  value: z.string().nullable(),
+  labels: z.array(labelItemSchema),
 });
 const tabItemSchema = z.object({
   label: z.string(),
@@ -656,55 +689,133 @@ const LabelGroupSurface = createComponentImplementation(
   ),
 );
 
-const CardGridSurface = createComponentImplementation(
+const HeroBlockSurface = createComponentImplementation(
   {
-    name: "CardGrid",
+    name: "HeroBlock",
     schema: z.object({
       ...commonProps,
-      items: z.array(cardGridItemSchema),
+      ...heroBlockSchema.shape,
     }),
   },
   ({ props }) => (
-    <div className="a2ui-card-grid">
+    <section className={`a2ui-hero-block a2ui-hero-block_${props.tone}`}>
+      <div className="a2ui-hero-block__copy">
+        {props.eyebrow ? (
+          <Text color="secondary" variant="caption-2">
+            {props.eyebrow}
+          </Text>
+        ) : null}
+        <Text as="h2" variant="header-1">
+          {props.title}
+        </Text>
+        {props.body ? (
+          <Text color="secondary" variant="body-2">
+            {props.body}
+          </Text>
+        ) : null}
+        {props.labels.length > 0 ? (
+          <div className="a2ui-hero-block__labels">
+            {props.labels.map((label) => (
+              <Label
+                copyText={label.type === "copy" ? label.value ?? label.label : undefined}
+                key={`${label.label}-${label.value ?? ""}`}
+                size="s"
+                theme={mapLabelTheme(label.tone)}
+                type={label.type}
+                value={label.value ?? undefined}
+              >
+                {label.label}
+              </Label>
+            ))}
+          </div>
+        ) : null}
+        {props.actions.length > 0 ? (
+          <div className="a2ui-hero-block__actions">
+            {props.actions.map((action, actionIndex) => (
+              <Button
+                disabled={Boolean(action.disabled)}
+                key={`${action.label}-${actionIndex}`}
+                loading={Boolean(action.loading)}
+                onClick={asResolvedAction(action.action)}
+                selected={Boolean(action.selected)}
+                size="m"
+                view={mapButtonView(action.variant)}
+              >
+                {action.icon ? (
+                  <GravityIcon data={iconDataByName[action.icon]} size={16} />
+                ) : null}
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {props.imageLabel ? (
+        <div className="a2ui-hero-block__media">
+          <Text variant="subheader-3">{props.imageLabel}</Text>
+        </div>
+      ) : null}
+    </section>
+  ),
+);
+
+const FilterBarSurface = createComponentImplementation(
+  {
+    name: "FilterBar",
+    schema: z.object({
+      ...commonProps,
+      ...filterBarSchema.shape,
+    }),
+  },
+  ({ props }) => <FilterBarRenderer {...props} />,
+);
+
+const FeaturePanelGridSurface = createComponentImplementation(
+  {
+    name: "FeaturePanelGrid",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(featurePanelItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-feature-panel-grid">
       {props.items.map((item, index) => (
         <Card
-          className="a2ui-card-grid__card"
+          className="a2ui-feature-panel"
           key={`${item.title}-${index}`}
           size="m"
           theme={mapCardTheme(item.tone)}
           type="container"
           view="filled"
         >
-          {item.imageLabel ? (
-            <div className={`a2ui-card-grid__media a2ui-card-grid__media_${item.tone}`}>
-              <Text variant="subheader-1">{item.imageLabel}</Text>
-            </div>
-          ) : null}
-          <div className="a2ui-card-grid__body">
-            <div className="a2ui-card-grid__header">
-              <div className="a2ui-card-grid__title">
-                {item.subtitle ? (
-                  <Text color="secondary" variant="caption-2">
-                    {item.subtitle}
-                  </Text>
-                ) : null}
-                <Text as="h3" variant="subheader-2">
-                  {item.title}
-                </Text>
-              </div>
+          <div className="a2ui-feature-panel__body">
+            <div className="a2ui-feature-panel__header">
+              {item.icon ? (
+                <GravityIcon
+                  className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
+                  data={iconDataByName[item.icon]}
+                  size={18}
+                />
+              ) : null}
               {item.value ? (
-                <Text className="a2ui-card-grid__value" variant="subheader-2">
+                <Text className="a2ui-feature-panel__value" variant="subheader-2">
                   {item.value}
                 </Text>
               ) : null}
             </div>
+            {item.title ? (
+              <Text as="h3" variant="subheader-2">
+                {item.title}
+              </Text>
+            ) : null}
             {item.body ? (
               <Text color="secondary" variant="body-2">
                 {item.body}
               </Text>
             ) : null}
             {item.labels.length > 0 ? (
-              <div className="a2ui-card-grid__labels">
+              <div className="a2ui-feature-panel__labels">
                 {item.labels.map((label) => (
                   <Label
                     copyText={
@@ -721,34 +832,128 @@ const CardGridSurface = createComponentImplementation(
                 ))}
               </div>
             ) : null}
-            {item.meta ? (
-              <Text color="secondary" variant="caption-2">
-                {item.meta}
-              </Text>
-            ) : null}
-            {item.actions.length > 0 ? (
-              <div className="a2ui-card-grid__actions">
-                {item.actions.map((action, actionIndex) => (
-                  <Button
-                    disabled={Boolean(action.disabled)}
-                    key={`${action.label}-${actionIndex}`}
-                    loading={Boolean(action.loading)}
-                    onClick={asResolvedAction(action.action)}
-                    selected={Boolean(action.selected)}
-                    size="s"
-                    view={mapButtonView(action.variant)}
-                  >
-                    {action.icon ? (
-                      <GravityIcon data={iconDataByName[action.icon]} size={14} />
-                    ) : null}
-                    {action.label}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
           </div>
         </Card>
       ))}
+    </div>
+  ),
+);
+
+const CardGridSurface = createComponentImplementation(
+  {
+    name: "CardGrid",
+    schema: z.object({
+      ...commonProps,
+      title: z.string().optional(),
+      description: z.string().nullable().optional(),
+      variant: z.enum(GRAVITY_CARD_GRID_VARIANTS).optional(),
+      columns: z.enum(GRAVITY_CARD_GRID_COLUMNS).optional(),
+      items: z.array(cardGridItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-card-grid-block">
+      {props.title || props.description ? (
+        <div className="a2ui-card-grid-block__header">
+          {props.title ? (
+            <Text as="h3" variant="subheader-2">
+              {props.title}
+            </Text>
+          ) : null}
+          {props.description ? (
+            <Text color="secondary" variant="body-2">
+              {props.description}
+            </Text>
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        className={`a2ui-card-grid a2ui-card-grid_${props.variant ?? "product"} a2ui-card-grid_columns_${props.columns ?? "auto"}`}
+      >
+        {props.items.map((item, index) => (
+          <Card
+            className="a2ui-card-grid__card"
+            key={`${item.title}-${index}`}
+            size="m"
+            theme={mapCardTheme(item.tone)}
+            type="container"
+            view="filled"
+          >
+            {item.imageLabel ? (
+              <div className={`a2ui-card-grid__media a2ui-card-grid__media_${item.tone}`}>
+                <Text variant="subheader-1">{item.imageLabel}</Text>
+              </div>
+            ) : null}
+            <div className="a2ui-card-grid__body">
+              <div className="a2ui-card-grid__header">
+                <div className="a2ui-card-grid__title">
+                  {item.subtitle ? (
+                    <Text color="secondary" variant="caption-2">
+                      {item.subtitle}
+                    </Text>
+                  ) : null}
+                  <Text as="h3" variant="subheader-2">
+                    {item.title}
+                  </Text>
+                </div>
+                {item.value ? (
+                  <Text className="a2ui-card-grid__value" variant="subheader-2">
+                    {item.value}
+                  </Text>
+                ) : null}
+              </div>
+              {item.body ? (
+                <Text color="secondary" variant="body-2">
+                  {item.body}
+                </Text>
+              ) : null}
+              {item.labels.length > 0 ? (
+                <div className="a2ui-card-grid__labels">
+                  {item.labels.map((label) => (
+                    <Label
+                      copyText={
+                        label.type === "copy" ? label.value ?? label.label : undefined
+                      }
+                      key={`${label.label}-${label.value ?? ""}`}
+                      size="xs"
+                      theme={mapLabelTheme(label.tone)}
+                      type={label.type}
+                      value={label.value ?? undefined}
+                    >
+                      {label.label}
+                    </Label>
+                  ))}
+                </div>
+              ) : null}
+              {item.meta ? (
+                <Text color="secondary" variant="caption-2">
+                  {item.meta}
+                </Text>
+              ) : null}
+              {item.actions.length > 0 ? (
+                <div className="a2ui-card-grid__actions">
+                  {item.actions.map((action, actionIndex) => (
+                    <Button
+                      disabled={Boolean(action.disabled)}
+                      key={`${action.label}-${actionIndex}`}
+                      loading={Boolean(action.loading)}
+                      onClick={asResolvedAction(action.action)}
+                      selected={Boolean(action.selected)}
+                      size="s"
+                      view={mapButtonView(action.variant)}
+                    >
+                      {action.icon ? (
+                        <GravityIcon data={iconDataByName[action.icon]} size={14} />
+                      ) : null}
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   ),
 );
@@ -1191,6 +1396,9 @@ export const gravityA2uiCatalog = new Catalog(
     LinkListSurface,
     UserListSurface,
     LabelGroupSurface,
+    HeroBlockSurface,
+    FilterBarSurface,
+    FeaturePanelGridSurface,
     CardGridSurface,
     TabsBlockSurface,
     EmptyStateListSurface,
@@ -1217,6 +1425,82 @@ export { A2uiSurface };
 
 type TabsBlockItem = z.infer<typeof tabItemSchema>;
 type StepperBlockItem = z.infer<typeof stepperItemSchema>;
+type FilterBarProps = z.infer<typeof filterBarSchema>;
+
+function FilterBarRenderer({
+  filters,
+  searchPlaceholder,
+  searchValue,
+  sortLabel,
+  sortOptions,
+  sortValue,
+  title,
+}: FilterBarProps) {
+  const [query, setQuery] = useState(searchValue ?? "");
+  const [activeFilters, setActiveFilters] = useState(
+    filters.filter((filter) => filter.active).map((filter) => filter.value),
+  );
+  const [selectedSort, setSelectedSort] = useState(
+    sortValue ?? sortOptions[0]?.value ?? "",
+  );
+
+  return (
+    <div className="a2ui-filter-bar">
+      {title ? (
+        <Text as="h3" variant="subheader-2">
+          {title}
+        </Text>
+      ) : null}
+      <div className="a2ui-filter-bar__controls">
+        {searchPlaceholder || searchValue ? (
+          <TextInput
+            className="a2ui-filter-bar__search"
+            onUpdate={setQuery}
+            placeholder={searchPlaceholder ?? undefined}
+            size="m"
+            value={query}
+          />
+        ) : null}
+        {filters.length > 0 ? (
+          <div className="a2ui-filter-bar__chips">
+            {filters.map((filter) => {
+              const selected = activeFilters.includes(filter.value);
+
+              return (
+                <Button
+                  key={filter.value}
+                  onClick={() =>
+                    setActiveFilters(toggleValue(activeFilters, filter.value))
+                  }
+                  selected={selected}
+                  size="s"
+                  view={selected ? "action" : "outlined"}
+                >
+                  {filter.label}
+                </Button>
+              );
+            })}
+          </div>
+        ) : null}
+        {sortOptions.length > 0 ? (
+          <Select
+            className="a2ui-filter-bar__sort"
+            label={sortLabel ?? undefined}
+            onUpdate={(nextValue) => setSelectedSort(nextValue[0] ?? "")}
+            options={sortOptions.map((option) => ({
+              content: option.label,
+              text: option.label,
+              value: option.value,
+            }))}
+            size="m"
+            value={selectedSort ? [selectedSort] : []}
+            width="max"
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function TabsBlockRenderer({
   items,

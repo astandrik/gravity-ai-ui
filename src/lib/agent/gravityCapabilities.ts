@@ -147,11 +147,30 @@ export const GRAVITY_DENSITIES = [
   "spacious",
 ] as const;
 
+export const GRAVITY_LAYOUT_INTENTS = [
+  "generic",
+  "catalog",
+  "dashboard",
+  "form",
+  "detail",
+  "workflow",
+  "profile",
+] as const;
+
 export const GRAVITY_SECTION_DIVIDERS = [
   "none",
   "minimal",
   "betweenSections",
 ] as const;
+
+export const GRAVITY_CARD_GRID_VARIANTS = [
+  "product",
+  "seller",
+  "feature",
+  "compact",
+] as const;
+
+export const GRAVITY_CARD_GRID_COLUMNS = ["auto", "two", "three"] as const;
 
 export const GRAVITY_TABLE_ALIGN = ["start", "center", "end"] as const;
 
@@ -181,9 +200,18 @@ export const GRAVITY_CHOICE_PICKER_VARIANTS = [
 export const GRAVITY_DIVIDER_AXES = ["horizontal", "vertical"] as const;
 
 export const GRAVITY_COMPONENT_CAPABILITIES = {
+  Layout: {
+    intents: GRAVITY_LAYOUT_INTENTS,
+    densities: GRAVITY_DENSITIES,
+    sectionDividers: GRAVITY_SECTION_DIVIDERS,
+  },
   Button: {
     variants: GRAVITY_BUTTON_VARIANTS,
     states: GRAVITY_BUTTON_STATES,
+  },
+  CardGrid: {
+    variants: GRAVITY_CARD_GRID_VARIANTS,
+    columns: GRAVITY_CARD_GRID_COLUMNS,
   },
   Card: {
     themes: GRAVITY_TONES,
@@ -277,6 +305,8 @@ function isGravityTextColor(value: unknown): value is GravityTextColor {
 
 export function formatGravityCapabilitiesForPrompt() {
   return [
+    `Layout primitives: Column and Row with gaps ${GRAVITY_GAPS.join(", ")}.`,
+    `CardGrid variants: ${GRAVITY_CARD_GRID_VARIANTS.join(", ")}; columns: ${GRAVITY_CARD_GRID_COLUMNS.join(", ")}.`,
     `Button variants: ${GRAVITY_BUTTON_VARIANTS.join(", ")}.`,
     `Button states: ${GRAVITY_BUTTON_STATES.join(", ")}.`,
     `Card themes: ${GRAVITY_TONES.join(", ")}; views: ${GRAVITY_CARD_VIEWS.join(", ")}.`,
