@@ -236,6 +236,46 @@ describe("A2UI contract validation", () => {
     );
   });
 
+  it("normalizes action-like icon aliases", () => {
+    expect(
+      validateGravityA2uiMessage({
+        version: "v0.9",
+        updateComponents: {
+          surfaceId: "main",
+          components: [
+            {
+              id: "root",
+              component: "Column",
+              children: ["preview"],
+            },
+            {
+              id: "preview",
+              component: "Button",
+              text: "Open details",
+              icon: "open_details",
+              variant: "outlined",
+              action: {
+                event: {
+                  name: "open_details",
+                },
+              },
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      updateComponents: {
+        components: [
+          expect.any(Object),
+          expect.objectContaining({
+            id: "preview",
+            icon: "arrowRight",
+          }),
+        ],
+      },
+    });
+  });
+
   it("accepts data-bound HeroBlock copy and refresh icons", () => {
     const message = {
       version: "v0.9",

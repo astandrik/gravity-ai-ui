@@ -80,6 +80,41 @@ describe("composed interface builder", () => {
     });
   });
 
+  it("normalizes action-like button icon aliases", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        nodes: [
+          {
+            id: "preview",
+            parentId: "root",
+            order: 0,
+            component: "Button",
+            props: {
+              text: "Open details",
+              icon: "open_details",
+              action: { event: { name: "open_details" } },
+            },
+          },
+        ],
+      } satisfies ComposedInterfacePayload),
+    );
+    const updateComponents = built.messages.find(
+      (message) => "updateComponents" in message,
+    );
+
+    expect(updateComponents).toMatchObject({
+      updateComponents: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            id: "preview",
+            icon: "arrowRight",
+          }),
+        ]),
+      },
+    });
+  });
+
   it("accepts data-bound HeroBlock props with refresh actions", () => {
     const built = buildComposedInterfaceFromJson(
       JSON.stringify({

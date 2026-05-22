@@ -1,5 +1,9 @@
 import type { ComposedInterfacePayload } from "./composedInterface";
-import type { GravityIconName } from "./gravityCapabilities";
+import {
+  GRAVITY_ICON_ALIASES,
+  normalizeGravityIconName,
+  type GravityIconName,
+} from "./gravityCapabilities";
 
 const iconImportByName: Record<
   GravityIconName,
@@ -558,10 +562,20 @@ function getPath(source: unknown, path: string): unknown {
     }, source);
 }
 
+const iconAliases: Record<string, string> = ${jsValue(GRAVITY_ICON_ALIASES)};
+
 function icon(name: unknown, size: unknown) {
-  const data = typeof name === "string" ? iconData[name] : undefined;
+  const normalizedName = normalizeIconName(name);
+  const data =
+    typeof normalizedName === "string" ? iconData[normalizedName] : undefined;
 
   return data ? <Icon data={data} size={size === "l" ? 20 : size === "m" ? 16 : 14} /> : null;
+}
+
+function normalizeIconName(name: unknown) {
+  return typeof name === "string" && Object.prototype.hasOwnProperty.call(iconAliases, name)
+    ? iconAliases[name]
+    : name;
 }
 
 function buttonView(value: unknown) {
@@ -752,8 +766,10 @@ function collectIconsFromDataModel(
 }
 
 function addIcon(icons: Set<GravityIconName>, value: unknown) {
-  if (typeof value === "string" && value in iconImportByName) {
-    icons.add(value as GravityIconName);
+  const normalizedValue = normalizeGravityIconName(value);
+
+  if (typeof normalizedValue === "string" && normalizedValue in iconImportByName) {
+    icons.add(normalizedValue as GravityIconName);
   }
 }
 

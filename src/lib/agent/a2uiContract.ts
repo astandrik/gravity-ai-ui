@@ -28,6 +28,7 @@ import {
   GRAVITY_TEXT_FIELD_TYPES,
   GRAVITY_TEXT_VARIANTS,
   GRAVITY_TONES,
+  normalizeGravityIconName,
 } from "./gravityCapabilities";
 
 export const A2UI_VERSION = "v0.9";
@@ -98,7 +99,10 @@ const jsonPointerSchema = z
   .regex(/^\/(?:[^~/]|~0|~1)*(?:\/(?:[^~/]|~0|~1)*)*$/);
 
 const dataBindingSchema = z.object({ path: jsonPointerSchema }).strict();
-const iconNameSchema = z.enum(ALLOWED_GRAVITY_ICONS);
+const iconNameSchema = z.preprocess(
+  normalizeGravityIconName,
+  z.enum(ALLOWED_GRAVITY_ICONS),
+);
 
 const dynamicStringSchema = z.union([
   z.string().max(2400),

@@ -31,6 +31,20 @@ export const ALLOWED_GRAVITY_ICONS = [
 
 export type GravityIconName = (typeof ALLOWED_GRAVITY_ICONS)[number];
 
+export const GRAVITY_ICON_ALIASES: Partial<Record<string, GravityIconName>> = {
+  open_details: "arrowRight",
+};
+
+export function normalizeGravityIconName(value: unknown) {
+  const alias =
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(GRAVITY_ICON_ALIASES, value)
+      ? GRAVITY_ICON_ALIASES[value]
+      : undefined;
+
+  return alias ?? value;
+}
+
 export const GRAVITY_TONES = [
   "normal",
   "info",

@@ -5,28 +5,7 @@ import { Catalog, CommonSchemas, MessageProcessor } from "@a2ui/web_core/v0_9";
 import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
 import type { ComponentContext } from "@a2ui/web_core/v0_9";
 import type { SurfaceModel } from "@a2ui/web_core/v0_9";
-import {
-  ArrowRotateRight,
-  ArrowRight,
-  Bell,
-  Check,
-  CircleInfo,
-  Clock,
-  Cloud,
-  Code,
-  Copy,
-  Database,
-  Folder,
-  Gear,
-  House,
-  ListUl,
-  Magnifier,
-  Person,
-  Plus,
-  Rocket,
-  Shield,
-  TriangleExclamation,
-} from "@gravity-ui/icons";
+import { Copy } from "@gravity-ui/icons";
 import { ActionBar } from "@gravity-ui/navigation";
 import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -91,12 +70,18 @@ import {
   mapGravityButtonVariantToView,
   mapGravityTextColor,
   mapGravityTextVariant,
+  normalizeGravityIconName,
 } from "@/lib/agent/gravityCapabilities";
 import {
   resolveDynamicArray,
   resolveDynamicProps,
   resolveDynamicValue,
 } from "./a2uiDynamicProps";
+import {
+  getGravityIconData,
+  gravityIconNames,
+  type GravityIconDataName,
+} from "./gravityIconData";
 
 export type GravitySurface = SurfaceModel<GravityReactComponent>;
 export type GravityActionHandler = (action: A2uiClientAction) => void;
@@ -105,32 +90,28 @@ type GravityReactComponent = ReturnType<typeof createComponentImplementation>;
 type BuildChild = (id: string, basePath?: string) => ReactNode;
 type ResolvedAction = () => void;
 
-const iconDataByName = {
-  arrowRight: ArrowRight,
-  bell: Bell,
-  check: Check,
-  clock: Clock,
-  cloud: Cloud,
-  code: Code,
-  copy: Copy,
-  database: Database,
-  folder: Folder,
-  gear: Gear,
-  home: House,
-  info: CircleInfo,
-  list: ListUl,
-  person: Person,
-  plus: Plus,
-  refresh: ArrowRotateRight,
-  rocket: Rocket,
-  search: Magnifier,
-  shield: Shield,
-  warning: TriangleExclamation,
-} as const;
+const iconNameSchema = z.preprocess(
+  normalizeGravityIconName,
+  z.enum(gravityIconNames),
+);
 
-type IconName = keyof typeof iconDataByName;
+function GravityMappedIcon({
+  className,
+  fallbackName,
+  name,
+  size,
+}: {
+  className?: string;
+  fallbackName?: GravityIconDataName;
+  name: unknown;
+  size: number;
+}) {
+  const iconData = getGravityIconData(name) ?? getGravityIconData(fallbackName);
 
-const iconNames = Object.keys(iconDataByName) as [IconName, ...IconName[]];
+  return iconData ? (
+    <GravityIcon className={className} data={iconData} size={size} />
+  ) : null;
+}
 
 const commonProps = {
   weight: z.number().optional(),
@@ -161,7 +142,7 @@ const metricItemSchema = z.object({
   value: dynamicStringSchema,
   description: nullableDynamicStringSchema,
   tone: toneSchema,
-  icon: z.enum(iconNames).nullable(),
+  icon: iconNameSchema.nullable(),
 });
 const tableColumnSchema = z.object({
   id: z.string(),
@@ -199,7 +180,7 @@ const labelItemSchema = z.object({
 });
 const cardActionSchema = z.object({
   label: dynamicStringSchema,
-  icon: z.enum(iconNames).nullable(),
+  icon: iconNameSchema.nullable(),
   action: CommonSchemas.Action,
   variant: z.enum(GRAVITY_BUTTON_VARIANTS),
   disabled: z.boolean().optional(),
@@ -243,7 +224,7 @@ const filterBarSchema = z.object({
 const featurePanelItemSchema = z.object({
   title: dynamicStringSchema,
   body: dynamicStringSchema,
-  icon: z.enum(iconNames).nullable(),
+  icon: iconNameSchema.nullable(),
   tone: toneSchema,
   value: nullableDynamicStringSchema,
   labels: dynamicArraySchema(z.array(labelItemSchema)),
@@ -259,7 +240,7 @@ const tabItemSchema = z.object({
 const emptyStateItemSchema = z.object({
   title: dynamicStringSchema,
   description: dynamicStringSchema,
-  icon: z.enum(iconNames).nullable(),
+  icon: iconNameSchema.nullable(),
   tone: toneSchema,
   size: z.enum(GRAVITY_EMPTY_STATE_SIZES),
 });
@@ -386,7 +367,7 @@ const ButtonSurface = createComponentImplementation(
       ...commonProps,
       child: CommonSchemas.ComponentId.optional(),
       text: CommonSchemas.DynamicString.optional(),
-      icon: z.enum(iconNames).optional(),
+      icon: iconNameSchema.optional(),
       variant: z.enum(GRAVITY_BUTTON_VARIANTS).optional(),
       action: CommonSchemas.Action.optional(),
       disabled: CommonSchemas.DynamicBoolean.optional(),
@@ -404,9 +385,7 @@ const ButtonSurface = createComponentImplementation(
       size="m"
       view={mapButtonView(props.variant)}
     >
-      {props.icon ? (
-        <GravityIcon data={iconDataByName[props.icon]} size={16} />
-      ) : null}
+      {props.icon ? <GravityMappedIcon name={props.icon} size={16} /> : null}
       {props.child ? buildChild(props.child) : props.text}
     </Button>
   ),
@@ -417,15 +396,15 @@ const IconSurface = createComponentImplementation(
     name: "Icon",
     schema: z.object({
       ...commonProps,
-      name: z.enum(iconNames),
+      name: iconNameSchema,
       color: z.enum(GRAVITY_TEXT_COLORS).optional(),
       size: z.enum(GRAVITY_ICON_SIZES).optional(),
     }),
   },
   ({ props }) => (
-    <GravityIcon
+    <GravityMappedIcon
       className={`a2ui-icon a2ui-icon_${props.color ?? "primary"}`}
-      data={iconDataByName[props.name]}
+      name={props.name}
       size={mapIconSize(props.size)}
     />
   ),
@@ -502,9 +481,7 @@ const MetricGridSurface = createComponentImplementation(
                 <Text variant="caption-2" color="secondary">
                   {item.label}
                 </Text>
-                {item.icon ? (
-                  <GravityIcon data={iconDataByName[item.icon]} size={14} />
-                ) : null}
+                {item.icon ? <GravityMappedIcon name={item.icon} size={14} /> : null}
               </div>
               <Text variant="header-1">{item.value}</Text>
               {item.description ? (
@@ -842,7 +819,7 @@ const HeroBlockSurface = createComponentImplementation(
                 view={mapButtonView(action.variant)}
               >
                 {action.icon ? (
-                  <GravityIcon data={iconDataByName[action.icon]} size={16} />
+                  <GravityMappedIcon name={action.icon} size={16} />
                 ) : null}
                 {action.label}
               </Button>
@@ -921,9 +898,9 @@ const FeaturePanelGridSurface = createComponentImplementation(
             <div className="a2ui-feature-panel__body">
               <div className="a2ui-feature-panel__header">
                 {item.icon ? (
-                  <GravityIcon
+                  <GravityMappedIcon
                     className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
-                    data={iconDataByName[item.icon]}
+                    name={item.icon}
                     size={18}
                   />
                 ) : null}
@@ -1082,7 +1059,7 @@ const CardGridSurface = createComponentImplementation(
                       view={mapButtonView(action.variant)}
                     >
                       {action.icon ? (
-                        <GravityIcon data={iconDataByName[action.icon]} size={14} />
+                        <GravityMappedIcon name={action.icon} size={14} />
                       ) : null}
                       {action.label}
                     </Button>
@@ -1152,9 +1129,10 @@ const EmptyStateListSurface = createComponentImplementation(
           description={item.description}
           direction="column"
           image={
-            <GravityIcon
+            <GravityMappedIcon
               className={`a2ui-icon a2ui-icon_${mapToneIconColor(item.tone)}`}
-              data={iconDataByName[item.icon ?? "info"]}
+              fallbackName="info"
+              name={item.icon}
               size={mapEmptyStateIconSize(item.size)}
             />
           }

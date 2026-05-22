@@ -157,6 +157,31 @@ describe("React code generator", () => {
     expect(code).not.toContain("Dislike");
   });
 
+  it("exports action-like icon aliases as concrete icons", () => {
+    const code = buildReactCode({
+      ...payload,
+      nodes: [
+        ...payload.nodes,
+        {
+          id: "details",
+          parentId: "root",
+          order: 5,
+          component: "Button",
+          props: {
+            text: "Open details",
+            icon: "open_details",
+            action: { event: { name: "open_details" } },
+          },
+        },
+      ],
+    } satisfies ComposedInterfacePayload);
+
+    expect(code).toContain("ArrowRight as ArrowRightIcon");
+    expect(code).toContain('"arrowRight": ArrowRightIcon');
+    expect(code).toContain('"open_details": "arrowRight"');
+    expect(code).toContain("Object.prototype.hasOwnProperty.call(iconAliases, name)");
+  });
+
   it("emits syntactically valid TSX", () => {
     const code = buildReactCode(payload);
     const sourceFile = ts.createSourceFile(
