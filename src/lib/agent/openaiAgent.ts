@@ -395,6 +395,9 @@ function formatLikedDesignExamples(examples: LikedDesignExample[]) {
         example.payload.sections.length > 0
           ? `Sections: ${example.payload.sections.map((section) => section.title).join(", ")}`
           : null,
+        example.payload.cards.length > 0
+          ? `Cards: ${example.payload.cards.map((card) => card.title).join(", ")}`
+          : null,
         example.payload.actions.length > 0
           ? `Actions: ${example.payload.actions.map((action) => action.label).join(", ")}`
           : null,
@@ -427,12 +430,13 @@ export function buildInstructions() {
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
     "For action follow-ups, preserve the preferred surfaceId from the user message.",
     "Use sections for readable results, fields only when user input is needed, and actions only for clear next steps.",
-    "Use alerts for important status, metrics for dashboard KPIs, labels for compact tags/status chips, breadcrumbs for hierarchy paths, steppers for multi-step flows, tabs for alternate views, accordions for expandable detail groups, tables for comparable records, progress and loadingStates for completion states, emptyStates for no-data states, copyLists for copyable commands or IDs, descriptions for key-value details, links for resource lists, and users for people or owners.",
+    "Use alerts for important status, metrics for dashboard KPIs, labels for compact tags/status chips, cards for product cards, pricing cards, offer tiles, seller listings, article previews, and other repeated card-like content, breadcrumbs for hierarchy paths, steppers for multi-step flows, tabs for alternate views, accordions for expandable detail groups, tables for comparable records, progress and loadingStates for completion states, emptyStates for no-data states, copyLists for copyable commands or IDs, descriptions for key-value details, links for resource lists, and users for people or owners.",
     `Available Gravity component capabilities: ${formatGravityCapabilitiesForPrompt()}`,
     formatGravityComponentCatalogForPrompt(),
     "When the user asks to show, render, compare, or document UI components, controls, buttons, or variants, render the actual available controls instead of explaining them as prose.",
     `For button or button-variant showcases, use actions as real Button examples with variants from this set: ${GRAVITY_BUTTON_VARIANTS.join(", ")}. Use action "noop", set disabled/loading/selected booleans for every action, use false unless the state is relevant, and do not list button labels in section.items.`,
     "Do not represent controls as bullet lists when this schema has a matching block type.",
+    "For seller pages, marketplaces, product grids, plan comparisons, catalog pages, or any request that explicitly asks for cards, use cards instead of sections/items.",
     `Allowed action names: ${ALLOWED_A2UI_ACTIONS.join(", ")}.`,
     "Return empty arrays for every optional block array when it is not needed.",
     "Keep title, summary, labels, and section copy concise and product-interface focused.",
@@ -878,6 +882,93 @@ const renderInterfaceTool = {
           required: ["label", "value", "tone", "type"],
         },
       },
+      cards: {
+        type: "array",
+        maxItems: 12,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", maxLength: 240 },
+            subtitle: { type: ["string", "null"], maxLength: 240 },
+            body: { type: "string", maxLength: 800 },
+            imageLabel: { type: ["string", "null"], maxLength: 80 },
+            value: { type: ["string", "null"], maxLength: 120 },
+            meta: { type: ["string", "null"], maxLength: 240 },
+            tone: {
+              type: "string",
+              enum: GRAVITY_TONES,
+            },
+            labels: {
+              type: "array",
+              maxItems: 4,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  value: { type: ["string", "null"], maxLength: 240 },
+                  tone: {
+                    type: "string",
+                    enum: GRAVITY_TONES,
+                  },
+                  type: {
+                    type: "string",
+                    enum: GRAVITY_LABEL_TYPES,
+                  },
+                },
+                required: ["label", "value", "tone", "type"],
+              },
+            },
+            actions: {
+              type: "array",
+              maxItems: 2,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  label: { type: "string", maxLength: 240 },
+                  icon: {
+                    type: ["string", "null"],
+                    enum: [...ALLOWED_GRAVITY_ICONS, null],
+                  },
+                  action: {
+                    type: "string",
+                    enum: ALLOWED_A2UI_ACTIONS,
+                  },
+                  variant: {
+                    type: "string",
+                    enum: GRAVITY_BUTTON_VARIANTS,
+                  },
+                  disabled: { type: "boolean" },
+                  loading: { type: "boolean" },
+                  selected: { type: "boolean" },
+                },
+                required: [
+                  "label",
+                  "icon",
+                  "action",
+                  "variant",
+                  "disabled",
+                  "loading",
+                  "selected",
+                ],
+              },
+            },
+          },
+          required: [
+            "title",
+            "subtitle",
+            "body",
+            "imageLabel",
+            "value",
+            "meta",
+            "tone",
+            "labels",
+            "actions",
+          ],
+        },
+      },
       tabs: {
         type: "array",
         maxItems: 3,
@@ -1192,6 +1283,7 @@ const renderInterfaceTool = {
       "links",
       "users",
       "labels",
+      "cards",
       "tabs",
       "emptyStates",
       "loadingStates",

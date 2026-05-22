@@ -1,3 +1,12 @@
+import {
+  Catalog,
+  CommonSchemas,
+  ComponentContext,
+  ComponentModel,
+  GenericBinder,
+  SurfaceModel,
+} from "@a2ui/web_core/v0_9";
+import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import {
   GRAVITY_A2UI_CATALOG_ID,
@@ -26,6 +35,7 @@ const updateComponentsMessage = {
           "title",
           "breadcrumbs",
           "chips",
+          "cards",
           "stepper",
           "tabs",
           "accordion",
@@ -60,6 +70,44 @@ const updateComponentsMessage = {
             value: "Ready",
             tone: "success",
             type: "default",
+          },
+        ],
+      },
+      {
+        id: "cards",
+        component: "CardGrid",
+        items: [
+          {
+            title: "Starter plan",
+            subtitle: "For small teams",
+            body: "Includes the core launch checklist.",
+            imageLabel: "Plan",
+            value: "$19",
+            meta: "Billed monthly",
+            tone: "info",
+            labels: [
+              {
+                label: "Popular",
+                value: null,
+                tone: "info",
+                type: "default",
+              },
+            ],
+            actions: [
+              {
+                label: "Choose",
+                icon: "check",
+                variant: "primary",
+                disabled: false,
+                loading: false,
+                selected: false,
+                action: {
+                  event: {
+                    name: "select",
+                  },
+                },
+              },
+            ],
           },
         ],
       },
@@ -186,6 +234,55 @@ describe("A2UI contract validation", () => {
     expect(validateGravityA2uiMessage(updateComponentsMessage)).toEqual(
       updateComponentsMessage,
     );
+  });
+
+  it("resolves nested card actions to click handlers", async () => {
+    const schema = z.object({
+      items: z.array(
+        z.object({
+          action: CommonSchemas.Action,
+        }),
+      ),
+    });
+    const catalog = new Catalog("test", [{ name: "CardGrid", schema }]);
+    const surface = new SurfaceModel("main", catalog);
+    const component = new ComponentModel("cards", "CardGrid", {
+      items: [
+        {
+          action: {
+            event: {
+              name: "select",
+              context: {
+                cardIndex: 0,
+              },
+            },
+          },
+        },
+      ],
+    });
+    let receivedAction: unknown;
+
+    surface.componentsModel.addComponent(component);
+    surface.onAction.subscribe((action) => {
+      receivedAction = action;
+    });
+
+    const context = new ComponentContext(surface, "cards");
+    const binder = new GenericBinder<{
+      items: Array<{ action: () => void }>;
+    }>(context, schema);
+
+    binder.currentProps.items?.[0]?.action();
+    await Promise.resolve();
+
+    expect(receivedAction).toMatchObject({
+      name: "select",
+      surfaceId: "main",
+      sourceComponentId: "cards",
+      context: {
+        cardIndex: 0,
+      },
+    });
   });
 
   it("rejects unknown components", () => {

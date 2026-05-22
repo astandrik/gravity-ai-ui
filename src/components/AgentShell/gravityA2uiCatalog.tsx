@@ -94,6 +94,7 @@ export type GravityActionHandler = (action: A2uiClientAction) => void;
 
 type GravityReactComponent = ReturnType<typeof createComponentImplementation>;
 type BuildChild = (id: string, basePath?: string) => ReactNode;
+type ResolvedAction = () => void;
 
 const iconDataByName = {
   arrowRight: ArrowRight,
@@ -179,6 +180,26 @@ const labelItemSchema = z.object({
   value: z.string().nullable(),
   tone: toneSchema,
   type: z.enum(GRAVITY_LABEL_TYPES),
+});
+const cardActionSchema = z.object({
+  label: z.string(),
+  icon: z.enum(iconNames).nullable(),
+  action: CommonSchemas.Action,
+  variant: z.enum(GRAVITY_BUTTON_VARIANTS),
+  disabled: z.boolean().optional(),
+  loading: z.boolean().optional(),
+  selected: z.boolean().optional(),
+});
+const cardGridItemSchema = z.object({
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  body: z.string(),
+  imageLabel: z.string().nullable(),
+  value: z.string().nullable(),
+  meta: z.string().nullable(),
+  tone: toneSchema,
+  labels: z.array(labelItemSchema),
+  actions: z.array(cardActionSchema),
 });
 const tabItemSchema = z.object({
   label: z.string(),
@@ -635,6 +656,103 @@ const LabelGroupSurface = createComponentImplementation(
   ),
 );
 
+const CardGridSurface = createComponentImplementation(
+  {
+    name: "CardGrid",
+    schema: z.object({
+      ...commonProps,
+      items: z.array(cardGridItemSchema),
+    }),
+  },
+  ({ props }) => (
+    <div className="a2ui-card-grid">
+      {props.items.map((item, index) => (
+        <Card
+          className="a2ui-card-grid__card"
+          key={`${item.title}-${index}`}
+          size="m"
+          theme={mapCardTheme(item.tone)}
+          type="container"
+          view="filled"
+        >
+          {item.imageLabel ? (
+            <div className={`a2ui-card-grid__media a2ui-card-grid__media_${item.tone}`}>
+              <Text variant="subheader-1">{item.imageLabel}</Text>
+            </div>
+          ) : null}
+          <div className="a2ui-card-grid__body">
+            <div className="a2ui-card-grid__header">
+              <div className="a2ui-card-grid__title">
+                {item.subtitle ? (
+                  <Text color="secondary" variant="caption-2">
+                    {item.subtitle}
+                  </Text>
+                ) : null}
+                <Text as="h3" variant="subheader-2">
+                  {item.title}
+                </Text>
+              </div>
+              {item.value ? (
+                <Text className="a2ui-card-grid__value" variant="subheader-2">
+                  {item.value}
+                </Text>
+              ) : null}
+            </div>
+            {item.body ? (
+              <Text color="secondary" variant="body-2">
+                {item.body}
+              </Text>
+            ) : null}
+            {item.labels.length > 0 ? (
+              <div className="a2ui-card-grid__labels">
+                {item.labels.map((label) => (
+                  <Label
+                    copyText={
+                      label.type === "copy" ? label.value ?? label.label : undefined
+                    }
+                    key={`${label.label}-${label.value ?? ""}`}
+                    size="xs"
+                    theme={mapLabelTheme(label.tone)}
+                    type={label.type}
+                    value={label.value ?? undefined}
+                  >
+                    {label.label}
+                  </Label>
+                ))}
+              </div>
+            ) : null}
+            {item.meta ? (
+              <Text color="secondary" variant="caption-2">
+                {item.meta}
+              </Text>
+            ) : null}
+            {item.actions.length > 0 ? (
+              <div className="a2ui-card-grid__actions">
+                {item.actions.map((action, actionIndex) => (
+                  <Button
+                    disabled={Boolean(action.disabled)}
+                    key={`${action.label}-${actionIndex}`}
+                    loading={Boolean(action.loading)}
+                    onClick={asResolvedAction(action.action)}
+                    selected={Boolean(action.selected)}
+                    size="s"
+                    view={mapButtonView(action.variant)}
+                  >
+                    {action.icon ? (
+                      <GravityIcon data={iconDataByName[action.icon]} size={14} />
+                    ) : null}
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      ))}
+    </div>
+  ),
+);
+
 const TabsBlockSurface = createComponentImplementation(
   {
     name: "TabsBlock",
@@ -1073,6 +1191,7 @@ export const gravityA2uiCatalog = new Catalog(
     LinkListSurface,
     UserListSurface,
     LabelGroupSurface,
+    CardGridSurface,
     TabsBlockSurface,
     EmptyStateListSurface,
     LoadingStateListSurface,
@@ -1283,6 +1402,10 @@ function mapGap(value?: string) {
 
 function mapButtonView(value?: string) {
   return mapGravityButtonVariantToView(value);
+}
+
+function asResolvedAction(action: unknown): ResolvedAction | undefined {
+  return typeof action === "function" ? (action as ResolvedAction) : undefined;
 }
 
 function mapCardTheme(value?: string) {

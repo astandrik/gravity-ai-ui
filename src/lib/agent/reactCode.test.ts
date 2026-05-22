@@ -145,6 +145,36 @@ const payload = {
       type: "default",
     },
   ],
+  cards: [
+    {
+      title: "Primary mitigation",
+      subtitle: "Runbook step",
+      body: "Scale the affected worker pool and watch regional error rate.",
+      imageLabel: "M1",
+      value: "12 min",
+      meta: "Owner: Platform",
+      tone: "info",
+      labels: [
+        {
+          label: "Recommended",
+          value: null,
+          tone: "info",
+          type: "default",
+        },
+      ],
+      actions: [
+        {
+          label: "Open step",
+          icon: "arrowRight",
+          action: "open_details",
+          variant: "outlined",
+          disabled: false,
+          loading: false,
+          selected: false,
+        },
+      ],
+    },
+  ],
   tabs: [
     {
       title: "Incident views",
@@ -299,6 +329,8 @@ describe("React code generator", () => {
     expect(code).toContain("PlaceholderContainer");
     expect(code).toContain("ActionBar");
     expect(code).toContain("@gravity-ui/icons");
+    expect(code).toContain("Primary mitigation");
+    expect(code).toContain("Open step");
     expect(code).toContain("handleAction");
     expect(code).toContain('view={"outlined-warning"}');
     expect(code).toContain("disabled={true}");

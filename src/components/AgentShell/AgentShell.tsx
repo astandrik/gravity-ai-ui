@@ -911,6 +911,9 @@ function summarizePayload(payload: RenderInterfaceArguments) {
     payload.sections.length > 0
       ? `Sections: ${payload.sections.map((section) => section.title).join(", ")}`
       : "",
+    payload.cards.length > 0
+      ? `Cards: ${payload.cards.map((card) => card.title).join(", ")}`
+      : "",
     payload.metrics.length > 0
       ? `Metrics: ${payload.metrics.map((metric) => metric.label).join(", ")}`
       : "",

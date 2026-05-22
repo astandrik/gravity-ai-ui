@@ -366,6 +366,7 @@
 .a2ui-stepper-block,
 .a2ui-accordion-block,
 .a2ui-copy-list,
+.a2ui-card-grid,
 .a2ui-slider-field {
   min-width: 0;
 }
@@ -486,6 +487,89 @@
 .a2ui-slider-field {
   display: grid;
   gap: var(--spacing-sm);
+}
+
+.a2ui-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.a2ui-card-grid__card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.a2ui-card-grid__media {
+  display: grid;
+  min-height: 128px;
+  place-items: center;
+  padding: var(--spacing-lg);
+  background:
+    linear-gradient(135deg, rgba(255, 190, 92, 0.28), rgba(80, 188, 169, 0.2)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.a2ui-card-grid__media_info {
+  background:
+    linear-gradient(135deg, rgba(82, 150, 255, 0.28), rgba(80, 188, 169, 0.18)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.a2ui-card-grid__media_success {
+  background:
+    linear-gradient(135deg, rgba(80, 188, 169, 0.3), rgba(255, 190, 92, 0.14)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.a2ui-card-grid__media_warning {
+  background:
+    linear-gradient(135deg, rgba(255, 190, 92, 0.34), rgba(255, 111, 111, 0.12)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.a2ui-card-grid__media_danger {
+  background:
+    linear-gradient(135deg, rgba(255, 111, 111, 0.3), rgba(82, 150, 255, 0.12)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.a2ui-card-grid__body {
+  display: grid;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  padding: var(--spacing-md);
+}
+
+.a2ui-card-grid__header {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.a2ui-card-grid__title {
+  display: grid;
+  gap: var(--spacing-2xs);
+  min-width: 0;
+}
+
+.a2ui-card-grid__value {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.a2ui-card-grid__labels,
+.a2ui-card-grid__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.a2ui-card-grid__actions {
+  padding-top: var(--spacing-xs);
 }
 
 .a2ui-label-group {

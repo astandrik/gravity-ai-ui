@@ -55,6 +55,7 @@ export const ALLOWED_A2UI_COMPONENTS = [
   "SelectField",
   "SliderField",
   "LabelGroup",
+  "CardGrid",
   "TabsBlock",
   "EmptyStateList",
   "LoadingStateList",
@@ -456,6 +457,40 @@ const labelGroupComponentSchema = z
   })
   .strict();
 
+const cardGridActionSchema = z
+  .object({
+    label: z.string().min(1).max(120),
+    icon: iconNameSchema.nullable(),
+    action: actionSchema,
+    variant: z.enum(GRAVITY_BUTTON_VARIANTS),
+    disabled: z.boolean().optional(),
+    loading: z.boolean().optional(),
+    selected: z.boolean().optional(),
+  })
+  .strict();
+
+const cardGridItemSchema = z
+  .object({
+    title: z.string().min(1).max(240),
+    subtitle: z.string().max(240).nullable(),
+    body: z.string().max(800),
+    imageLabel: z.string().max(80).nullable(),
+    value: z.string().max(120).nullable(),
+    meta: z.string().max(240).nullable(),
+    tone: z.enum(GRAVITY_TONES),
+    labels: z.array(labelItemSchema).max(4),
+    actions: z.array(cardGridActionSchema).max(2),
+  })
+  .strict();
+
+const cardGridComponentSchema = z
+  .object({
+    ...baseComponentSchema,
+    component: z.literal("CardGrid"),
+    items: z.array(cardGridItemSchema).min(1).max(12),
+  })
+  .strict();
+
 const tabItemSchema = z
   .object({
     label: z.string().min(1).max(240),
@@ -614,6 +649,7 @@ const gravityComponentSchema = z.discriminatedUnion("component", [
   selectFieldComponentSchema,
   sliderFieldComponentSchema,
   labelGroupComponentSchema,
+  cardGridComponentSchema,
   tabsBlockComponentSchema,
   emptyStateListComponentSchema,
   loadingStateListComponentSchema,

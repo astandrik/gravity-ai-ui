@@ -143,6 +143,30 @@ const labelSchema = z
     type: z.enum(GRAVITY_LABEL_TYPES),
   })
   .strict();
+const cardActionSchema = z
+  .object({
+    label: shortTextSchema,
+    icon: iconNameSchema.nullable(),
+    action: z.enum(ALLOWED_A2UI_ACTIONS),
+    variant: z.enum(GRAVITY_BUTTON_VARIANTS),
+    disabled: z.boolean().optional(),
+    loading: z.boolean().optional(),
+    selected: z.boolean().optional(),
+  })
+  .strict();
+const cardSchema = z
+  .object({
+    title: shortTextSchema,
+    subtitle: shortTextSchema.nullable(),
+    body: z.string().max(800),
+    imageLabel: z.string().max(80).nullable(),
+    value: z.string().max(120).nullable(),
+    meta: shortTextSchema.nullable(),
+    tone: toneSchema,
+    labels: z.array(labelSchema).max(4),
+    actions: z.array(cardActionSchema).max(2),
+  })
+  .strict();
 const tabItemSchema = z
   .object({
     label: shortTextSchema,
@@ -296,6 +320,7 @@ export const renderInterfaceArgumentsSchema = z
     links: z.array(linkSchema).max(8).default([]),
     users: z.array(userSchema).max(8).default([]),
     labels: z.array(labelSchema).max(12).default([]),
+    cards: z.array(cardSchema).max(12).default([]),
     tabs: z.array(tabsSchema).max(3).default([]),
     emptyStates: z.array(emptyStateSchema).max(2).default([]),
     loadingStates: z.array(loadingStateSchema).max(4).default([]),
@@ -490,6 +515,7 @@ export function buildFixedInterfaceFromPartialJson(
     links: readSchemaField("links", fields.links, []),
     users: readSchemaField("users", fields.users, []),
     labels: readSchemaField("labels", fields.labels, []),
+    cards: readSchemaField("cards", fields.cards, []),
     tabs: readSchemaField("tabs", fields.tabs, []),
     emptyStates: readSchemaField("emptyStates", fields.emptyStates, []),
     loadingStates: readSchemaField("loadingStates", fields.loadingStates, []),
@@ -612,6 +638,34 @@ export function buildFixedInterface(
       type: label.type,
     }))
     .filter((label) => label.label);
+  const cards = args.cards
+    .map((card) => ({
+      title: cleanText(card.title, ""),
+      subtitle: card.subtitle ? cleanText(card.subtitle, "") : null,
+      body: cleanText(card.body, ""),
+      imageLabel: card.imageLabel ? cleanText(card.imageLabel, "") : null,
+      value: card.value ? cleanText(card.value, "") : null,
+      meta: card.meta ? cleanText(card.meta, "") : null,
+      tone: card.tone,
+      labels: card.labels
+        .map((label) => ({
+          label: cleanText(label.label, ""),
+          value: label.value ? cleanText(label.value, "") : null,
+          tone: label.tone,
+          type: label.type,
+        }))
+        .filter((label) => label.label),
+      actions: card.actions
+        .map((action) => ({
+          ...action,
+          label: cleanText(action.label, action.action),
+          disabled: Boolean(action.disabled),
+          loading: Boolean(action.loading),
+          selected: Boolean(action.selected),
+        }))
+        .filter((action) => action.label),
+    }))
+    .filter((card) => card.title);
   const tabs = args.tabs
     .map((tabBlock) => {
       const items = tabBlock.items
@@ -754,6 +808,7 @@ export function buildFixedInterface(
     links,
     users,
     labels,
+    cards,
     tabs,
     emptyStates,
     loadingStates,
@@ -840,6 +895,33 @@ export function buildFixedInterface(
       items: labels,
     });
     contentChildren.push("labels");
+  }
+
+  if (cards.length > 0) {
+    components.push({
+      id: "cards",
+      component: "CardGrid",
+      items: cards.map((card, cardIndex) => ({
+        ...card,
+        actions: card.actions.map((action, actionIndex) => ({
+          ...action,
+          action: {
+            event: {
+              name: action.action,
+              context: {
+                surfaceId: args.surfaceId,
+                cardTitle: card.title,
+                label: action.label,
+                cardIndex,
+                actionIndex,
+                source: "card",
+              },
+            },
+          },
+        })),
+      })),
+    });
+    contentChildren.push("cards");
   }
 
   steppers.forEach((stepper, index) => {
@@ -1186,6 +1268,7 @@ export function buildFixedInterface(
       links,
       users,
       labels,
+      cards,
       tabs,
       emptyStates,
       loadingStates,
@@ -1413,6 +1496,7 @@ function hasRenderablePartial(fields: Record<string, unknown>) {
     hasItems(fields.links) ||
     hasItems(fields.users) ||
     hasItems(fields.labels) ||
+    hasItems(fields.cards) ||
     hasItems(fields.tabs) ||
     hasItems(fields.emptyStates) ||
     hasItems(fields.loadingStates) ||

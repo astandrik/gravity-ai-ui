@@ -42,11 +42,14 @@ const iconImportByName: Record<
 export function buildReactCode(payload: RenderInterfaceArguments) {
   const fields = withUniqueFieldKeys(payload.fields);
   const usedIcons = collectUsedIcons(payload);
+  const hasCardActions = payload.cards.some((card) => card.actions.length > 0);
+  const hasCardLabels = payload.cards.some((card) => card.labels.length > 0);
   const needsClient =
     fields.length > 0 ||
     payload.tabs.length > 0 ||
     payload.steppers.length > 0 ||
     payload.copyLists.length > 0 ||
+    hasCardActions ||
     payload.actions.length > 0 ||
     payload.navigation.length > 0;
   const usedComponents = new Set(["Card", "Text"]);
@@ -82,6 +85,14 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
 
   if (payload.labels.length > 0) {
     usedComponents.add("Label");
+  }
+
+  if (hasCardLabels) {
+    usedComponents.add("Label");
+  }
+
+  if (hasCardActions) {
+    usedComponents.add("Button");
   }
 
   if (payload.tabs.length > 0) {
@@ -188,7 +199,9 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
     ...stepperStateLines(payload.steppers),
     actionHandlerLine(
       fields,
-      payload.actions.length > 0 || payload.navigation.length > 0,
+      hasCardActions ||
+        payload.actions.length > 0 ||
+        payload.navigation.length > 0,
     ),
     "  return (",
     '    <Card theme="normal" view="filled" size="l" type="container">',
@@ -202,6 +215,7 @@ export function buildReactCode(payload: RenderInterfaceArguments) {
     ...alertLines(payload.alerts),
     ...metricLines(payload.metrics),
     ...labelLines(payload.labels),
+    ...cardLines(payload.cards),
     ...stepperLines(payload.steppers),
     ...sectionLines(payload),
     ...tabLines(payload.tabs),
@@ -372,6 +386,84 @@ function labelLines(labels: RenderInterfaceArguments["labels"]) {
     ]),
     "        </div>",
   ];
+}
+
+function cardLines(cards: RenderInterfaceArguments["cards"]) {
+  if (cards.length === 0) {
+    return [];
+  }
+
+  return [
+    '        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>',
+    ...cards.flatMap((card) => [
+      `          <Card theme=${jsxString(mapCardTheme(card.tone))} view="filled" size="m" type="container">`,
+      card.imageLabel
+        ? [
+            '            <div style={{ minHeight: 128, display: "grid", placeItems: "center", padding: 16, background: "linear-gradient(135deg, rgba(255, 190, 92, 0.28), rgba(80, 188, 169, 0.2)), rgba(255, 255, 255, 0.04)" }}>',
+            `              <Text variant="subheader-1">${jsxText(card.imageLabel)}</Text>`,
+            "            </div>",
+          ].join("\n")
+        : null,
+      '            <div style={{ display: "grid", gap: 10, padding: 14 }}>',
+      '              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>',
+      '                <div style={{ display: "grid", gap: 2, minWidth: 0 }}>',
+      card.subtitle
+        ? `                  <Text variant="caption-2" color="secondary">${jsxText(card.subtitle)}</Text>`
+        : null,
+      `                  <Text as="h3" variant="subheader-2">${jsxText(card.title)}</Text>`,
+      "                </div>",
+      card.value
+        ? `                <Text variant="subheader-2">${jsxText(card.value)}</Text>`
+        : null,
+      "              </div>",
+      card.body
+        ? `              <Text variant="body-2" color="secondary">${jsxText(card.body)}</Text>`
+        : null,
+      ...cardLabelLines(card.labels),
+      card.meta
+        ? `              <Text variant="caption-2" color="secondary">${jsxText(card.meta)}</Text>`
+        : null,
+      ...cardActionLines(card.actions),
+      "            </div>",
+      "          </Card>",
+    ]),
+    "        </div>",
+  ].filter((line): line is string => Boolean(line));
+}
+
+function cardLabelLines(labels: RenderInterfaceArguments["cards"][number]["labels"]) {
+  if (labels.length === 0) {
+    return [];
+  }
+
+  return [
+    '              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>',
+    ...labels.flatMap((label) => [
+      `                <Label theme=${jsxString(mapLabelTheme(label.tone))} type=${jsxString(label.type)} size="xs"${label.value ? ` value=${jsxString(label.value)}` : ""}${label.type === "copy" ? ` copyText=${jsxString(label.value ?? label.label)}` : ""}>`,
+      `                  ${jsxText(label.label)}`,
+      "                </Label>",
+    ]),
+    "              </div>",
+  ];
+}
+
+function cardActionLines(
+  actions: RenderInterfaceArguments["cards"][number]["actions"],
+) {
+  if (actions.length === 0) {
+    return [];
+  }
+
+  return [
+    '              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 4 }}>',
+    ...actions.flatMap((action) => [
+      `                <Button size="s" view=${jsxString(mapButtonView(action.variant))} onClick={() => handleAction(${jsString(action.action)})}${buttonStateProps(action)}>`,
+      action.icon ? `                  ${iconElement(action.icon, 14)}` : null,
+      `                  ${jsxText(action.label)}`,
+      "                </Button>",
+    ]),
+    "              </div>",
+  ].filter((line): line is string => Boolean(line));
 }
 
 function stepperLines(steppers: RenderInterfaceArguments["steppers"]) {
@@ -805,7 +897,11 @@ function actionLines(actions: RenderInterfaceArguments["actions"]) {
   ].filter((line): line is string => Boolean(line));
 }
 
-function buttonStateProps(action: RenderInterfaceArguments["actions"][number]) {
+function buttonStateProps(action: {
+  disabled?: boolean;
+  loading?: boolean;
+  selected?: boolean;
+}) {
   return [
     action.disabled ? " disabled={true}" : "",
     action.loading ? " loading={true}" : "",
@@ -877,6 +973,7 @@ function collectUsedIcons(payload: RenderInterfaceArguments) {
     ...payload.navigation.map((item) => item.icon),
     ...payload.metrics.map((metric) => metric.icon),
     ...payload.sections.map((section) => section.icon),
+    ...payload.cards.flatMap((card) => card.actions.map((action) => action.icon)),
     ...payload.emptyStates.map((item) => item.icon ?? "info"),
     ...payload.actions.map((action) => action.icon),
   ].filter((icon): icon is GravityIconName => Boolean(icon));
@@ -910,6 +1007,15 @@ function mapButtonView(
 }
 
 function mapLabelTheme(value: string) {
+  return value === "danger" ||
+    value === "info" ||
+    value === "success" ||
+    value === "warning"
+    ? value
+    : "normal";
+}
+
+function mapCardTheme(value: string) {
   return value === "danger" ||
     value === "info" ||
     value === "success" ||

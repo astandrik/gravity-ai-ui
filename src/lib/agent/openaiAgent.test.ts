@@ -136,6 +136,36 @@ const interfaceArgs = {
       type: "default",
     },
   ],
+  cards: [
+    {
+      title: "Rollback checklist",
+      subtitle: "Operational card",
+      body: "Confirm owner, rollback target, and monitoring links before starting.",
+      imageLabel: "RC",
+      value: "Ready",
+      meta: "Updated 2 min ago",
+      tone: "success",
+      labels: [
+        {
+          label: "Verified",
+          value: null,
+          tone: "success",
+          type: "default",
+        },
+      ],
+      actions: [
+        {
+          label: "Open",
+          icon: "arrowRight",
+          action: "open_details",
+          variant: "outlined",
+          disabled: false,
+          loading: false,
+          selected: false,
+        },
+      ],
+    },
+  ],
   tabs: [
     {
       title: "Views",
@@ -447,6 +477,10 @@ describe("OpenAI agent stream parsing", () => {
             component: "LabelGroup",
           }),
           expect.objectContaining({
+            id: "cards",
+            component: "CardGrid",
+          }),
+          expect.objectContaining({
             id: "tabs_0",
             component: "TabsBlock",
           }),
@@ -710,6 +744,8 @@ describe("OpenAI agent stream parsing", () => {
     expect(instructions).toContain("Allowed icons");
     expect(instructions).toContain("Available Gravity component capabilities");
     expect(instructions).toContain("labels for compact tags/status chips");
+    expect(instructions).toContain("cards for product cards");
+    expect(instructions).toContain("use cards instead of sections/items");
     expect(instructions).toContain("breadcrumbs for hierarchy paths");
     expect(instructions).toContain("steppers for multi-step flows");
     expect(instructions).toContain("tabs for alternate views");
