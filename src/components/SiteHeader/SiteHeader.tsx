@@ -1,3 +1,4 @@
+import { LogoGithub } from "@gravity-ui/icons";
 import { Container } from "@/components/GravityUI/GravityUI";
 import { withBasePath } from "@/lib/base-path";
 
@@ -8,6 +9,7 @@ const links = [
   { href: "/docs", label: "Docs" },
   { href: "/about", label: "About" },
 ] as const;
+const GITHUB_REPOSITORY_URL = "https://github.com/astandrik/gravity-ai-ui";
 
 export function SiteHeader() {
   return (
@@ -27,6 +29,16 @@ export function SiteHeader() {
               {link.label}
             </a>
           ))}
+          <a
+            aria-label="Open GitHub repository"
+            className="site-header__link site-header__link_icon"
+            href={GITHUB_REPOSITORY_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+            title="GitHub repository"
+          >
+            <LogoGithub aria-hidden="true" width={16} height={16} />
+          </a>
         </nav>
       </Container>
     </header>

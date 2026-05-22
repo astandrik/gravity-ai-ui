@@ -46,6 +46,9 @@
   }
 
   &__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 5px 9px;
     border-radius: var(--radius-sm);
     color: var(--g-color-text-secondary);
@@ -58,5 +61,11 @@
       background: var(--surface-hover);
       color: var(--fg);
     }
+  }
+
+  &__link_icon {
+    width: 30px;
+    height: 30px;
+    padding: 0;
   }
 }
