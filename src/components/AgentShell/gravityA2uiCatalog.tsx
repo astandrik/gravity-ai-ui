@@ -113,6 +113,31 @@ function GravityMappedIcon({
   ) : null;
 }
 
+function ButtonContent({
+  children,
+  iconName,
+  iconSize,
+}: {
+  children: ReactNode;
+  iconName?: unknown;
+  iconSize: number;
+}) {
+  if (!iconName || !getGravityIconData(iconName)) {
+    return <>{children}</>;
+  }
+
+  return (
+    <span className="a2ui-button-content">
+      <GravityMappedIcon
+        className="a2ui-button-content__icon"
+        name={iconName}
+        size={iconSize}
+      />
+      <span className="a2ui-button-content__label">{children}</span>
+    </span>
+  );
+}
+
 const commonProps = {
   weight: z.number().optional(),
   accessibility: CommonSchemas.AccessibilityAttributes.optional(),
@@ -385,8 +410,9 @@ const ButtonSurface = createComponentImplementation(
       size="m"
       view={mapButtonView(props.variant)}
     >
-      {props.icon ? <GravityMappedIcon name={props.icon} size={16} /> : null}
-      {props.child ? buildChild(props.child) : props.text}
+      <ButtonContent iconName={props.icon} iconSize={16}>
+        {props.child ? buildChild(props.child) : props.text}
+      </ButtonContent>
     </Button>
   ),
 );
@@ -818,10 +844,9 @@ const HeroBlockSurface = createComponentImplementation(
                 size="m"
                 view={mapButtonView(action.variant)}
               >
-                {action.icon ? (
-                  <GravityMappedIcon name={action.icon} size={16} />
-                ) : null}
-                {action.label}
+                <ButtonContent iconName={action.icon} iconSize={16}>
+                  {action.label}
+                </ButtonContent>
               </Button>
             ))}
           </div>
@@ -1058,10 +1083,9 @@ const CardGridSurface = createComponentImplementation(
                       size="s"
                       view={mapButtonView(action.variant)}
                     >
-                      {action.icon ? (
-                        <GravityMappedIcon name={action.icon} size={14} />
-                      ) : null}
-                      {action.label}
+                      <ButtonContent iconName={action.icon} iconSize={14}>
+                        {action.label}
+                      </ButtonContent>
                     </Button>
                   ))}
                 </div>
