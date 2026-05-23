@@ -10,7 +10,9 @@ import {
   buildInput,
   buildInstructions,
   COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
+  createInitializedSurfaceIds,
   getMaxOutputTokens,
+  getProgressiveStatusA2uiMessages,
   getReasoningEffort,
   parseFunctionCallArguments,
   parseFunctionToolCallItem,
@@ -191,6 +193,50 @@ describe("OpenAI agent stream parsing", () => {
         value: "Composing interface",
       },
     });
+  });
+
+  it("does not create a new surface for action follow-up status", () => {
+    const initializedSurfaceIds = createInitializedSurfaceIds({
+      kind: "action",
+      conversationId: "conversation_1",
+      surfaceId: "main",
+      action: {
+        name: "submit",
+        surfaceId: "main",
+        sourceComponentId: "submit",
+        timestamp: "2026-05-23T00:00:00.000Z",
+        context: {},
+      },
+    });
+
+    expect(initializedSurfaceIds.has("main")).toBe(true);
+    expect(
+      getProgressiveStatusA2uiMessages({
+        createSurfaceIfMissing: false,
+        initializedSurfaceIds,
+        status: "Contacting OpenAI",
+        surfaceId: "main",
+      }),
+    ).toEqual([]);
+  });
+
+  it("creates a progressive placeholder for prompt status", () => {
+    const messages = getProgressiveStatusA2uiMessages({
+      createSurfaceIfMissing: true,
+      initializedSurfaceIds: new Set<string>(),
+      status: "Contacting OpenAI",
+      surfaceId: "main",
+    });
+
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          createSurface: expect.objectContaining({
+            surfaceId: "main",
+          }),
+        }),
+      ]),
+    );
   });
 
   it("builds renderable snapshots from partial composed argument JSON", () => {

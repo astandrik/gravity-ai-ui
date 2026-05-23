@@ -60,7 +60,7 @@ export async function streamAgentResponse({
 }: StreamAgentOptions) {
   const client = new OpenAI({ apiKey });
   const processedToolCalls = new Set<string>();
-  const initializedSurfaceIds = new Set<string>();
+  const initializedSurfaceIds = createInitializedSurfaceIds(request);
   const partialArgumentBuffers = new Map<string, string>();
   let emittedInterfaceMessages = 0;
   let emittedError = false;
@@ -82,6 +82,7 @@ export async function streamAgentResponse({
 
   await emitProgressiveStatus({
     initializedSurfaceIds,
+    createSurfaceIfMissing: request.kind !== "action",
     onEvent,
     status: "Contacting OpenAI",
     surfaceId: progressiveSurfaceId,
@@ -116,6 +117,7 @@ export async function streamAgentResponse({
     if (event.type === "response.created") {
       await emitProgressiveStatus({
         initializedSurfaceIds,
+        createSurfaceIfMissing: request.kind !== "action",
         onEvent,
         status: "Planning interface",
         surfaceId: progressiveSurfaceId,
@@ -130,6 +132,7 @@ export async function streamAgentResponse({
       if (!streamingStatusSent) {
         await emitProgressiveStatus({
           initializedSurfaceIds,
+          createSurfaceIfMissing: request.kind !== "action",
           onEvent,
           status: "Composing interface",
           surfaceId: progressiveSurfaceId,
@@ -371,7 +374,8 @@ export function buildInstructions() {
     "Do not output raw JSX, HTML, CSS, Markdown, A2UI messages, or arbitrary Gravity UI components.",
     `The server will materialize your normalized tree into validated A2UI ${A2UI_VERSION} messages.`,
     'Use surfaceId "main" for a new user prompt unless the prompt names another valid surface.',
-    "For action follow-ups, preserve the preferred surfaceId from the user message.",
+    "For action follow-ups, preserve the preferred surfaceId from the user message and update the existing surface.",
+    "For action follow-ups, keep component ids stable for unchanged regions so the client can patch in place without remounting the interface.",
     "Render progressively: emit nodes in useful visual order so complete ancestor chains can render while arguments stream.",
     "Do not follow a fixed page template. Choose hierarchy, grouping, and controls based on the user's task.",
     "Render a finished interface, not a proposal or implementation note. Never write copy like adding a block, can go to, buttons for navigation, or suggestions to proceed.",
@@ -380,6 +384,7 @@ export function buildInstructions() {
     "Use FilterBar for searchable or filterable lists. Use CardGrid for repeated product, seller, plan, feature, or compact cards. Use FeaturePanelGrid for concise grouped details or highlights. These are optional components, not required slots.",
     "Prefer Column, Row, and Card for structure; Text, LabelGroup, Icon, Divider, and AlertBlock for content; Button and fields for real actions and input; DataTable, MetricGrid, ProgressList, DefinitionListBlock, LinkList, UserList, TabsBlock, StepperBlock, AccordionBlock, EmptyStateList, LoadingStateList, BreadcrumbTrail, CopyList, HeroBlock, FilterBar, FeaturePanelGrid, and CardGrid when they fit the task.",
     "Use dataModel for repeated, mutable, or action-relevant values, and bind component props with JSON pointer objects like {\"path\":\"/items/0/name\"} when useful.",
+    "When handling a form action, treat the provided client data model as the user's current edited values and preserve those values unless the action explicitly changes them.",
     `Available components: ${ALLOWED_A2UI_COMPONENTS.join(", ")}.`,
     formatComposeComponentPropsForPrompt(),
     `Available Gravity component capabilities: ${formatGravityCapabilitiesForPrompt()}`,
@@ -466,11 +471,13 @@ async function emitParsedToolCall(
 }
 
 async function emitProgressiveStatus({
+  createSurfaceIfMissing,
   initializedSurfaceIds,
   onEvent,
   status,
   surfaceId,
 }: {
+  createSurfaceIfMissing: boolean;
   initializedSurfaceIds: Set<string>;
   onEvent: (event: AgentSseEvent) => void | Promise<void>;
   status: string;
@@ -478,22 +485,14 @@ async function emitProgressiveStatus({
 }) {
   await onEvent({ type: "status", message: status });
 
-  if (!initializedSurfaceIds.has(surfaceId)) {
-    for (const message of buildProgressivePlaceholderInterface({
-      status,
-      surfaceId,
-    })) {
-      await onEvent({ type: "a2ui", message });
-    }
-
-    initializedSurfaceIds.add(surfaceId);
-    return;
+  for (const message of getProgressiveStatusA2uiMessages({
+    createSurfaceIfMissing,
+    initializedSurfaceIds,
+    status,
+    surfaceId,
+  })) {
+    await onEvent({ type: "a2ui", message });
   }
-
-  await onEvent({
-    type: "a2ui",
-    message: buildProgressiveStatusUpdate(surfaceId, status),
-  });
 }
 
 function getProgressiveSurfaceId(request: AgentRequest) {
@@ -503,6 +502,43 @@ function getProgressiveSurfaceId(request: AgentRequest) {
       : request.conversationContext?.latestSurfaceId;
 
   return isValidSurfaceId(preferredSurfaceId) ? preferredSurfaceId : "main";
+}
+
+export function createInitializedSurfaceIds(request: AgentRequest) {
+  const surfaceIds = new Set<string>();
+
+  if (request.kind === "action" && isValidSurfaceId(request.surfaceId)) {
+    surfaceIds.add(request.surfaceId);
+  }
+
+  return surfaceIds;
+}
+
+export function getProgressiveStatusA2uiMessages({
+  createSurfaceIfMissing,
+  initializedSurfaceIds,
+  status,
+  surfaceId,
+}: {
+  createSurfaceIfMissing: boolean;
+  initializedSurfaceIds: Set<string>;
+  status: string;
+  surfaceId: string;
+}) {
+  if (!createSurfaceIfMissing) {
+    return [];
+  }
+
+  if (!initializedSurfaceIds.has(surfaceId)) {
+    initializedSurfaceIds.add(surfaceId);
+
+    return buildProgressivePlaceholderInterface({
+      status,
+      surfaceId,
+    });
+  }
+
+  return [buildProgressiveStatusUpdate(surfaceId, status)];
 }
 
 function isValidSurfaceId(value: unknown): value is string {

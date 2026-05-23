@@ -8,7 +8,10 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import type {
+  A2uiClientAction,
+  A2uiClientDataModel,
+} from "@a2ui/web_core/v0_9";
 import {
   Button,
   Card,
@@ -37,6 +40,11 @@ import "./InterfaceInspector.scss";
 type InspectorTab = "preview" | "react" | "a2ui" | "data" | "payload";
 type ThumbnailStyle = CSSProperties & { "--thumbnail-scale": string };
 type GravityA2uiProcessor = ReturnType<typeof createGravityA2uiProcessor>;
+export type A2uiActionEnvelope = {
+  action: A2uiClientAction;
+  clientDataModel?: A2uiClientDataModel;
+};
+type A2uiActionHandler = (envelope: A2uiActionEnvelope) => void;
 type InitialRendererState = {
   error: string | null;
   processedCount: number;
@@ -45,16 +53,20 @@ type InitialRendererState = {
   surfaces: GravitySurface[];
 };
 
-const noopAction = () => undefined;
+const noopAction: A2uiActionHandler = () => undefined;
 
 export function InterfaceInspector({
+  isUpdating = false,
   messages = [],
   onAction = noopAction,
   payload,
+  updateError,
 }: {
+  isUpdating?: boolean;
   messages?: GravityA2uiMessage[];
-  onAction?: (action: A2uiClientAction) => void;
+  onAction?: A2uiActionHandler;
   payload?: ComposedInterfacePayload;
+  updateError?: string;
 }) {
   const [activeTab, setActiveTab] = useState<InspectorTab>("preview");
   const canonicalMessages = useCanonicalMessages(payload);
@@ -106,7 +118,28 @@ export function InterfaceInspector({
       <Divider orientation="horizontal" />
       <div className="interface-inspector__panel" role="tabpanel">
         {activeTab === "preview" && hasRenderablePreview ? (
-          <A2uiMessageRenderer messages={previewMessages} onAction={onAction} />
+          <div className="interface-preview-panel">
+            <A2uiMessageRenderer messages={previewMessages} onAction={onAction} />
+            {isUpdating || updateError ? (
+              <div
+                aria-live="polite"
+                className="interface-preview-panel__overlay"
+                role={updateError ? "alert" : "status"}
+              >
+                <div
+                  className={
+                    updateError
+                      ? "interface-preview-panel__status interface-preview-panel__status_error"
+                      : "interface-preview-panel__status"
+                  }
+                >
+                  <Text variant="body-2">
+                    {updateError ?? "Updating interface"}
+                  </Text>
+                </div>
+              </div>
+            ) : null}
+          </div>
         ) : null}
         {activeTab === "a2ui" ? <JsonPanel value={a2uiMessages} /> : null}
         {activeTab === "react" && reactCode ? (
@@ -274,12 +307,16 @@ function A2uiMessageRenderer({
 }: {
   eagerClientRender?: boolean;
   messages: GravityA2uiMessage[];
-  onAction: (action: A2uiClientAction) => void;
+  onAction: A2uiActionHandler;
 }) {
+  const createProcessor = useCallback(
+    () => createActionAwareProcessor(onAction),
+    [onAction],
+  );
   const [initialRendererState] = useState(() =>
     createInitialRendererState(
       messages,
-      onAction,
+      createProcessor,
       eagerClientRender && typeof window !== "undefined",
     ),
   );
@@ -291,17 +328,13 @@ function A2uiMessageRenderer({
   const [error, setError] = useState<string | null>(
     initialRendererState.error,
   );
-  const createProcessor = useCallback(
-    () => createGravityA2uiProcessor(onAction),
-    [onAction],
-  );
   const [processor, setProcessor] = useState(
     initialRendererState.processor,
   );
-  const [renderVersion, setRenderVersion] = useState(0);
   const [surfaces, setSurfaces] = useState<GravitySurface[]>(
     initialRendererState.surfaces,
   );
+
   const syncRendererState = useCallback(
     (nextProcessor: GravityA2uiProcessor, nextError: string | null) => {
       const requestId = renderRequestRef.current + 1;
@@ -314,7 +347,6 @@ function A2uiMessageRenderer({
 
         setError(nextError);
         setSurfaces(Array.from(nextProcessor.model.surfacesMap.values()));
-        setRenderVersion((currentVersion) => currentVersion + 1);
       });
     },
     [],
@@ -390,7 +422,7 @@ function A2uiMessageRenderer({
   return (
     <div className="interface-surfaces">
       {surfaces.map((surface) => (
-        <div className="interface-surface" key={`${surface.id}-${renderVersion}`}>
+        <div className="interface-surface" key={surface.id}>
           <A2uiSurface surface={surface} />
         </div>
       ))}
@@ -400,10 +432,10 @@ function A2uiMessageRenderer({
 
 function createInitialRendererState(
   messages: GravityA2uiMessage[],
-  onAction: (action: A2uiClientAction) => void,
+  createProcessor: () => GravityA2uiProcessor,
   processInitialMessages: boolean,
 ): InitialRendererState {
-  const processor = createGravityA2uiProcessor(onAction);
+  const processor = createProcessor();
   let error: string | null = null;
 
   if (processInitialMessages && messages.length > 0) {
@@ -424,6 +456,16 @@ function createInitialRendererState(
     processor,
     surfaces: Array.from(processor.model.surfacesMap.values()),
   };
+}
+
+function createActionAwareProcessor(onAction: A2uiActionHandler) {
+  const processor = createGravityA2uiProcessor((action) => {
+    const clientDataModel = processor.getClientDataModel();
+
+    onAction(clientDataModel ? { action, clientDataModel } : { action });
+  });
+
+  return processor;
 }
 
 function getLatestDataModel(messages: GravityA2uiMessage[]) {

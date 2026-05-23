@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
 import { Eraser } from "@gravity-ui/icons";
 import {
   Button,
@@ -14,7 +13,10 @@ import {
   Text,
   TextInput,
 } from "@/components/GravityUI/GravityUI";
-import { InterfaceInspector } from "@/components/InterfaceInspector/InterfaceInspector";
+import {
+  InterfaceInspector,
+  type A2uiActionEnvelope,
+} from "@/components/InterfaceInspector/InterfaceInspector";
 import type { GravityA2uiMessage } from "@/lib/agent/a2uiContract";
 import type { ComposedInterfacePayload } from "@/lib/agent/composedInterface";
 import type {
@@ -23,6 +25,13 @@ import type {
   ConversationContext,
 } from "@/lib/agent/protocol";
 import { trackGoal } from "@/lib/metrics/yandex";
+import {
+  applyActiveSurfaceEvent,
+  createActivePromptSurface,
+  readClientSurfaceDataModel,
+  startActiveSurfaceActionUpdate,
+  type ActiveSurfaceState,
+} from "./activeSurface";
 
 type UserTurn = {
   id: string;
@@ -42,6 +51,12 @@ type AssistantTurn = {
 
 type ChatTurn = UserTurn | AssistantTurn;
 type PromptSource = "manual" | "starter";
+type ActionContextSnapshot = {
+  activeSurface: ActiveSurfaceState | null;
+  conversationId: string;
+  isStreaming: boolean;
+  turns: ChatTurn[];
+};
 
 const MAX_FEEDBACK_HISTORY_ITEMS = 48;
 const MAX_FEEDBACK_HISTORY_TEXT = 6000;
@@ -56,6 +71,8 @@ export function AgentShell({
   );
   const [prompt, setPrompt] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [activeSurface, setActiveSurface] =
+    useState<ActiveSurfaceState | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [likedByTurnId, setLikedByTurnId] = useState<Record<string, boolean>>(
     {},
@@ -64,6 +81,21 @@ export function AgentShell({
     Record<string, string | undefined>
   >({});
   const abortControllerRef = useRef<AbortController | null>(null);
+  const actionContextRef = useRef<ActionContextSnapshot>({
+    activeSurface,
+    conversationId,
+    isStreaming,
+    turns,
+  });
+
+  useEffect(() => {
+    actionContextRef.current = {
+      activeSurface,
+      conversationId,
+      isStreaming,
+      turns,
+    };
+  }, [activeSurface, conversationId, isStreaming, turns]);
 
   const updateAssistantTurn = useCallback(
     (turnId: string, update: (turn: AssistantTurn) => AssistantTurn) => {
@@ -102,6 +134,11 @@ export function AgentShell({
       });
 
       setTurns((currentTurns) => [...currentTurns, ...nextTurns]);
+      setActiveSurface((currentSurface) =>
+        request.kind === "prompt"
+          ? createActivePromptSurface(assistantId)
+          : startActiveSurfaceActionUpdate(currentSurface, assistantId),
+      );
       setIsStreaming(true);
 
       abortControllerRef.current?.abort();
@@ -123,6 +160,12 @@ export function AgentShell({
         }
 
         await readAgentStream(response.body, (event) => {
+          setActiveSurface((currentSurface) =>
+            applyActiveSurfaceEvent(
+              currentSurface ?? createActivePromptSurface(assistantId),
+              event,
+            ),
+          );
           updateAssistantTurn(assistantId, (turn) => {
             if (event.type === "status") {
               return { ...turn, status: event.message };
@@ -183,6 +226,17 @@ export function AgentShell({
                 : "Agent request failed unexpectedly.",
             status: "Error",
           }));
+          setActiveSurface((currentSurface) =>
+            currentSurface
+              ? applyActiveSurfaceEvent(currentSurface, {
+                  type: "error",
+                  message:
+                    error instanceof Error
+                      ? error.message
+                      : "Agent request failed unexpectedly.",
+                })
+              : currentSurface,
+          );
         }
       } finally {
         if (abortControllerRef.current === abortController) {
@@ -202,7 +256,9 @@ export function AgentShell({
         return;
       }
 
-      const conversationContext = buildConversationContext(turns);
+      const conversationContext = buildConversationContext(turns, {
+        activeSurface,
+      });
 
       trackGoal("agent_prompt_submit", {
         source,
@@ -221,7 +277,7 @@ export function AgentShell({
         trimmedPrompt,
       );
     },
-    [conversationId, isStreaming, sendAgentRequest, turns],
+    [activeSurface, conversationId, isStreaming, sendAgentRequest, turns],
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -240,14 +296,38 @@ export function AgentShell({
     setConversationId(createId("conversation"));
     setPrompt("");
     setTurns([]);
+    setActiveSurface(null);
     setLikedByTurnId({});
     setFeedbackErrorByTurnId({});
   }, [isStreaming, turns.length]);
 
   const onAction = useCallback(
-    (action: A2uiClientAction) => {
-      const conversationContext = buildConversationContext(turns);
-      const latestDataModel = conversationContext?.latestDataModel;
+    ({ action, clientDataModel }: A2uiActionEnvelope) => {
+      const {
+        activeSurface,
+        conversationId,
+        isStreaming,
+        turns,
+      } = actionContextRef.current;
+
+      if (isStreaming) {
+        return;
+      }
+
+      const clientSurfaceDataModel = readClientSurfaceDataModel(
+        clientDataModel,
+        action.surfaceId,
+      );
+      const fallbackDataModel = activeSurface
+        ? getLatestDataModel(activeSurface.messages)
+        : undefined;
+      const latestDataModel = clientSurfaceDataModel.found
+        ? clientSurfaceDataModel.value
+        : fallbackDataModel;
+      const conversationContext = buildConversationContext(turns, {
+        activeSurface,
+        ...(latestDataModel !== undefined ? { latestDataModel } : {}),
+      });
 
       trackGoal("agent_action_submit", {
         action: action.name,
@@ -268,27 +348,27 @@ export function AgentShell({
         `Action: ${action.name}`,
       );
     },
-    [conversationId, sendAgentRequest, turns],
+    [sendAgentRequest],
   );
 
   const sendDesignFeedback = useCallback(
-    async (turn: AssistantTurn) => {
-      const payload = turn.payload;
+    async (surface: ActiveSurfaceState) => {
+      const payload = surface.payload;
 
       if (!payload) {
         return;
       }
 
-      setLikedByTurnId((current) => ({ ...current, [turn.id]: true }));
+      setLikedByTurnId((current) => ({ ...current, [surface.turnId]: true }));
       setFeedbackErrorByTurnId((current) => ({
         ...current,
-        [turn.id]: undefined,
+        [surface.turnId]: undefined,
       }));
 
       try {
         const conversationContext = buildFeedbackConversationContext(
           turns,
-          turn.id,
+          surface.turnId,
         );
         const response = await fetch("/api/design-feedback", {
           method: "POST",
@@ -297,10 +377,10 @@ export function AgentShell({
           },
           body: JSON.stringify({
             conversationId,
-            turnId: turn.id,
+            turnId: surface.turnId,
             rating: 1,
             publish: true,
-            prompt: getPromptBeforeTurn(turns, turn.id),
+            prompt: getPromptBeforeTurn(turns, surface.turnId),
             payload,
             messages: [],
             dataModel: payload.dataModel,
@@ -320,13 +400,13 @@ export function AgentShell({
       } catch (error) {
         setLikedByTurnId((current) => {
           const next = { ...current };
-          delete next[turn.id];
+          delete next[surface.turnId];
 
           return next;
         });
         setFeedbackErrorByTurnId((current) => ({
           ...current,
-          [turn.id]:
+          [surface.turnId]:
             error instanceof Error ? error.message : "Feedback was not saved.",
         }));
       }
@@ -340,7 +420,6 @@ export function AgentShell({
     };
   }, []);
 
-  const latestAssistantTurn = getLatestAssistantTurn(turns);
   const userTurns = turns.filter((turn): turn is UserTurn => turn.role === "user");
 
   return (
@@ -437,14 +516,13 @@ export function AgentShell({
             <Divider orientation="vertical" className="agent-workbench__divider" />
 
             <section className="agent-preview-pane" aria-label="Generated interface">
-              {latestAssistantTurn ? (
+              {activeSurface ? (
                 <AssistantMessage
-                  feedbackError={feedbackErrorByTurnId[latestAssistantTurn.id]}
-                  isLiked={Boolean(likedByTurnId[latestAssistantTurn.id])}
-                  key={latestAssistantTurn.id}
+                  feedbackError={feedbackErrorByTurnId[activeSurface.turnId]}
+                  isLiked={Boolean(likedByTurnId[activeSurface.turnId])}
                   onFeedback={sendDesignFeedback}
                   onAction={onAction}
-                  turn={latestAssistantTurn}
+                  surface={activeSurface}
                 />
               ) : (
                 <EmptyPreview />
@@ -511,25 +589,27 @@ function AssistantMessage({
   isLiked,
   onFeedback,
   onAction,
-  turn,
+  surface,
 }: {
   feedbackError?: string;
   isLiked: boolean;
-  onFeedback: (turn: AssistantTurn) => void;
-  onAction: (action: A2uiClientAction) => void;
-  turn: AssistantTurn;
+  onFeedback: (surface: ActiveSurfaceState) => void;
+  onAction: (envelope: A2uiActionEnvelope) => void;
+  surface: ActiveSurfaceState;
 }) {
+  const hasPreview = surface.payload || surface.messages.length > 0;
+
   return (
     <article className="agent-turn agent-turn_assistant">
       <div className="agent-turn__meta">
-        <span>{turn.status}</span>
+        <span>{surface.status}</span>
         <div className="agent-feedback" aria-label="Design feedback">
           {feedbackError ? (
             <span className="agent-feedback__error">{feedbackError}</span>
           ) : null}
           <Button
-            disabled={!turn.payload || isLiked}
-            onClick={() => onFeedback(turn)}
+            disabled={!surface.payload || isLiked || surface.isUpdating}
+            onClick={() => onFeedback(surface)}
             size="s"
             view={isLiked ? "action" : "flat"}
           >
@@ -537,24 +617,28 @@ function AssistantMessage({
           </Button>
         </div>
       </div>
-      {turn.payload || turn.messages.length > 0 ? (
+      {hasPreview ? (
         <InterfaceInspector
-          messages={turn.messages}
+          isUpdating={surface.isUpdating}
+          messages={surface.messages}
           onAction={onAction}
-          payload={turn.payload}
+          payload={surface.payload}
+          updateError={surface.error}
         />
       ) : null}
-      {turn.error ? (
+      {surface.error && !hasPreview ? (
         <div className="agent-error" role="alert">
           <Text as="h2" variant="subheader-2">
             Interface rejected
           </Text>
           <Text as="p" variant="body-2" color="secondary">
-            {turn.error}
+            {surface.error}
           </Text>
         </div>
       ) : null}
-      {!turn.done && !turn.error ? <div className="agent-loader" /> : null}
+      {!surface.done && !surface.error && !surface.isUpdating ? (
+        <div className="agent-loader" />
+      ) : null}
     </article>
   );
 }
@@ -639,14 +723,12 @@ function getLatestDataModel(messages: GravityA2uiMessage[]) {
   return dataModel;
 }
 
-function getLatestAssistantTurn(turns: ChatTurn[]) {
-  return [...turns]
-    .reverse()
-    .find((turn): turn is AssistantTurn => turn.role === "assistant");
-}
-
 function buildConversationContext(
   turns: ChatTurn[],
+  options: {
+    activeSurface?: ActiveSurfaceState | null;
+    latestDataModel?: unknown;
+  } = {},
 ): ConversationContext | undefined {
   const history = turns
     .map((turn) => {
@@ -679,13 +761,30 @@ function buildConversationContext(
   const latestAssistant = [...turns]
     .reverse()
     .find((turn): turn is AssistantTurn => turn.role === "assistant");
-  const latestPayload = latestAssistant?.payload;
-  const latestDataModel = latestAssistant
-    ? getLatestDataModel(latestAssistant.messages)
+  const latestPayload =
+    options.activeSurface?.payload ?? latestAssistant?.payload;
+  const hasLatestDataModelOverride = Object.prototype.hasOwnProperty.call(
+    options,
+    "latestDataModel",
+  );
+  let latestDataModel: unknown;
+
+  if (hasLatestDataModelOverride) {
+    latestDataModel = options.latestDataModel;
+  } else if (options.activeSurface) {
+    latestDataModel = getLatestDataModel(options.activeSurface.messages);
+  } else if (latestAssistant) {
+    latestDataModel = getLatestDataModel(latestAssistant.messages);
+  }
+
+  const activeSurfaceId = options.activeSurface
+    ? getLatestSurfaceId(options.activeSurface.messages)
+    : undefined;
+  const latestAssistantSurfaceId = latestAssistant
+    ? getLatestSurfaceId(latestAssistant.messages)
     : undefined;
   const latestSurfaceId =
-    latestPayload?.surfaceId ??
-    (latestAssistant ? getLatestSurfaceId(latestAssistant.messages) : undefined);
+    latestPayload?.surfaceId ?? activeSurfaceId ?? latestAssistantSurfaceId;
 
   if (
     history.length === 0 &&

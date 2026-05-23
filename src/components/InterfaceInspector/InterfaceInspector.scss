@@ -17,6 +17,38 @@
   overflow: auto;
 }
 
+.interface-preview-panel {
+  position: relative;
+  min-height: 160px;
+}
+
+.interface-preview-panel__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+}
+
+.interface-preview-panel__status {
+  max-width: min(320px, 100%);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  background: rgba(16, 20, 26, 0.86);
+  color: var(--fg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
+
+.interface-preview-panel__status_error {
+  border-color: rgba(255, 111, 111, 0.36);
+  background: rgba(82, 25, 32, 0.9);
+}
+
 .interface-preview {
   min-width: 0;
   overflow: hidden;
