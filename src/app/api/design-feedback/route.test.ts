@@ -76,6 +76,19 @@ describe("design feedback route", () => {
           publish: true,
           payload,
           messages: [],
+          conversationContext: {
+            history: [
+              {
+                role: "user",
+                text: "Build a deployment review",
+              },
+              {
+                role: "assistant",
+                text: "Deployment review\nComponents: 1 (Text x1)",
+                surfaceId: "main",
+              },
+            ],
+          },
         }),
       }),
     );
@@ -85,6 +98,23 @@ describe("design feedback route", () => {
     });
     expect(response.status).toBe(200);
     expect(sitemapCacheMocks.revalidateSitemapCache).toHaveBeenCalledTimes(1);
+    expect(feedbackStoreMocks.saveDesignFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationContext: {
+          history: [
+            {
+              role: "user",
+              text: "Build a deployment review",
+            },
+            {
+              role: "assistant",
+              text: "Deployment review\nComponents: 1 (Text x1)",
+              surfaceId: "main",
+            },
+          ],
+        },
+      }),
+    );
     expect(
       thumbnailGeneratorMocks.scheduleGalleryThumbnailGeneration,
     ).toHaveBeenCalledWith("deployment-review-123e4567e89b");

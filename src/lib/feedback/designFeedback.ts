@@ -8,6 +8,9 @@ import {
 import type { GravityA2uiMessage } from "@/lib/agent/a2uiContract";
 
 const MAX_STORED_FEEDBACK_MESSAGES = 12;
+const MAX_STORED_CONVERSATION_HISTORY_ITEMS = 48;
+const MAX_STORED_CONVERSATION_HISTORY_TEXT = 6000;
+const MAX_STORED_CONVERSATION_SURFACE_ID = 80;
 
 const feedbackMessagesSchema = z.preprocess(
   (value) =>
@@ -16,6 +19,53 @@ const feedbackMessagesSchema = z.preprocess(
       : value,
   z.array(z.unknown()).max(MAX_STORED_FEEDBACK_MESSAGES).default([]),
 );
+
+const feedbackConversationTextSchema = z.preprocess(
+  (value) =>
+    typeof value === "string"
+      ? truncateStoredText(value.trim(), MAX_STORED_CONVERSATION_HISTORY_TEXT)
+      : value,
+  z.string().min(1).max(MAX_STORED_CONVERSATION_HISTORY_TEXT),
+);
+
+const feedbackConversationSurfaceIdSchema = z.preprocess(
+  (value) =>
+    typeof value === "string"
+      ? value.trim().slice(0, MAX_STORED_CONVERSATION_SURFACE_ID)
+      : value,
+  z.string().min(1).max(MAX_STORED_CONVERSATION_SURFACE_ID),
+);
+
+const feedbackConversationHistoryItemSchema = z
+  .object({
+    role: z.enum(["user", "assistant"]),
+    text: feedbackConversationTextSchema,
+    surfaceId: feedbackConversationSurfaceIdSchema.optional(),
+  })
+  .strict();
+
+const feedbackConversationContextSchema = z
+  .preprocess(
+    (value) => {
+      if (!isRecord(value) || !Array.isArray(value.history)) {
+        return value;
+      }
+
+      return {
+        ...value,
+        history: value.history.slice(-MAX_STORED_CONVERSATION_HISTORY_ITEMS),
+      };
+    },
+    z
+      .object({
+        history: z
+          .array(feedbackConversationHistoryItemSchema)
+          .max(MAX_STORED_CONVERSATION_HISTORY_ITEMS)
+          .default([]),
+      })
+      .strict(),
+  )
+  .optional();
 
 export const designFeedbackSchema = z
   .object({
@@ -27,10 +77,14 @@ export const designFeedbackSchema = z
     payload: composedInterfaceArgumentsSchema,
     messages: feedbackMessagesSchema,
     dataModel: z.unknown().optional(),
+    conversationContext: feedbackConversationContextSchema,
   })
   .strict();
 
 export type DesignFeedbackInput = z.infer<typeof designFeedbackSchema>;
+export type FeedbackConversationContext = NonNullable<
+  DesignFeedbackInput["conversationContext"]
+>;
 
 export type SavedDesignFeedback = DesignFeedbackInput & {
   feedbackId: string;
@@ -49,7 +103,6 @@ export type PublishedDesign = {
   id: string;
   title: string;
   summary: string;
-  prompt?: string;
   payload: ComposedInterfacePayload;
   surfaceId: string;
   createdAtMs: number;
@@ -200,6 +253,12 @@ function readString(value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
 
   return text || null;
+}
+
+function truncateStoredText(value: string, maxLength: number) {
+  return value.length > maxLength
+    ? `${value.slice(0, Math.max(0, maxLength - 3))}...`
+    : value;
 }
 
 function readPayloadString(value: unknown, dataModel: unknown) {

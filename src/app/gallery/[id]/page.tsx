@@ -137,17 +137,6 @@ export default async function GalleryDesignPage({
             </time>
           </header>
 
-          {design.prompt ? (
-            <section className="gallery-prompt" aria-labelledby="gallery-prompt-title">
-              <Text as="h2" id="gallery-prompt-title" variant="subheader-2">
-                Prompt
-              </Text>
-              <pre>
-                <code>{design.prompt}</code>
-              </pre>
-            </section>
-          ) : null}
-
           <InterfaceInspector payload={design.payload} />
         </article>
       </Container>

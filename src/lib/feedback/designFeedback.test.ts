@@ -12,6 +12,8 @@ import {
 } from "./designFeedback";
 import {
   getGallerySlugTableName,
+  isConversationContextColumnExistsError,
+  isMissingConversationContextColumnError,
   isMissingThumbnailColumnError,
   isThumbnailColumnExistsError,
   rowToPublishedDesign,
@@ -109,6 +111,36 @@ describe("design feedback publishing", () => {
     expect(parsed.messages).toEqual([]);
   });
 
+  it("normalizes private conversation context history", () => {
+    const parsed = designFeedbackSchema.parse({
+      conversationId: "conversation-1",
+      turnId: "assistant-1",
+      rating: 1,
+      publish: true,
+      payload,
+      conversationContext: {
+        history: Array.from({ length: 50 }, (_, index) => ({
+          role: index % 2 === 0 ? "user" : "assistant",
+          text:
+            index === 49
+              ? "x".repeat(6_010)
+              : ` Conversation item ${index} `,
+          surfaceId: index % 2 === 0 ? undefined : " main ",
+        })),
+      },
+    });
+
+    expect(parsed.conversationContext?.history).toHaveLength(48);
+    expect(parsed.conversationContext?.history[0]?.text).toBe(
+      "Conversation item 2",
+    );
+    expect(parsed.conversationContext?.history.at(-1)?.text).toHaveLength(6000);
+    expect(parsed.conversationContext?.history.at(-1)?.text.endsWith("...")).toBe(
+      true,
+    );
+    expect(parsed.conversationContext?.history[1]?.surfaceId).toBe("main");
+  });
+
   it("stores a gallery slug with saved feedback", () => {
     const saved = toSavedFeedback(
       designFeedbackSchema.parse({
@@ -139,11 +171,27 @@ describe("design feedback publishing", () => {
     expect(design).toMatchObject({
       title: "Deployment review",
       summary: "Composed tree with 2 nodes: Text x2.",
-      prompt: "Build a deployment review",
       surfaceId: "main",
       createdAtMs: 1_700_000_000_000,
     });
+    expect(design).not.toHaveProperty("prompt");
     expect(design.id).toBe("deployment-review-custom1234");
+  });
+
+  it("does not expose legacy row prompts on published designs", () => {
+    const [design] = rowToPublishedDesign({
+      feedback_id: "conversation-1:assistant-2:1:123",
+      gallery_slug: "deployment-review-custom1234",
+      published: 1,
+      prompt: "Move the button a little",
+      title: "",
+      summary: null,
+      surface_id: null,
+      payload_json: JSON.stringify(payload),
+      created_at_ms: BigInt(1_700_000_000_000),
+    });
+
+    expect(design).not.toHaveProperty("prompt");
   });
 
   it("parses keyed gallery slug entries from published rows", () => {
@@ -242,6 +290,19 @@ describe("design feedback publishing", () => {
       isThumbnailColumnExistsError(
         new Error("Column already exists: thumbnail_webp"),
         "thumbnail_webp",
+      ),
+    ).toBe(true);
+  });
+
+  it("recognizes private conversation context column migration errors", () => {
+    expect(
+      isMissingConversationContextColumnError(
+        new Error("Member not found: conversation_context_json"),
+      ),
+    ).toBe(true);
+    expect(
+      isConversationContextColumnExistsError(
+        new Error("Column already exists: conversation_context_json"),
       ),
     ).toBe(true);
   });

@@ -62,8 +62,7 @@
 
 .gallery-card__body,
 .gallery-card__copy,
-.gallery-detail__header,
-.gallery-prompt {
+.gallery-detail__header {
   display: grid;
   gap: var(--spacing-sm);
   min-width: 0;
@@ -128,24 +127,6 @@
 .gallery-detail {
   .interface-inspector {
     min-height: 560px;
-  }
-}
-
-.gallery-prompt {
-  max-width: 960px;
-  padding: var(--spacing-lg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: rgba(0, 0, 0, 0.22);
-
-  pre {
-    margin: 0;
-    color: var(--fg);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
   }
 }
 

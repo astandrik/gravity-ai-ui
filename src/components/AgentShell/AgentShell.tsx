@@ -43,6 +43,9 @@ type AssistantTurn = {
 type ChatTurn = UserTurn | AssistantTurn;
 type PromptSource = "manual" | "starter";
 
+const MAX_FEEDBACK_HISTORY_ITEMS = 48;
+const MAX_FEEDBACK_HISTORY_TEXT = 6000;
+
 export function AgentShell({
   starterPrompts,
 }: {
@@ -283,6 +286,10 @@ export function AgentShell({
       }));
 
       try {
+        const conversationContext = buildFeedbackConversationContext(
+          turns,
+          turn.id,
+        );
         const response = await fetch("/api/design-feedback", {
           method: "POST",
           headers: {
@@ -297,6 +304,7 @@ export function AgentShell({
             payload,
             messages: [],
             dataModel: payload.dataModel,
+            ...(conversationContext ? { conversationContext } : {}),
           }),
         });
 
@@ -716,6 +724,52 @@ function getLatestSurfaceId(messages: GravityA2uiMessage[]) {
   return surfaceId;
 }
 
+function buildFeedbackConversationContext(turns: ChatTurn[], turnId: string) {
+  const history: {
+    role: "user" | "assistant";
+    text: string;
+    surfaceId?: string;
+  }[] = [];
+  let foundTurn = false;
+
+  for (const turn of turns) {
+    if (turn.role === "user") {
+      const text = truncateForFeedbackHistory(turn.content.trim());
+
+      if (text) {
+        history.push({
+          role: "user",
+          text,
+        });
+      }
+    } else if (turn.payload) {
+      history.push({
+        role: "assistant",
+        text: summarizePayload(turn.payload),
+        surfaceId: turn.payload.surfaceId,
+      });
+    } else if (turn.error) {
+      history.push({
+        role: "assistant",
+        text: truncateForContext(`Error: ${turn.error}`),
+      });
+    }
+
+    if (turn.id === turnId) {
+      foundTurn = true;
+      break;
+    }
+  }
+
+  if (!foundTurn || history.length === 0) {
+    return undefined;
+  }
+
+  return {
+    history: history.slice(-MAX_FEEDBACK_HISTORY_ITEMS),
+  };
+}
+
 function getPromptBeforeTurn(turns: ChatTurn[], turnId: string) {
   let latestPrompt: string | undefined;
 
@@ -943,6 +997,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function truncateForContext(value: string) {
   return value.length > 2000 ? `${value.slice(0, 1997)}...` : value;
+}
+
+function truncateForFeedbackHistory(value: string) {
+  return value.length > MAX_FEEDBACK_HISTORY_TEXT
+    ? `${value.slice(0, MAX_FEEDBACK_HISTORY_TEXT - 3)}...`
+    : value;
 }
 
 function createId(prefix: string) {

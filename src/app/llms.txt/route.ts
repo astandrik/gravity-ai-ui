@@ -37,7 +37,7 @@ export async function GET(): Promise<Response> {
       "## Notes",
       "",
       "- API routes are operational endpoints and are not intended for public indexing.",
-      "- Liked interfaces are public once published; prompts appear only on individual gallery pages.",
+      "- Liked interfaces are public once published; private prompt history is not shown on gallery pages.",
     ].join("\n"),
     {
       headers: {

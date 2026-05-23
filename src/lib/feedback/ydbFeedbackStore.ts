@@ -32,6 +32,7 @@ type FeedbackRow = {
   feedback_id?: string | null;
   gallery_slug?: string | null;
   published?: boolean | bigint | number | string | null;
+  conversation_context_json?: string | null;
   thumbnail_webp?: Uint8Array | string | null;
   thumbnail_png?: Uint8Array | string | null;
   thumbnail_width?: bigint | number | string | null;
@@ -108,6 +109,7 @@ export async function saveDesignFeedback(
         rating,
         published,
         prompt,
+        conversation_context_json,
         title,
         summary,
         surface_id,
@@ -125,6 +127,7 @@ export async function saveDesignFeedback(
         ${new Int32(saved.rating)},
         ${new Int32(saved.publish ? 1 : 0)},
         ${new Utf8(saved.prompt ?? "")},
+        ${new Utf8(JSON.stringify(saved.conversationContext ?? null))},
         ${new Utf8(title)},
         ${new Utf8(summary)},
         ${new Utf8(saved.payload.surfaceId)},
@@ -153,7 +156,6 @@ export async function listPublishedDesigns(limit = 48) {
     SELECT
       feedback_id,
       gallery_slug,
-      prompt,
       title,
       summary,
       surface_id,
@@ -416,6 +418,7 @@ async function ensureFeedbackTable(client: YdbFeedbackClient) {
         rating Int32 NOT NULL,
         published Int32,
         prompt Utf8,
+        conversation_context_json Utf8,
         title Utf8,
         summary Utf8,
         surface_id Utf8,
@@ -435,6 +438,7 @@ async function ensureFeedbackTable(client: YdbFeedbackClient) {
     `;
     await ensurePublishedColumn(client);
     await ensureGallerySlugColumn(client);
+    await ensureConversationContextColumn(client);
     await ensureThumbnailColumns(client);
     await ensurePublishedDesignSlugTable(client);
     await backfillPublishedDesignSlugTableIfEmpty(client);
@@ -467,7 +471,6 @@ async function getPublishedDesignByFeedbackId(
     SELECT
       feedback_id,
       gallery_slug,
-      prompt,
       title,
       summary,
       surface_id,
@@ -652,6 +655,33 @@ async function ensureGallerySlugColumn(client: YdbFeedbackClient) {
   }
 }
 
+async function ensureConversationContextColumn(client: YdbFeedbackClient) {
+  try {
+    await client.sql`
+      SELECT conversation_context_json
+      FROM ${client.sql.identifier(client.table)}
+      LIMIT ${new Uint64(BigInt(1))}
+    `;
+
+    return;
+  } catch (error) {
+    if (!isMissingConversationContextColumnError(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    await client.sql`
+      ALTER TABLE ${client.sql.identifier(client.table)}
+      ADD COLUMN conversation_context_json Utf8
+    `;
+  } catch (error) {
+    if (!isConversationContextColumnExistsError(error)) {
+      throw error;
+    }
+  }
+}
+
 async function ensureThumbnailColumns(client: YdbFeedbackClient) {
   const columns = [
     "thumbnail_webp",
@@ -779,7 +809,6 @@ export function rowToPublishedDesign(row: FeedbackRow | null): PublishedDesign[]
     return [];
   }
 
-  const prompt = readNonEmptyString(row.prompt);
   const title =
     readNonEmptyString(row.title) ?? getFeedbackPayloadTitle(parsed.data);
   const id =
@@ -793,7 +822,6 @@ export function rowToPublishedDesign(row: FeedbackRow | null): PublishedDesign[]
       title,
       summary:
         readNonEmptyString(row.summary) ?? getFeedbackPayloadSummary(parsed.data),
-      ...(prompt ? { prompt } : {}),
       payload: parsed.data,
       surfaceId: readNonEmptyString(row.surface_id) ?? parsed.data.surfaceId,
       createdAtMs,
@@ -949,6 +977,14 @@ function isMissingPublishedColumnError(error: unknown) {
 
 function isPublishedColumnExistsError(error: unknown) {
   return isColumnExistsError(error, "published");
+}
+
+export function isMissingConversationContextColumnError(error: unknown) {
+  return isMissingColumnError(error, "conversation_context_json");
+}
+
+export function isConversationContextColumnExistsError(error: unknown) {
+  return isColumnExistsError(error, "conversation_context_json");
 }
 
 export function isMissingThumbnailColumnError(
