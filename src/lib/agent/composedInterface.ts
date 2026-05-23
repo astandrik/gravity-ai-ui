@@ -655,13 +655,36 @@ function parseComponent(
 
   if (mode === "strict") {
     throw new Error(
-      `Invalid props for component ${id}: ${parsed.error.issues
-        .map((issue) => issue.message)
-        .join("; ")}`,
+      `Invalid props for component ${id}${formatComponentType(component)}: ${formatZodIssues(parsed.error.issues)}`,
     );
   }
 
   return null;
+}
+
+function formatComponentType(component: unknown) {
+  return isRecord(component) && typeof component.component === "string"
+    ? ` (${component.component})`
+    : "";
+}
+
+function formatZodIssues(issues: z.ZodIssue[]) {
+  const messages = issues.flatMap(formatZodIssue);
+  const uniqueMessages = [...new Set(messages)];
+
+  return uniqueMessages.length > 0 ? uniqueMessages.join("; ") : "Invalid input";
+}
+
+function formatZodIssue(issue: z.ZodIssue): string[] {
+  if (issue.code === z.ZodIssueCode.invalid_union) {
+    return issue.unionErrors
+      .flatMap((error) => error.issues.flatMap(formatZodIssue))
+      .filter((message) => message !== "Invalid input");
+  }
+
+  const path = issue.path.map(String).join(".");
+
+  return [path ? `${path}: ${issue.message}` : issue.message];
 }
 
 function assertNoReservedProps(node: NormalizedNode) {

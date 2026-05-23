@@ -115,6 +115,29 @@ describe("composed interface builder", () => {
     });
   });
 
+  it("reports component type and prop path for union validation failures", () => {
+    expect(() =>
+      buildComposedInterfaceFromJson(
+        JSON.stringify({
+          ...simplePayload,
+          nodes: [
+            {
+              id: "NodePool",
+              parentId: "root",
+              order: 0,
+              component: "MetricGrid",
+              props: {
+                items: {
+                  total: "4",
+                },
+              },
+            },
+          ],
+        } satisfies ComposedInterfacePayload),
+      ),
+    ).toThrow(/Invalid props for component NodePool \(MetricGrid\): .*items/);
+  });
+
   it("accepts data-bound HeroBlock props with refresh actions", () => {
     const built = buildComposedInterfaceFromJson(
       JSON.stringify({
