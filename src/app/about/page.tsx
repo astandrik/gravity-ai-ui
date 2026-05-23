@@ -50,77 +50,150 @@ const integrations = [
   },
 ] as const;
 
+const projectNotes = [
+  {
+    label: "GenUI flow",
+    title: "Interfaces are composed, not pasted",
+    description:
+      "The agent returns a normalized component tree. The server validates it, materializes A2UI messages, and renders them with the local Gravity UI registry instead of accepting arbitrary JSX.",
+  },
+  {
+    label: "Progressive rendering",
+    title: "Useful structure appears before the final snapshot",
+    description:
+      "While tool arguments stream in, complete ancestor chains can already become renderable A2UI updates. The user sees status and partial structure without waiting for the whole interface payload.",
+  },
+  {
+    label: "Feedback loop",
+    title: "Every generated screen stays inspectable",
+    description:
+      "Rendered surfaces keep the payload, data model, React export, and feedback signals close together, so iterations can improve real product UI instead of one-off mockups.",
+  },
+] as const;
+
 export default function AboutPage() {
   return (
     <main className="page-shell">
       <Container maxWidth="xl" gutters={5}>
         <section className="about-page" aria-labelledby="about-title">
-          <Text as="h1" id="about-title" variant="display-2">
-            About Gravity AI UI
-          </Text>
-          <Text
-            as="p"
-            variant="body-2"
-            color="secondary"
-            className="about-page__lead"
+          <header className="about-page__header">
+            <Text as="h1" id="about-title" variant="display-2">
+              About Gravity AI UI
+            </Text>
+            <Text
+              as="p"
+              variant="body-2"
+              color="secondary"
+              className="about-page__lead"
+            >
+              Gravity AI UI is a GenUI playground where model output becomes a
+              validated A2UI component tree, streams as progressive interface
+              snapshots, and renders through trusted local Gravity UI components.
+            </Text>
+          </header>
+
+          <div
+            className="about-page__section"
+            aria-labelledby="about-principles-title"
           >
-            Agent-generated interfaces rendered with trusted local components.
-          </Text>
-          <div className="about-page__integrations">
-            {integrations.map((integration) => (
-              <article
-                key={integration.name}
-                className="about-integration"
-              >
-                <a
-                  aria-label={`Open ${integration.name}`}
-                  className="about-integration__overlay"
-                  href={integration.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-                <span className="about-integration__icon">
-                  <Image
-                    src={withBasePath(integration.image)}
-                    alt={integration.imageAlt}
-                    width={32}
-                    height={32}
-                    unoptimized
-                  />
-                </span>
-                <span className="about-integration__body">
+            <div className="about-page__section-title">
+              <Text as="span" variant="caption-2" className="about-page__eyebrow">
+                Principles
+              </Text>
+              <Text as="h2" id="about-principles-title" variant="subheader-3">
+                How the project works
+              </Text>
+            </div>
+            <div className="about-page__notes" aria-label="Project details">
+              {projectNotes.map((note) => (
+                <article key={note.label} className="about-note">
                   <Text
                     as="span"
                     variant="caption-2"
-                    color="secondary"
-                    className="about-integration__label"
+                    className="about-note__label"
                   >
-                    {integration.label}
+                    {note.label}
                   </Text>
-                  <Text as="span" variant="subheader-2">
-                    {integration.name}
+                  <Text as="h3" variant="subheader-2">
+                    {note.title}
                   </Text>
                   <Text
-                    as="span"
+                    as="p"
                     variant="body-2"
                     color="secondary"
-                    className="about-integration__description"
+                    className="about-note__description"
                   >
-                    {integration.description}
+                    {note.description}
                   </Text>
-                  {"relatedLink" in integration ? (
-                    <a
-                      className="about-integration__related"
-                      href={integration.relatedLink.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="about-page__section"
+            aria-labelledby="about-stack-title"
+          >
+            <div className="about-page__section-title">
+              <Text as="span" variant="caption-2" className="about-page__eyebrow">
+                Stack
+              </Text>
+              <Text as="h2" id="about-stack-title" variant="subheader-3">
+                Integrations
+              </Text>
+            </div>
+            <div className="about-page__integrations">
+              {integrations.map((integration) => (
+                <article key={integration.name} className="about-integration">
+                  <a
+                    aria-label={`Open ${integration.name}`}
+                    className="about-integration__overlay"
+                    href={integration.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                  <span className="about-integration__icon">
+                    <Image
+                      src={withBasePath(integration.image)}
+                      alt={integration.imageAlt}
+                      width={32}
+                      height={32}
+                      unoptimized
+                    />
+                  </span>
+                  <span className="about-integration__body">
+                    <Text
+                      as="span"
+                      variant="caption-2"
+                      className="about-integration__label"
                     >
-                      {integration.relatedLink.label}
-                    </a>
-                  ) : null}
-                </span>
-              </article>
-            ))}
+                      {integration.label}
+                    </Text>
+                    <Text as="span" variant="subheader-2">
+                      {integration.name}
+                    </Text>
+                    <Text
+                      as="span"
+                      variant="body-2"
+                      color="secondary"
+                      className="about-integration__description"
+                    >
+                      {integration.description}
+                    </Text>
+                    {"relatedLink" in integration ? (
+                      <a
+                        className="about-integration__related"
+                        href={integration.relatedLink.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {integration.relatedLink.label}
+                      </a>
+                    ) : null}
+                  </span>
+                </article>
+              ))}
+            </div>
           </div>
 
           <div className="about-page__actions">
