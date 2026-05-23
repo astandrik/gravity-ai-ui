@@ -307,6 +307,30 @@ describe("design feedback publishing", () => {
     ).toBe(true);
   });
 
+  it("recognizes nested YDB missing column issues", () => {
+    expect(
+      isMissingConversationContextColumnError({
+        name: "Error",
+        message: "GENERIC_ERROR, Issues: ERROR(1030): Type annotation",
+        issues: [
+          {
+            message: "Type annotation",
+            issues: [
+              {
+                message: "At function: Member",
+                issues: [
+                  {
+                    message: "Member not found: conversation_context_json",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
   it("derives the gallery slug lookup table name", () => {
     expect(getGallerySlugTableName("design_feedback")).toBe(
       "design_feedback_gallery_slugs",

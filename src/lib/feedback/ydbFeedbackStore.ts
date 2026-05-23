@@ -1024,9 +1024,39 @@ function isColumnExistsError(error: unknown, columnName: string) {
 }
 
 function getErrorText(error: unknown) {
-  return error instanceof Error
-    ? `${error.name}: ${error.message}`
-    : String(error);
+  const parts = [
+    error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+  ];
+
+  if (isRecord(error)) {
+    collectIssueMessages(error.issues, parts);
+  }
+
+  return parts.join("\n");
+}
+
+function collectIssueMessages(value: unknown, parts: string[]) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectIssueMessages(item, parts);
+    }
+
+    return;
+  }
+
+  if (!isRecord(value)) {
+    return;
+  }
+
+  if (typeof value.message === "string") {
+    parts.push(value.message);
+  }
+
+  collectIssueMessages(value.issues, parts);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getConnectionString() {
