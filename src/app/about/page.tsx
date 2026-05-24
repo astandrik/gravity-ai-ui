@@ -71,6 +71,21 @@ const projectNotes = [
   },
 ] as const;
 
+const localYdbProjects = [
+  {
+    name: "Codex Pets",
+    description:
+      "An animated companion project backed by the same local-ydb development workflow.",
+    href: "https://pets.ydb-qdrant.tech/",
+  },
+  {
+    name: "YDB Qdrant",
+    description:
+      "A Qdrant-compatible API layer that uses YDB as the durable vector storage engine.",
+    href: "https://ydb-qdrant.tech/",
+  },
+] as const;
+
 export default function AboutPage() {
   return (
     <main className="page-shell">
@@ -190,6 +205,47 @@ export default function AboutPage() {
                         {integration.relatedLink.label}
                       </a>
                     ) : null}
+                  </span>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="about-page__section"
+            aria-labelledby="about-local-ydb-title"
+          >
+            <div className="about-page__section-title">
+              <Text as="span" variant="caption-2" className="about-page__eyebrow">
+                Ecosystem
+              </Text>
+              <Text as="h2" id="about-local-ydb-title" variant="subheader-3">
+                Other projects using local-ydb
+              </Text>
+            </div>
+            <div className="about-page__projects">
+              {localYdbProjects.map((project) => (
+                <article key={project.name} className="about-project">
+                  <a
+                    aria-label={`Open ${project.name}`}
+                    className="about-project__overlay"
+                    href={project.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                  <Text as="h3" variant="subheader-2">
+                    {project.name}
+                  </Text>
+                  <Text
+                    as="p"
+                    variant="body-2"
+                    color="secondary"
+                    className="about-project__description"
+                  >
+                    {project.description}
+                  </Text>
+                  <span className="about-project__link" aria-hidden="true">
+                    Open project
                   </span>
                 </article>
               ))}

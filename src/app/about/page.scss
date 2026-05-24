@@ -43,7 +43,8 @@
     gap: var(--spacing-md);
   }
 
-  &__integrations {
+  &__integrations,
+  &__projects {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--spacing-md);
@@ -69,7 +70,8 @@
     gap: var(--spacing-xl);
 
     &__notes,
-    &__integrations {
+    &__integrations,
+    &__projects {
       grid-template-columns: minmax(0, 1fr);
     }
   }
@@ -97,6 +99,49 @@
 
   &__description {
     color: var(--muted-strong);
+  }
+}
+
+.about-project {
+  position: relative;
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+
+    &:focus-visible {
+      outline: 2px solid var(--acc);
+      outline-offset: 3px;
+    }
+  }
+
+  &__description {
+    color: var(--muted-strong);
+  }
+
+  &__link {
+    width: fit-content;
+    margin-top: var(--spacing-xs);
+    color: var(--g-color-text-link);
+    font-size: 13px;
+    line-height: 1.4;
   }
 }
 
