@@ -286,6 +286,33 @@ describe("POST /mcp", () => {
     );
   });
 
+  it("returns a generation error when the agent emits an error after a progressive payload", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    agentMocks.streamAgentResponse.mockImplementationOnce(async ({ onEvent }) => {
+      await onEvent({ type: "payload", payload });
+      await onEvent({ type: "error", message: "OpenAI response failed" });
+    });
+
+    const body = await callMcp({
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "generate_interface",
+        arguments: {
+          prompt: "Build a deployment review",
+        },
+      },
+    });
+
+    expect(body.result.isError).toBe(true);
+    expect(body.result.structuredContent).toEqual({
+      error: {
+        code: "generation_failed",
+        message: "OpenAI response failed",
+      },
+    });
+  });
+
   it("returns a structured error when generation is not configured", async () => {
     delete process.env.OPENAI_API_KEY;
 

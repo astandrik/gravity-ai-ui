@@ -292,10 +292,14 @@ async function generateWithAgent(
     );
   }
 
+  if (streamError) {
+    return toolError("generation_failed", streamError);
+  }
+
   if (!latestPayload) {
     return toolError(
       "generation_failed",
-      streamError || "The agent did not emit a valid interface payload.",
+      "The agent did not emit a valid interface payload.",
     );
   }
 
