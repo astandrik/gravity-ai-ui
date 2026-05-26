@@ -24,6 +24,10 @@ import type {
   AgentSseEvent,
   ConversationContext,
 } from "@/lib/agent/protocol";
+import {
+  buildGalleryItemEventParams,
+  buildPromptSubmittedParams,
+} from "@/lib/metrics/events";
 import { trackGoal } from "@/lib/metrics/yandex";
 import {
   applyActiveSurfaceEvent,
@@ -265,6 +269,14 @@ export function AgentShell({
         promptLength: trimmedPrompt.length,
         historyTurns: turns.length,
       });
+      trackGoal(
+        "prompt_submitted",
+        buildPromptSubmittedParams({
+          source,
+          promptLength: trimmedPrompt.length,
+          historyTurns: turns.length,
+        }),
+      );
 
       setPrompt("");
       void sendAgentRequest(
@@ -394,9 +406,29 @@ export function AgentShell({
           throw new Error(body?.error || `Feedback failed with ${response.status}`);
         }
 
+        const savedFeedback = await response.json().catch(() => null);
+        const galleryItemId =
+          typeof savedFeedback?.galleryId === "string"
+            ? savedFeedback.galleryId
+            : undefined;
+
         trackGoal("design_like", {
           surfaceId: payload.surfaceId,
         });
+        trackGoal(
+          "gallery_item_liked",
+          buildGalleryItemEventParams({
+            galleryItemId,
+            surfaceId: payload.surfaceId,
+          }),
+        );
+        trackGoal(
+          "gallery_item_published",
+          buildGalleryItemEventParams({
+            galleryItemId,
+            surfaceId: payload.surfaceId,
+          }),
+        );
       } catch (error) {
         setLikedByTurnId((current) => {
           const next = { ...current };

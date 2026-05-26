@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import NextLink from "next/link";
 import {
   Button,
   Container,
   Label,
   Text,
 } from "@/components/GravityUI/GravityUI";
+import {
+  GalleryItemOpenButton,
+  GalleryItemOpenOverlay,
+} from "@/components/GalleryTracking/GalleryItemOpen";
 import { withBasePath } from "@/lib/base-path";
 import type { PublishedDesign } from "@/lib/feedback/designFeedback";
 import { listPublishedDesigns } from "@/lib/feedback/ydbFeedbackStore";
@@ -113,10 +116,10 @@ function GalleryCard({ design }: { design: PublishedDesign }) {
 
   return (
     <article className="gallery-card">
-      <NextLink
-        aria-label={`Open ${design.title}`}
-        className="gallery-card__link"
+      <GalleryItemOpenOverlay
+        galleryItemId={design.id}
         href={routeHref}
+        title={design.title}
       />
       <GalleryCardThumbnail design={design} />
       <div className="gallery-card__body">
@@ -132,14 +135,7 @@ function GalleryCard({ design }: { design: PublishedDesign }) {
           <time dateTime={new Date(design.createdAtMs).toISOString()}>
             {formatPublishedDate(design.createdAtMs)}
           </time>
-          <Button
-            className="gallery-card__open"
-            view="outlined"
-            size="s"
-            href={href}
-          >
-            Open
-          </Button>
+          <GalleryItemOpenButton galleryItemId={design.id} href={href} />
         </div>
       </div>
     </article>

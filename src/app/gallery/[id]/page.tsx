@@ -6,10 +6,21 @@ import {
   Label,
   Text,
 } from "@/components/GravityUI/GravityUI";
+import { AskAIPanel } from "@/components/AskAI/AskAIPanel";
+import {
+  ASK_AI_GALLERY_DETAIL,
+  ASK_AI_PRODUCT_NAME,
+  buildGalleryAskAIPrompt,
+} from "@/components/AskAI/ask-ai-content";
 import { InterfaceInspector } from "@/components/InterfaceInspector/InterfaceInspector";
+import { buildReactCode } from "@/lib/agent/reactCode";
 import { toPublicUrl, withBasePath } from "@/lib/base-path";
 import type { PublishedDesign } from "@/lib/feedback/designFeedback";
 import { getPublishedDesignById } from "@/lib/feedback/ydbFeedbackStore";
+import {
+  buildGalleryDesignJsonLd,
+  serializeGalleryDesignJsonLd,
+} from "@/lib/gallery/designJsonLd";
 import {
   getSiteSocialImageUrl,
   SITE_IMAGE_ALT,
@@ -106,11 +117,27 @@ export default async function GalleryDesignPage({
   }
 
   const { design } = result;
+  const canonicalPageUrl = toPublicUrl(`/gallery/${design.id}`);
+  const socialImage = getGalleryDesignSocialImage(design);
+  const reactCode = buildReactCode(design.payload);
+  const jsonLd = buildGalleryDesignJsonLd({
+    canonicalUrl: canonicalPageUrl,
+    createdAtMs: design.createdAtMs,
+    imageUrl: socialImage.url,
+    summary: design.summary,
+    title: design.title,
+  });
 
   return (
     <main className="page-shell">
       <Container maxWidth="xl" gutters={5}>
         <article className="gallery-detail" aria-labelledby="gallery-detail-title">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: serializeGalleryDesignJsonLd(jsonLd),
+            }}
+          />
           <div className="gallery-detail__topbar">
             <Button view="outlined" href={withBasePath("/gallery")}>
               Back to gallery
@@ -137,7 +164,61 @@ export default async function GalleryDesignPage({
             </time>
           </header>
 
+          <AskAIPanel
+            productName={ASK_AI_PRODUCT_NAME}
+            label={ASK_AI_GALLERY_DETAIL.label}
+            helperText={ASK_AI_GALLERY_DETAIL.helperText}
+            prompt={buildGalleryAskAIPrompt(canonicalPageUrl)}
+            page={ASK_AI_GALLERY_DETAIL.page}
+            promptVariant={ASK_AI_GALLERY_DETAIL.promptVariant}
+            contextId={design.id}
+          />
+
           <InterfaceInspector payload={design.payload} />
+
+          <section
+            className="gallery-detail__retrieval"
+            aria-labelledby="gallery-retrieval-title"
+          >
+            <div className="gallery-detail__retrieval-copy">
+              <Text as="h2" id="gallery-retrieval-title" variant="subheader-3">
+                Public retrieval context
+              </Text>
+              <Text as="p" variant="body-2" color="secondary">
+                This public gallery page exposes the generated interface title,
+                summary, canonical URL, thumbnail, and React export. Original
+                prompt history is not exposed.
+              </Text>
+            </div>
+            <dl className="gallery-detail__retrieval-list">
+              <div>
+                <dt>Title</dt>
+                <dd>{design.title}</dd>
+              </div>
+              <div>
+                <dt>Use case summary</dt>
+                <dd>{design.summary}</dd>
+              </div>
+              <div>
+                <dt>Canonical URL</dt>
+                <dd>
+                  <a href={canonicalPageUrl}>{canonicalPageUrl}</a>
+                </dd>
+              </div>
+              <div>
+                <dt>Preview image</dt>
+                <dd>
+                  <a href={socialImage.url}>{socialImage.url}</a>
+                </dd>
+              </div>
+            </dl>
+            <details className="gallery-detail__code">
+              <summary>Generated React code</summary>
+              <pre>
+                <code>{reactCode}</code>
+              </pre>
+            </details>
+          </section>
         </article>
       </Container>
     </main>

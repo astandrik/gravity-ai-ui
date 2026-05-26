@@ -184,7 +184,7 @@
   }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .ask-ai-panel {
     &_minimal {
       .ask-ai-panel__minimal-label {
@@ -194,7 +194,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .ask-ai-panel {
     &__content {
       flex-direction: column;
@@ -210,13 +210,19 @@
     }
 
     &_minimal {
+      .ask-ai-panel__minimal-label {
+        display: block;
+      }
+
       .ask-ai-panel__content {
         flex-direction: row;
         align-items: center;
+        justify-content: flex-end;
       }
 
       .ask-ai-panel__links {
         width: auto;
+        justify-content: flex-end;
       }
     }
   }

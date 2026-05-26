@@ -10,6 +10,10 @@
     opacity: 1;
   }
 
+  .ask-ai-panel {
+    margin-bottom: var(--spacing-md);
+  }
+
   &__content {
     display: flex;
     flex-wrap: wrap;

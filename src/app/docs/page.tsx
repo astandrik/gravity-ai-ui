@@ -1,3 +1,8 @@
+import { AskAIPanel } from "@/components/AskAI/AskAIPanel";
+import {
+  ASK_AI_PRODUCT_EVALUATION,
+  ASK_AI_PRODUCT_NAME,
+} from "@/components/AskAI/ask-ai-content";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
 
 import "./page.scss";
@@ -66,6 +71,15 @@ export default function DocsPage() {
               ))}
             </div>
           </section>
+
+          <AskAIPanel
+            productName={ASK_AI_PRODUCT_NAME}
+            label={ASK_AI_PRODUCT_EVALUATION.label}
+            helperText={ASK_AI_PRODUCT_EVALUATION.helperText}
+            prompt={ASK_AI_PRODUCT_EVALUATION.prompt}
+            page="docs"
+            promptVariant={ASK_AI_PRODUCT_EVALUATION.promptVariant}
+          />
         </section>
       </Container>
     </main>
