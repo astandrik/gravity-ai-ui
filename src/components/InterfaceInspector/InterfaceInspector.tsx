@@ -27,6 +27,7 @@ import {
   type ComposedInterfacePayload,
 } from "@/lib/agent/composedInterface";
 import { buildReactCode } from "@/lib/agent/reactCode";
+import { buildGeneratedCodeCopiedParams } from "@/lib/metrics/events";
 import { trackGoal } from "@/lib/metrics/yandex";
 import {
   A2uiSurface,
@@ -283,6 +284,10 @@ function CodePanel({ value }: { value: string }) {
     trackGoal("react_code_copy", {
       codeLength: value.length,
     });
+    trackGoal(
+      "generated_code_copied",
+      buildGeneratedCodeCopiedParams(value.length),
+    );
     window.setTimeout(() => setCopied(false), 1200);
   }, [value]);
 

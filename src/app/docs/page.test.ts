@@ -5,6 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import DocsPage from "./page";
 
 vi.mock("@/components/GravityUI/GravityUI", () => ({
+  Card({
+    children,
+  }: {
+    children: ReactNode;
+  }) {
+    return createElement("div", null, children);
+  },
   Container({
     children,
   }: {
@@ -37,5 +44,18 @@ describe("DocsPage", () => {
     expect(html).toContain("get_interface");
     expect(html).toContain("generate_interface");
     expect(html).toContain("refine_interface");
+  });
+
+  it("renders product-level Ask AI provider links", () => {
+    const html = renderToStaticMarkup(createElement(DocsPage));
+
+    expect(html).toContain("Ask AI about Gravity AI UI");
+    expect(html).toContain("Open an AI assistant with a product evaluation prompt.");
+    expect(html).toContain("Ask ChatGPT about Gravity AI UI");
+    expect(html).toContain("https://chat.openai.com/?q=");
+    expect(html).toContain("https://www.perplexity.ai/search/new?q=");
+    expect(html).toContain("https://claude.ai/new?q=");
+    expect(html).toContain("https://www.google.com/search?udm=50&amp;aep=11&amp;q=");
+    expect(html).toContain("https://grok.com/?q=");
   });
 });

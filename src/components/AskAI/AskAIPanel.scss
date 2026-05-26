@@ -1,0 +1,229 @@
+.ask-ai-panel {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.045);
+
+  &__content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    min-width: 0;
+  }
+
+  &__body {
+    display: grid;
+    flex: 1 1 300px;
+    min-width: 0;
+    gap: var(--spacing-xs);
+  }
+
+  &__title,
+  &__help {
+    margin: 0;
+  }
+
+  &__help {
+    max-width: 68ch;
+  }
+
+  &__links-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  &__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  &__link {
+    position: relative;
+    display: inline-grid;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-md);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 4px 12px rgba(0, 0, 0, 0.12);
+    text-decoration: none;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.42);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--g-color-line-focus);
+      outline-offset: 3px;
+    }
+
+    &_mint {
+      background: #7fbab0;
+      color: #f8fffc;
+    }
+
+    &_teal {
+      background: #063e52;
+      color: #22d3ee;
+    }
+
+    &_coral {
+      background: #dc8061;
+      color: #fff7ed;
+    }
+
+    &_white {
+      background: #f8fafc;
+      color: #08090b;
+    }
+  }
+
+  &__link-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+    margin: -1px;
+    white-space: nowrap;
+  }
+
+  &_minimal {
+    padding: 2px;
+    border: none;
+    background: transparent;
+
+    .ask-ai-panel__content {
+      gap: 0;
+      justify-content: center;
+    }
+
+    .ask-ai-panel__links-container {
+      gap: var(--spacing-sm);
+    }
+
+    .ask-ai-panel__minimal-label {
+      display: none;
+      white-space: nowrap;
+      margin: 0;
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--g-color-text-secondary);
+    }
+
+    .ask-ai-panel__links {
+      gap: var(--spacing-xs);
+    }
+
+    .ask-ai-panel__link {
+      width: 32px;
+      height: 32px;
+      flex-basis: 32px;
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  &_compact {
+    padding: var(--spacing-sm);
+    border-color: var(--line);
+    background: rgba(255, 255, 255, 0.035);
+
+    .ask-ai-panel__content {
+      gap: var(--spacing-sm);
+    }
+
+    .ask-ai-panel__body {
+      flex-basis: 220px;
+    }
+
+    .ask-ai-panel__links {
+      gap: 6px;
+    }
+
+    .ask-ai-panel__link {
+      width: 32px;
+      height: 32px;
+      flex-basis: 32px;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .ask-ai-panel {
+    &_minimal {
+      .ask-ai-panel__minimal-label {
+        display: block;
+      }
+    }
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ask-ai-panel {
+    &__content {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    &__body {
+      flex-basis: auto;
+    }
+
+    &__links {
+      width: 100%;
+    }
+
+    &_minimal {
+      .ask-ai-panel__minimal-label {
+        display: block;
+      }
+
+      .ask-ai-panel__content {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .ask-ai-panel__links {
+        width: auto;
+        justify-content: flex-end;
+      }
+    }
+  }
+}
