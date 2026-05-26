@@ -1,5 +1,7 @@
 .docs-page {
   max-width: 760px;
+  display: grid;
+  gap: var(--spacing-3xl);
 
   &__lead {
     max-width: 560px;
@@ -20,6 +22,34 @@
       background: rgba(0, 0, 0, 0.24);
       color: var(--fg);
       overflow-x: auto;
+    }
+  }
+
+  &__section {
+    display: grid;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid var(--line);
+  }
+
+  &__section-copy {
+    max-width: 620px;
+    color: var(--muted-strong);
+  }
+
+  &__tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+
+    code {
+      display: inline-flex;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+      font-size: 13px;
     }
   }
 }
