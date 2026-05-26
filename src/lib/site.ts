@@ -11,7 +11,11 @@ export const SITE_IMAGE_ALT =
 export const SITE_KEYWORDS = [
   "Gravity AI UI",
   "AI agent UI",
+  "AI UI generator",
+  "AI-powered UI generator",
   "A2UI",
+  "MCP server",
+  "OpenAPI",
   "OpenAI",
   "Gravity UI",
   "generated interfaces",
@@ -46,8 +50,17 @@ export function getWebsiteJsonLd() {
     "@type": "WebApplication",
     name: SITE_NAME,
     applicationCategory: "DeveloperApplication",
+    applicationSubCategory: "AI-powered UI generator",
     url: toPublicUrl("/"),
     description: SITE_DESCRIPTION,
     operatingSystem: "Web",
+    softwareHelp: toPublicUrl("/docs"),
+    featureList: [
+      "A2UI component tree generation",
+      "OpenAI-powered interface generation",
+      "Gravity UI trusted renderer",
+      "Streamable HTTP MCP server",
+      "OpenAPI 3.1 spec",
+    ],
   };
 }

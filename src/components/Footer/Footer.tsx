@@ -7,6 +7,8 @@ import "./Footer.scss";
 const GRAVITY_UI_URL = "https://github.com/gravity-ui/uikit";
 const YDB_URL = "https://ydb.tech/";
 const A2UI_URL = "https://a2ui.org/";
+const OPENAPI_URL = "/openapi.json";
+const MCP_DOCS_URL = "/mcp.md";
 
 export function Footer() {
   return (
@@ -16,6 +18,12 @@ export function Footer() {
           Agent-generated interfaces rendered with trusted local components.
         </Text>
         <div className="footer__credits" aria-label="Technology credits">
+          <FooterCredit label="API spec" href={OPENAPI_URL}>
+            <span>OpenAPI</span>
+          </FooterCredit>
+          <FooterCredit label="Agent docs" href={MCP_DOCS_URL}>
+            <span>MCP</span>
+          </FooterCredit>
           <FooterCredit label="Interface protocol" href={A2UI_URL}>
             <Image
               src={withBasePath("/assets/a2ui-logo.svg")}
@@ -64,13 +72,15 @@ function FooterCredit({
   href: string;
   label: string;
 }) {
+  const isExternal = href.startsWith("http");
+
   return (
     <span className="footer__credit">
       <span className="footer__credit-label">{label}</span>
       <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={isExternal ? href : withBasePath(href)}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
         className="footer__link"
       >
         {children}

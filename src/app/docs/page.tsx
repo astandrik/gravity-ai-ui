@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import { AskAIPanel } from "@/components/AskAI/AskAIPanel";
 import {
   ASK_AI_PRODUCT_EVALUATION,
   ASK_AI_PRODUCT_NAME,
 } from "@/components/AskAI/ask-ai-content";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
+import { SITE_NAME } from "@/lib/site";
 
 import "./page.scss";
 
@@ -25,13 +27,64 @@ const mcpTools = [
 const mcpUrl = "https://gravity-ai.ydb-qdrant.tech/mcp";
 const mcpCommand = `codex mcp add gravityAiUi --url ${mcpUrl}`;
 
+export const metadata: Metadata = {
+  title: `Developer Docs - ${SITE_NAME}`,
+  description:
+    "Gravity AI UI API docs with OpenAPI, MCP server, OAuth metadata, webhooks status, rate limits, and structured error guidance for AI agents.",
+};
+
+const developerResources = [
+  {
+    title: "OpenAPI spec",
+    href: "https://gravity-ai.ydb-qdrant.tech/openapi.json",
+    description:
+      "OpenAPI 3.1 reference for /api/agent, /api/design-feedback, /mcp, OAuth discovery, and function-calling agents.",
+  },
+  {
+    title: "OAuth",
+    href: "https://gravity-ai.ydb-qdrant.tech/.well-known/oauth-authorization-server",
+    description:
+      "Metadata-only OAuth 2.0 and OpenID Connect discovery. Token issuance is not enabled in the current public demo.",
+  },
+  {
+    title: "MCP server",
+    href: "https://gravity-ai.ydb-qdrant.tech/.well-known/mcp/server-card.json",
+    description:
+      "Pre-connection MCP server card with Streamable HTTP transport details and the public tool list.",
+  },
+  {
+    title: "webhooks",
+    href: "https://gravity-ai.ydb-qdrant.tech/webhooks.md",
+    description:
+      "Current webhook support status. Gravity AI UI does not support webhook registration yet; agents should use direct API or MCP calls.",
+  },
+] as const;
+
+const apiNotes = [
+  {
+    title: "Rate limits",
+    description:
+      "The public demo is for low-volume interactive use. Agents should back off on transient failures and respect RateLimit-* or Retry-After headers when present.",
+  },
+  {
+    title: "Errors",
+    description:
+      "Handled API and discovery routes return structured JSON with error.code, error.message, and docs links where useful.",
+  },
+  {
+    title: "Idempotency",
+    description:
+      "Mutation endpoints document Idempotency-Key for agent retry planning. Durable idempotency is not enforced in this metadata-only pass.",
+  },
+] as const;
+
 export default function DocsPage() {
   return (
     <main className="page-shell">
       <Container maxWidth="xl" gutters={5}>
         <section className="docs-page" aria-labelledby="docs-title">
           <Text as="h1" id="docs-title" variant="display-2">
-            Project Commands
+            Gravity AI UI Developer Docs
           </Text>
           <Text
             as="p"
@@ -39,11 +92,30 @@ export default function DocsPage() {
             color="secondary"
             className="docs-page__lead"
           >
-            Baseline commands for local development and verification.
+            API docs for agents and developers integrating with Gravity AI UI.
+            The public surfaces include an OpenAPI spec, a Streamable HTTP MCP
+            server, OAuth discovery metadata, markdown docs, structured errors,
+            and documented webhooks status.
           </Text>
-          <div className="docs-page__commands">
-            {commands.map((command) => (
-              <code key={command}>{command}</code>
+
+          <div className="docs-page__resource-grid">
+            {developerResources.map((resource) => (
+              <article key={resource.title} className="docs-resource">
+                <Text as="h2" variant="subheader-2">
+                  {resource.title}
+                </Text>
+                <Text
+                  as="p"
+                  variant="body-2"
+                  color="secondary"
+                  className="docs-resource__description"
+                >
+                  {resource.description}
+                </Text>
+                <a className="docs-resource__link" href={resource.href}>
+                  {resource.href}
+                </a>
+              </article>
             ))}
           </div>
 
@@ -68,6 +140,51 @@ export default function DocsPage() {
             <div className="docs-page__tools" aria-label="MCP tools">
               {mcpTools.map((tool) => (
                 <code key={tool}>{tool}</code>
+              ))}
+            </div>
+          </section>
+
+          <section className="docs-page__section" aria-labelledby="api-title">
+            <Text as="h2" id="api-title" variant="subheader-3">
+              API behavior for agents
+            </Text>
+            <div className="docs-page__notes">
+              {apiNotes.map((note) => (
+                <article key={note.title} className="docs-note">
+                  <Text as="h3" variant="subheader-2">
+                    {note.title}
+                  </Text>
+                  <Text
+                    as="p"
+                    variant="body-2"
+                    color="secondary"
+                    className="docs-note__description"
+                  >
+                    {note.description}
+                  </Text>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className="docs-page__section"
+            aria-labelledby="local-commands-title"
+          >
+            <Text as="h2" id="local-commands-title" variant="subheader-3">
+              Local verification commands
+            </Text>
+            <Text
+              as="p"
+              variant="body-2"
+              color="secondary"
+              className="docs-page__section-copy"
+            >
+              Baseline commands for local development and verification.
+            </Text>
+            <div className="docs-page__commands">
+              {commands.map((command) => (
+                <code key={command}>{command}</code>
               ))}
             </div>
           </section>

@@ -99,10 +99,16 @@ const refineInputSchema = {
 };
 
 export function createGravityAiMcpServer(): McpServer {
-  const server = new McpServer({
-    name: "gravity-ai-ui",
-    version: MCP_REGISTRY_SERVER_VERSION,
-  });
+  const server = new McpServer(
+    {
+      name: "gravity-ai-ui",
+      version: MCP_REGISTRY_SERVER_VERSION,
+    },
+    {
+      instructions:
+        "Gravity AI UI exposes public tools for searching liked interface drafts, reading public gallery payloads, and generating or refining validated A2UI + Gravity UI interface payloads. Generated results are returned to the caller and are not saved or published by MCP tools.",
+    },
+  );
 
   server.registerTool(
     "search_interfaces",

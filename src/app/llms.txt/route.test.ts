@@ -10,6 +10,18 @@ describe("GET /llms.txt", () => {
 
     expect(response.headers.get("Content-Type")).toContain("text/plain");
     expect(body).toContain("https://gravity.example/mcp");
+    expect(body).toContain("https://gravity.example/.well-known/mcp");
+    expect(body).toContain(
+      "https://gravity.example/.well-known/mcp/server-card.json",
+    );
+    expect(body).toContain("https://gravity.example/openapi.json");
+    expect(body).toContain(
+      "https://gravity.example/.well-known/oauth-authorization-server",
+    );
+    expect(body).toContain("https://gravity.example/llms-full.txt");
+    expect(body).toContain("Gravity AI UI API docs");
+    expect(body).toContain("Auth docs");
+    expect(body).toContain("Webhook docs");
     expect(body).toContain("search_interfaces");
     expect(body).toContain("get_interface");
     expect(body).toContain("generate_interface");
@@ -36,6 +48,10 @@ describe("GET /llms.txt", () => {
     expect(body).toContain("https://gravity.example/gallery");
     expect(body).toContain("https://gravity.example/docs");
     expect(body).toContain("https://gravity.example/about");
+    expect(body).toContain("https://gravity.example/compare");
+    expect(body).toContain(
+      "https://gravity.example/guides/a2ui-openai-gravity-ui",
+    );
     expect(body).toContain("https://gravity.example/sitemap.xml");
     expect(body).toContain("https://gravity.example/robots.txt");
   });
