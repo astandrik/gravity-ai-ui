@@ -52,7 +52,8 @@ export function buildOpenApiDocument() {
           },
           responses: {
             "200": {
-              description: "SSE stream of agent events.",
+              description:
+                "SSE stream of agent events. Generator configuration errors are emitted as SSE error events.",
               content: {
                 "text/event-stream": {
                   schema: { type: "string" },
@@ -60,8 +61,7 @@ export function buildOpenApiDocument() {
               },
               headers: rateLimitHeaders(),
             },
-            "400": problemResponse("Invalid agent request."),
-            "503": problemResponse("Generator configuration unavailable."),
+            "400": validationErrorResponse("Invalid agent request."),
           },
         },
       },
@@ -109,13 +109,13 @@ export function buildOpenApiDocument() {
                 },
               },
             },
-            "400": problemResponse("Invalid design feedback."),
-            "503": problemResponse("Feedback storage unavailable."),
+            "400": validationErrorResponse("Invalid design feedback."),
+            "503": simpleErrorResponse("Feedback storage unavailable."),
           },
         },
       },
       "/mcp": mcpPathItem("callMcpServer"),
-      "/.well-known/mcp": mcpPathItem("callWellKnownMcpServer"),
+      "/.well-known/mcp": wellKnownMcpPathItem(),
       "/openapi.json": {
         get: {
           operationId: "getOpenApiSpec",
@@ -309,6 +309,63 @@ export function buildOpenApiDocument() {
             },
           },
         },
+        ValidationErrorResponse: {
+          type: "object",
+          required: ["error", "issues"],
+          properties: {
+            error: { type: "string" },
+            issues: {
+              type: "object",
+              additionalProperties: true,
+              description:
+                "Validation details from Zod flatten(), including formErrors and fieldErrors.",
+            },
+          },
+        },
+        SimpleErrorResponse: {
+          type: "object",
+          required: ["error"],
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        McpServerCard: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "name",
+            "title",
+            "description",
+            "version",
+            "websiteUrl",
+            "serverUrl",
+            "transport",
+            "tools",
+          ],
+          properties: {
+            name: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            version: { type: "string" },
+            websiteUrl: { type: "string", format: "uri" },
+            serverUrl: { type: "string", format: "uri" },
+            transport: { type: "string", const: "streamable-http" },
+            tools: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["name", "title", "description", "readOnly"],
+                properties: {
+                  name: { type: "string" },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  readOnly: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
         ProblemDetails: {
           type: "object",
           required: ["error"],
@@ -362,6 +419,20 @@ export function buildOpenApiDocument() {
   } as const;
 }
 
+function wellKnownMcpPathItem() {
+  return {
+    ...mcpPathItem("callWellKnownMcpServer"),
+    get: {
+      operationId: "getWellKnownMcpServerCard",
+      tags: ["Discovery", "MCP"],
+      summary: "Fetch the Gravity AI UI MCP server card",
+      responses: {
+        "200": jsonResponse("#/components/schemas/McpServerCard"),
+      },
+    },
+  };
+}
+
 function mcpPathItem(operationId: string) {
   return {
     post: {
@@ -388,17 +459,17 @@ function mcpPathItem(operationId: string) {
             },
           },
         },
-        "403": problemResponse("Forbidden origin."),
-        "405": problemResponse("Method not allowed."),
-        "500": problemResponse("Internal MCP server error."),
+        "403": jsonRpcErrorResponse("Forbidden origin."),
+        "405": jsonRpcErrorResponse("Method not allowed."),
+        "500": jsonRpcErrorResponse("Internal MCP server error."),
       },
     },
   };
 }
 
-function jsonResponse(schemaRef: string) {
+function jsonResponse(schemaRef: string, description = "JSON response.") {
   return {
-    description: "JSON response.",
+    description,
     content: {
       "application/json": {
         schema: { $ref: schemaRef },
@@ -407,15 +478,16 @@ function jsonResponse(schemaRef: string) {
   };
 }
 
-function problemResponse(description: string) {
-  return {
-    description,
-    content: {
-      "application/json": {
-        schema: { $ref: "#/components/schemas/ProblemDetails" },
-      },
-    },
-  };
+function validationErrorResponse(description: string) {
+  return jsonResponse("#/components/schemas/ValidationErrorResponse", description);
+}
+
+function simpleErrorResponse(description: string) {
+  return jsonResponse("#/components/schemas/SimpleErrorResponse", description);
+}
+
+function jsonRpcErrorResponse(description: string) {
+  return jsonResponse("#/components/schemas/JsonRpcResponse", description);
 }
 
 function rateLimitHeaders() {

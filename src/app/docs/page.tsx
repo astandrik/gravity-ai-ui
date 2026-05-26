@@ -5,6 +5,7 @@ import {
   ASK_AI_PRODUCT_NAME,
 } from "@/components/AskAI/ask-ai-content";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
+import { toPublicUrl } from "@/lib/base-path";
 import { SITE_NAME } from "@/lib/site";
 
 import "./page.scss";
@@ -24,41 +25,11 @@ const mcpTools = [
   "refine_interface",
 ] as const;
 
-const mcpUrl = "https://gravity-ai.ydb-qdrant.tech/mcp";
-const mcpCommand = `codex mcp add gravityAiUi --url ${mcpUrl}`;
-
 export const metadata: Metadata = {
   title: `Developer Docs - ${SITE_NAME}`,
   description:
     "Gravity AI UI API docs with OpenAPI, MCP server, OAuth metadata, webhooks status, rate limits, and structured error guidance for AI agents.",
 };
-
-const developerResources = [
-  {
-    title: "OpenAPI spec",
-    href: "https://gravity-ai.ydb-qdrant.tech/openapi.json",
-    description:
-      "OpenAPI 3.1 reference for /api/agent, /api/design-feedback, /mcp, OAuth discovery, and function-calling agents.",
-  },
-  {
-    title: "OAuth",
-    href: "https://gravity-ai.ydb-qdrant.tech/.well-known/oauth-authorization-server",
-    description:
-      "Metadata-only OAuth 2.0 and OpenID Connect discovery. Token issuance is not enabled in the current public demo.",
-  },
-  {
-    title: "MCP server",
-    href: "https://gravity-ai.ydb-qdrant.tech/.well-known/mcp/server-card.json",
-    description:
-      "Pre-connection MCP server card with Streamable HTTP transport details and the public tool list.",
-  },
-  {
-    title: "webhooks",
-    href: "https://gravity-ai.ydb-qdrant.tech/webhooks.md",
-    description:
-      "Current webhook support status. Gravity AI UI does not support webhook registration yet; agents should use direct API or MCP calls.",
-  },
-] as const;
 
 const apiNotes = [
   {
@@ -78,7 +49,40 @@ const apiNotes = [
   },
 ] as const;
 
+function getDeveloperResources() {
+  return [
+    {
+      title: "OpenAPI spec",
+      href: toPublicUrl("/openapi.json"),
+      description:
+        "OpenAPI 3.1 reference for /api/agent, /api/design-feedback, /mcp, OAuth discovery, and function-calling agents.",
+    },
+    {
+      title: "OAuth",
+      href: toPublicUrl("/.well-known/oauth-authorization-server"),
+      description:
+        "Metadata-only OAuth 2.0 and OpenID Connect discovery. Token issuance is not enabled in the current public demo.",
+    },
+    {
+      title: "MCP server",
+      href: toPublicUrl("/.well-known/mcp/server-card.json"),
+      description:
+        "Pre-connection MCP server card with Streamable HTTP transport details and the public tool list.",
+    },
+    {
+      title: "webhooks",
+      href: toPublicUrl("/webhooks.md"),
+      description:
+        "Current webhook support status. Gravity AI UI does not support webhook registration yet; agents should use direct API or MCP calls.",
+    },
+  ] as const;
+}
+
 export default function DocsPage() {
+  const mcpUrl = toPublicUrl("/mcp");
+  const mcpCommand = `codex mcp add gravityAiUi --url ${mcpUrl}`;
+  const developerResources = getDeveloperResources();
+
   return (
     <main className="page-shell">
       <Container maxWidth="xl" gutters={5}>
@@ -112,7 +116,12 @@ export default function DocsPage() {
                 >
                   {resource.description}
                 </Text>
-                <a className="docs-resource__link" href={resource.href}>
+                <a
+                  className="docs-resource__link"
+                  href={resource.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {resource.href}
                 </a>
               </article>

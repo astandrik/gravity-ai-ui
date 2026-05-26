@@ -33,6 +33,7 @@ vi.mock("@/components/GravityUI/GravityUI", () => ({
 
 describe("DocsPage", () => {
   it("documents the public MCP connection details", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
     const html = renderToStaticMarkup(createElement(DocsPage));
 
     expect(html).toContain("Gravity AI UI Developer Docs");
@@ -41,11 +42,13 @@ describe("DocsPage", () => {
     expect(html).toContain("MCP server");
     expect(html).toContain("webhooks");
     expect(html).toContain("Remote MCP");
-    expect(html).toContain("https://gravity-ai.ydb-qdrant.tech/mcp");
-    expect(html).toContain("https://gravity-ai.ydb-qdrant.tech/openapi.json");
+    expect(html).toContain("https://gravity.example/mcp");
+    expect(html).toContain("https://gravity.example/openapi.json");
     expect(html).toContain(
-      "codex mcp add gravityAiUi --url https://gravity-ai.ydb-qdrant.tech/mcp",
+      "codex mcp add gravityAiUi --url https://gravity.example/mcp",
     );
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain("search_interfaces");
     expect(html).toContain("get_interface");
     expect(html).toContain("generate_interface");

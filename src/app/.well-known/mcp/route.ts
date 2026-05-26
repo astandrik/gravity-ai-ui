@@ -1,4 +1,3 @@
-import { POST as postMcp } from "@/app/mcp/route";
 import { buildMcpServerCard } from "@/lib/mcp/registry";
 
 export const runtime = "nodejs";
@@ -13,5 +12,7 @@ export function GET(): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const { POST: postMcp } = await import("@/app/mcp/route");
+
   return postMcp(request);
 }
