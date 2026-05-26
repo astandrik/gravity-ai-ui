@@ -27,7 +27,7 @@ export function SiteHeader() {
         </a>
         <div className="site-header__ask-ai">
           <AskAIPanel
-            compact
+            minimal
             productName={ASK_AI_PRODUCT_NAME}
             label={ASK_AI_PRODUCT_EVALUATION.label}
             helperText={ASK_AI_PRODUCT_EVALUATION.helperText}
