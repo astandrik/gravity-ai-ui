@@ -38,6 +38,13 @@
     line-height: 1.4;
   }
 
+  &__ask-ai {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-width: 320px;
+  }
+
   &__nav {
     display: inline-flex;
     flex-wrap: wrap;
