@@ -36,6 +36,8 @@ describe("OpenAPI discovery routes", () => {
     const agentResponses = body.paths["/api/agent"].post.responses;
     const feedbackResponses = body.paths["/api/design-feedback"].post.responses;
     const mcpResponses = body.paths["/mcp"].post.responses;
+    const mcpGetResponses = body.paths["/mcp"].get.responses;
+    const mcpDeleteResponses = body.paths["/mcp"].delete.responses;
     const wellKnownMcp = body.paths["/.well-known/mcp"];
 
     expect(agentResponses["400"].content["application/json"].schema.$ref).toBe(
@@ -55,12 +57,54 @@ describe("OpenAPI discovery routes", () => {
     expect(mcpResponses["403"].content["application/json"].schema.$ref).toBe(
       "#/components/schemas/JsonRpcResponse",
     );
-    expect(mcpResponses["405"].content["application/json"].schema.$ref).toBe(
+    expect(mcpResponses["405"]).toBeUndefined();
+    expect(mcpGetResponses["405"].content["application/json"].schema.$ref).toBe(
+      "#/components/schemas/JsonRpcResponse",
+    );
+    expect(
+      mcpDeleteResponses["405"].content["application/json"].schema.$ref,
+    ).toBe(
       "#/components/schemas/JsonRpcResponse",
     );
     expect(mcpResponses["500"].content["application/json"].schema.$ref).toBe(
       "#/components/schemas/JsonRpcResponse",
     );
+  });
+
+  it("documents OAuth discovery and disabled OAuth endpoints", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
+    const { GET } = await import("@/app/openapi.json/route");
+
+    const body = await GET().json();
+    const authorizationServerProperties =
+      body.components.schemas.OAuthAuthorizationServerMetadata.properties;
+
+    expect(authorizationServerProperties).toMatchObject({
+      jwks_uri: { type: "string", format: "uri" },
+      token_endpoint_auth_methods_supported: {
+        type: "array",
+        items: { type: "string" },
+      },
+      service_documentation: { type: "string", format: "uri" },
+    });
+    expect(
+      body.paths["/.well-known/openid-configuration"].get.operationId,
+    ).toBe("getOpenIdConfiguration");
+    expect(body.paths["/oauth/authorize"].get.responses["501"].content[
+      "application/json"
+    ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(body.paths["/oauth/token"].post.responses["501"].content[
+      "application/json"
+    ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(body.paths["/oauth/token"].get.responses["405"].content[
+      "application/json"
+    ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(body.paths["/oauth/userinfo"].get.responses["501"].content[
+      "application/json"
+    ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(body.paths["/oauth/userinfo"].post.responses["501"].content[
+      "application/json"
+    ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
   });
 
   it("serves the same OpenAPI document from /api/openapi.json", async () => {

@@ -53,19 +53,23 @@ describe("OAuth discovery metadata", () => {
       issuer: "https://gravity.example",
       authorization_endpoint: "https://gravity.example/oauth/authorize",
       token_endpoint: "https://gravity.example/oauth/token",
+      userinfo_endpoint: "https://gravity.example/oauth/userinfo",
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["RS256"],
     });
   });
 
   it("returns structured JSON for OAuth endpoints while issuance is disabled", async () => {
-    const [{ GET }, tokenRoute] = await Promise.all([
+    const [authorizeRoute, tokenRoute, userInfoRoute] = await Promise.all([
       import("@/app/oauth/authorize/route"),
       import("@/app/oauth/token/route"),
+      import("@/app/oauth/userinfo/route"),
     ]);
 
-    const authorizeResponse = GET();
+    const authorizeResponse = authorizeRoute.GET();
     const tokenResponse = await tokenRoute.POST();
+    const userInfoGetResponse = userInfoRoute.GET();
+    const userInfoPostResponse = await userInfoRoute.POST();
 
     await expect(authorizeResponse.json()).resolves.toMatchObject({
       error: {
@@ -80,5 +84,17 @@ describe("OAuth discovery metadata", () => {
       },
     });
     expect(tokenResponse.status).toBe(501);
+    await expect(userInfoGetResponse.json()).resolves.toMatchObject({
+      error: {
+        code: "oauth_not_enabled",
+      },
+    });
+    expect(userInfoGetResponse.status).toBe(501);
+    await expect(userInfoPostResponse.json()).resolves.toMatchObject({
+      error: {
+        code: "oauth_not_enabled",
+      },
+    });
+    expect(userInfoPostResponse.status).toBe(501);
   });
 });

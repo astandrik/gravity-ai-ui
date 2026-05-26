@@ -158,6 +158,70 @@ export function buildOpenApiDocument() {
           },
         },
       },
+      "/.well-known/openid-configuration": {
+        get: {
+          operationId: "getOpenIdConfiguration",
+          tags: ["Discovery"],
+          summary: "Fetch OpenID Provider configuration",
+          responses: {
+            "200": jsonResponse("#/components/schemas/OpenIdConfiguration"),
+          },
+        },
+      },
+      "/oauth/authorize": {
+        get: {
+          operationId: "authorizeOAuthClient",
+          tags: ["Discovery"],
+          summary: "OAuth authorization endpoint placeholder",
+          description:
+            "Returns structured oauth_not_enabled JSON while token issuance is disabled in the public demo.",
+          responses: {
+            "501": problemResponse("OAuth authorization is not enabled."),
+          },
+        },
+      },
+      "/oauth/token": {
+        post: {
+          operationId: "issueOAuthToken",
+          tags: ["Discovery"],
+          summary: "OAuth token endpoint placeholder",
+          description:
+            "Returns structured oauth_not_enabled JSON while token issuance is disabled in the public demo.",
+          responses: {
+            "501": problemResponse("OAuth token issuance is not enabled."),
+          },
+        },
+        get: {
+          operationId: "rejectOAuthTokenGet",
+          tags: ["Discovery"],
+          summary: "Reject unsupported OAuth token GET requests",
+          responses: {
+            "405": problemResponse("OAuth token endpoint requires POST."),
+          },
+        },
+      },
+      "/oauth/userinfo": {
+        get: {
+          operationId: "getOAuthUserInfo",
+          tags: ["Discovery"],
+          summary: "OpenID UserInfo endpoint placeholder",
+          description:
+            "Returns structured oauth_not_enabled JSON while bearer-token enforcement is disabled in the public demo.",
+          responses: {
+            "501": problemResponse("OpenID UserInfo is not enabled."),
+          },
+        },
+        post: {
+          operationId: "postOAuthUserInfo",
+          tags: ["Discovery"],
+          summary: "OpenID UserInfo endpoint placeholder",
+          description:
+            "Returns structured oauth_not_enabled JSON while bearer-token enforcement is disabled in the public demo.",
+          responses: {
+            "501": problemResponse("OpenID UserInfo is not enabled."),
+          },
+        },
+      },
     },
     components: {
       securitySchemes: {
@@ -384,19 +448,65 @@ export function buildOpenApiDocument() {
         },
         OAuthAuthorizationServerMetadata: {
           type: "object",
-          required: ["issuer", "authorization_endpoint", "token_endpoint"],
+          required: [
+            "issuer",
+            "authorization_endpoint",
+            "token_endpoint",
+            "jwks_uri",
+            "response_types_supported",
+            "grant_types_supported",
+            "token_endpoint_auth_methods_supported",
+            "code_challenge_methods_supported",
+            "scopes_supported",
+            "service_documentation",
+          ],
           properties: {
             issuer: { type: "string", format: "uri" },
             authorization_endpoint: { type: "string", format: "uri" },
             token_endpoint: { type: "string", format: "uri" },
+            jwks_uri: { type: "string", format: "uri" },
             response_types_supported: { type: "array", items: { type: "string" } },
             grant_types_supported: { type: "array", items: { type: "string" } },
+            token_endpoint_auth_methods_supported: {
+              type: "array",
+              items: { type: "string" },
+            },
             code_challenge_methods_supported: {
               type: "array",
               items: { type: "string" },
             },
             scopes_supported: { type: "array", items: { type: "string" } },
+            service_documentation: { type: "string", format: "uri" },
           },
+        },
+        OpenIdConfiguration: {
+          allOf: [
+            { $ref: "#/components/schemas/OAuthAuthorizationServerMetadata" },
+            {
+              type: "object",
+              required: [
+                "userinfo_endpoint",
+                "subject_types_supported",
+                "id_token_signing_alg_values_supported",
+                "claims_supported",
+              ],
+              properties: {
+                userinfo_endpoint: { type: "string", format: "uri" },
+                subject_types_supported: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                id_token_signing_alg_values_supported: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                claims_supported: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+              },
+            },
+          ],
         },
         OAuthProtectedResourceMetadata: {
           type: "object",
@@ -421,7 +531,7 @@ export function buildOpenApiDocument() {
 
 function wellKnownMcpPathItem() {
   return {
-    ...mcpPathItem("callWellKnownMcpServer"),
+    post: mcpPostOperation("callWellKnownMcpServer"),
     get: {
       operationId: "getWellKnownMcpServerCard",
       tags: ["Discovery", "MCP"],
@@ -435,34 +545,50 @@ function wellKnownMcpPathItem() {
 
 function mcpPathItem(operationId: string) {
   return {
-    post: {
-      operationId,
-      tags: ["MCP"],
-      summary: "Call the Gravity AI UI MCP server",
-      description:
-        "Streamable HTTP MCP endpoint. Send JSON-RPC requests with Accept: application/json, text/event-stream.",
-      requestBody: {
-        required: true,
+    get: methodNotAllowedOperation("rejectMcpGet"),
+    post: mcpPostOperation(operationId),
+    delete: methodNotAllowedOperation("rejectMcpDelete"),
+  };
+}
+
+function mcpPostOperation(operationId: string) {
+  return {
+    operationId,
+    tags: ["MCP"],
+    summary: "Call the Gravity AI UI MCP server",
+    description:
+      "Streamable HTTP MCP endpoint. Send JSON-RPC requests with Accept: application/json, text/event-stream.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/JsonRpcRequest" },
+        },
+      },
+    },
+    responses: {
+      "200": {
+        description: "JSON-RPC response.",
+        headers: rateLimitHeaders(),
         content: {
           "application/json": {
-            schema: { $ref: "#/components/schemas/JsonRpcRequest" },
+            schema: { $ref: "#/components/schemas/JsonRpcResponse" },
           },
         },
       },
-      responses: {
-        "200": {
-          description: "JSON-RPC response.",
-          headers: rateLimitHeaders(),
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/JsonRpcResponse" },
-            },
-          },
-        },
-        "403": jsonRpcErrorResponse("Forbidden origin."),
-        "405": jsonRpcErrorResponse("Method not allowed."),
-        "500": jsonRpcErrorResponse("Internal MCP server error."),
-      },
+      "403": jsonRpcErrorResponse("Forbidden origin."),
+      "500": jsonRpcErrorResponse("Internal MCP server error."),
+    },
+  };
+}
+
+function methodNotAllowedOperation(operationId: string) {
+  return {
+    operationId,
+    tags: ["MCP"],
+    summary: "Reject unsupported MCP method",
+    responses: {
+      "405": jsonRpcErrorResponse("Method not allowed."),
     },
   };
 }
@@ -488,6 +614,10 @@ function simpleErrorResponse(description: string) {
 
 function jsonRpcErrorResponse(description: string) {
   return jsonResponse("#/components/schemas/JsonRpcResponse", description);
+}
+
+function problemResponse(description: string) {
+  return jsonResponse("#/components/schemas/ProblemDetails", description);
 }
 
 function rateLimitHeaders() {
