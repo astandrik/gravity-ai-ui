@@ -29,7 +29,7 @@ export function SiteHeader() {
           <AskAIPanel
             minimal
             productName={ASK_AI_PRODUCT_NAME}
-            label={ASK_AI_PRODUCT_EVALUATION.label}
+            label="Ask AI"
             helperText={ASK_AI_PRODUCT_EVALUATION.helperText}
             prompt={ASK_AI_PRODUCT_EVALUATION.prompt}
             page="header"

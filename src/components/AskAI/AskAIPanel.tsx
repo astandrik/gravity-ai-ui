@@ -81,28 +81,33 @@ export function AskAIPanel({
             </Text>
           </div>
         )}
-        <div className="ask-ai-panel__links" aria-label={label}>
-          {links.map((link) => {
-            const provider = providersById.get(link.id);
+        <div className="ask-ai-panel__links-container">
+          {minimal && (
+            <span className="ask-ai-panel__minimal-label">{label}</span>
+          )}
+          <div className="ask-ai-panel__links" aria-label={label}>
+            {links.map((link) => {
+              const provider = providersById.get(link.id);
 
-            return (
-              <a
-                key={link.id}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`ask-ai-panel__link ask-ai-panel__link_${provider?.tone ?? "white"}`}
-                aria-label={`Ask ${link.label} about ${subject}`}
-                title={link.label}
-                onClick={() => trackClick(link.id)}
-              >
-                <AskAIProviderIcon provider={link.id} aria-hidden="true" />
-                <span className="ask-ai-panel__link-text">
-                  {provider?.iconLabel ?? link.label}
-                </span>
-              </a>
-            );
-          })}
+              return (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`ask-ai-panel__link ask-ai-panel__link_${provider?.tone ?? "white"}`}
+                  aria-label={`Ask ${link.label} about ${subject}`}
+                  title={link.label}
+                  onClick={() => trackClick(link.id)}
+                >
+                  <AskAIProviderIcon provider={link.id} aria-hidden="true" />
+                  <span className="ask-ai-panel__link-text">
+                    {provider?.iconLabel ?? link.label}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
         </div>
       </div>
     </Card>

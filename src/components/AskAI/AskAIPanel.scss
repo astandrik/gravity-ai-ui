@@ -29,6 +29,12 @@
     max-width: 68ch;
   }
 
+  &__links-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
   &__links {
     display: flex;
     flex-wrap: wrap;
@@ -115,6 +121,18 @@
     .ask-ai-panel__content {
       gap: 0;
       justify-content: center;
+    }
+
+    .ask-ai-panel__links-container {
+      gap: var(--spacing-sm);
+    }
+
+    .ask-ai-panel__minimal-label {
+      white-space: nowrap;
+      margin: 0;
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--g-color-text-secondary);
     }
 
     .ask-ai-panel__links {
