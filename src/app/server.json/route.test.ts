@@ -10,7 +10,7 @@ describe("MCP registry metadata routes", () => {
 
     expect(body).toMatchObject({
       $schema: "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-      name: "tech.ydb-qdrant.gravity-ai-ui",
+      name: "tech.ydb-qdrant/gravity-ai-ui",
       title: "Gravity AI UI",
       version: "1.0.0",
       websiteUrl: "https://gravity.example/",
@@ -21,6 +21,7 @@ describe("MCP registry metadata routes", () => {
         },
       ],
     });
+    expect(body.description.length).toBeLessThanOrEqual(100);
   });
 
   it("serves the same metadata from the well-known MCP path", async () => {

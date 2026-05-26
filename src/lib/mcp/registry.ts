@@ -1,12 +1,12 @@
 import { toPublicUrl } from "@/lib/base-path";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site";
 
 export const MCP_REGISTRY_SCHEMA_URL =
   "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json";
-export const MCP_REGISTRY_SERVER_NAME = "tech.ydb-qdrant.gravity-ai-ui";
+export const MCP_REGISTRY_SERVER_NAME = "tech.ydb-qdrant/gravity-ai-ui";
 export const MCP_REGISTRY_SERVER_TITLE = SITE_NAME;
 export const MCP_REGISTRY_SERVER_DESCRIPTION =
-  `${SITE_DESCRIPTION} Search public interface drafts and generate new Gravity UI interface payloads.`;
+  "Search public Gravity AI UI drafts and generate Gravity UI interface payloads.";
 export const MCP_REGISTRY_SERVER_VERSION = "1.0.0";
 
 export type McpRegistryServerMetadata = {
