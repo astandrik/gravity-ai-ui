@@ -13,6 +13,22 @@
     gap: var(--spacing-sm) var(--spacing-xl);
   }
 
+  &__ask-ai {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    order: 3;
+    width: 100%;
+  }
+
+  &__nav {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    align-items: center;
+    order: 2;
+  }
+
   &__brand {
     display: inline-flex;
     flex-wrap: wrap;
@@ -21,6 +37,7 @@
     min-width: 0;
     color: var(--fg);
     text-decoration: none;
+    order: 1;
   }
 
   &__name {
@@ -36,19 +53,6 @@
     color: var(--muted-strong);
     font-size: 11px;
     line-height: 1.4;
-  }
-
-  &__ask-ai {
-    display: flex;
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-
-  &__nav {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-xs);
-    align-items: center;
   }
 
   &__link {
@@ -73,5 +77,18 @@
     width: 30px;
     height: 30px;
     padding: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .site-header {
+    &__ask-ai {
+      order: 2;
+      width: auto;
+    }
+
+    &__nav {
+      order: 3;
+    }
   }
 }

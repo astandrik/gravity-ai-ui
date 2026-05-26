@@ -128,6 +128,7 @@
     }
 
     .ask-ai-panel__minimal-label {
+      display: none;
       white-space: nowrap;
       margin: 0;
       font-weight: 500;
@@ -183,6 +184,16 @@
   }
 }
 
+@media (min-width: 640px) {
+  .ask-ai-panel {
+    &_minimal {
+      .ask-ai-panel__minimal-label {
+        display: block;
+      }
+    }
+  }
+}
+
 @media (max-width: 640px) {
   .ask-ai-panel {
     &__content {
@@ -196,6 +207,17 @@
 
     &__links {
       width: 100%;
+    }
+
+    &_minimal {
+      .ask-ai-panel__content {
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .ask-ai-panel__links {
+        width: auto;
+      }
     }
   }
 }
