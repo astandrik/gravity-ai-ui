@@ -163,6 +163,7 @@ describe("POST /mcp", () => {
       title: "Deployment review",
       url: "https://gravity.example/gallery/deployment-review-123e4567e89b",
     });
+    expect(feedbackMocks.listPublishedDesigns).toHaveBeenCalledWith(5000);
     expect(JSON.stringify(body.result.structuredContent)).not.toContain(
       "prompt",
     );
@@ -234,6 +235,7 @@ describe("POST /mcp", () => {
     expect(agentMocks.streamAgentResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: "test-key",
+        signal: expect.any(AbortSignal),
         request: expect.objectContaining({
           kind: "prompt",
           conversationId: "mcp-conversation",
@@ -268,6 +270,7 @@ describe("POST /mcp", () => {
     expect(body.result.isError).toBeUndefined();
     expect(agentMocks.streamAgentResponse).toHaveBeenCalledWith(
       expect.objectContaining({
+        signal: expect.any(AbortSignal),
         request: expect.objectContaining({
           kind: "prompt",
           prompt: "Add launch blockers",

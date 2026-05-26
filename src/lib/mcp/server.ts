@@ -25,6 +25,7 @@ type McpToolResult = {
 };
 
 const MAX_SEARCH_LIMIT = 48;
+const SEARCH_CORPUS_LIMIT = 5000;
 const DEFAULT_SEARCH_LIMIT = 10;
 
 const READ_ONLY_TOOL = {
@@ -115,7 +116,9 @@ export function createGravityAiMcpServer(): McpServer {
     async (args) => {
       const limit = normalizeLimit(args.limit);
       const query = normalizeQuery(args.query);
-      const designs = await listPublishedDesigns(MAX_SEARCH_LIMIT);
+      const designs = await listPublishedDesigns(
+        query ? SEARCH_CORPUS_LIMIT : MAX_SEARCH_LIMIT,
+      );
       const interfaces = designs
         .filter((design) => matchesQuery(design, query))
         .slice(0, limit)
@@ -166,12 +169,15 @@ export function createGravityAiMcpServer(): McpServer {
       inputSchema: generateInputSchema,
       annotations: GENERATION_TOOL,
     },
-    async (args) =>
-      generateWithAgent({
-        kind: "prompt",
-        conversationId: readConversationId(args.conversationId),
-        prompt: args.prompt.trim(),
-      }),
+    async (args, extra) =>
+      generateWithAgent(
+        {
+          kind: "prompt",
+          conversationId: readConversationId(args.conversationId),
+          prompt: args.prompt.trim(),
+        },
+        extra.signal,
+      ),
   );
 
   server.registerTool(
@@ -183,24 +189,29 @@ export function createGravityAiMcpServer(): McpServer {
       inputSchema: refineInputSchema,
       annotations: GENERATION_TOOL,
     },
-    async (args) => {
+    async (args, extra) => {
       const parsedPayload = composedInterfaceArgumentsSchema.safeParse(args.payload);
 
       if (!parsedPayload.success) {
         return toolError("invalid_argument", "Invalid composed interface payload.");
       }
 
-      return generateWithAgent({
-        kind: "prompt",
-        conversationId: readConversationId(args.conversationId),
-        prompt: args.instruction.trim(),
-        conversationContext: {
-          ...(args.history ? { history: args.history } : {}),
-          latestSurfaceId: parsedPayload.data.surfaceId,
-          latestPayload: parsedPayload.data,
-          ...(args.dataModel !== undefined ? { latestDataModel: args.dataModel } : {}),
+      return generateWithAgent(
+        {
+          kind: "prompt",
+          conversationId: readConversationId(args.conversationId),
+          prompt: args.instruction.trim(),
+          conversationContext: {
+            ...(args.history ? { history: args.history } : {}),
+            latestSurfaceId: parsedPayload.data.surfaceId,
+            latestPayload: parsedPayload.data,
+            ...(args.dataModel !== undefined
+              ? { latestDataModel: args.dataModel }
+              : {}),
+          },
         },
-      });
+        extra.signal,
+      );
     },
   );
 
@@ -246,7 +257,10 @@ function createGeneratedInterface(payload: ComposedInterfacePayload) {
   };
 }
 
-async function generateWithAgent(request: AgentRequest): Promise<McpToolResult> {
+async function generateWithAgent(
+  request: AgentRequest,
+  signal: AbortSignal,
+): Promise<McpToolResult> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -260,6 +274,7 @@ async function generateWithAgent(request: AgentRequest): Promise<McpToolResult> 
     await streamAgentResponse({
       request,
       apiKey,
+      signal,
       onEvent(event) {
         if (event.type === "payload") {
           latestPayload = event.payload;
