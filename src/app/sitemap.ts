@@ -124,12 +124,6 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     {
-      url: toPublicUrl("/.well-known/agent-card.json"),
-      lastModified: generatedAt,
-      changeFrequency: "weekly",
-      priority: 0.3,
-    },
-    {
       url: toPublicUrl("/.well-known/mcp.json"),
       lastModified: generatedAt,
       changeFrequency: "weekly",

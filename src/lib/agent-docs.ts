@@ -15,7 +15,6 @@ export function buildDevelopersMarkdown(): string {
     `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
     `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
     `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
-    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
     `- OAuth metadata: ${toPublicUrl("/.well-known/oauth-authorization-server")}`,
     `- OAuth protected resource: ${toPublicUrl("/.well-known/oauth-protected-resource")}`,
     `- Full agent docs: ${toPublicUrl("/llms-full.txt")}`,
@@ -77,7 +76,6 @@ export function buildDocsMarkdown(): string {
     `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
     `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
     `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
-    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
   ].join("\n");
 }
 
@@ -258,7 +256,6 @@ export function buildLlmsFullTxt(): string {
     `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
     `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
     `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
-    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
     "- Tools: `search_interfaces`, `get_interface`, `generate_interface`, `refine_interface`.",
     "",
     "```bash",

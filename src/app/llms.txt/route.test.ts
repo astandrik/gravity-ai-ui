@@ -16,7 +16,7 @@ describe("GET /llms.txt", () => {
     );
     expect(body).toContain("https://gravity.example/.well-known/mcp.json");
     expect(body).toContain("https://gravity.example/.well-known/agent.json");
-    expect(body).toContain(
+    expect(body).not.toContain(
       "https://gravity.example/.well-known/agent-card.json",
     );
     expect(body).toContain("https://gravity.example/openapi.json");

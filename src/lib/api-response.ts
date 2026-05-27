@@ -10,51 +10,75 @@ type AgentRateLimit = {
   reset: number;
 };
 
+type AgentRateLimitOptions = {
+  rateLimitKey?: string;
+  nowMs?: number;
+};
+
 type AgentRateLimitState = {
   windowStartedAtMs: number;
   used: number;
 };
 
-let agentRateLimitState: AgentRateLimitState = {
-  windowStartedAtMs: Date.now(),
-  used: 0,
-};
+const DEFAULT_RATE_LIMIT_KEY = "anonymous";
+const agentRateLimitStates = new Map<string, AgentRateLimitState>();
 
-export function readAgentRateLimit(nowMs = Date.now()): AgentRateLimit {
+export function readAgentRateLimit(
+  options: AgentRateLimitOptions = {},
+): AgentRateLimit {
+  const { rateLimitKey = DEFAULT_RATE_LIMIT_KEY, nowMs = Date.now() } = options;
   const windowMs = RATE_LIMIT_WINDOW_SECONDS * 1000;
+  const currentState = agentRateLimitStates.get(rateLimitKey) ?? {
+    windowStartedAtMs: nowMs,
+    used: 0,
+  };
 
-  if (nowMs >= agentRateLimitState.windowStartedAtMs + windowMs) {
-    agentRateLimitState = {
-      windowStartedAtMs: nowMs,
-      used: 0,
-    };
-  }
+  const nextState =
+    nowMs >= currentState.windowStartedAtMs + windowMs
+      ? {
+          windowStartedAtMs: nowMs,
+          used: 1,
+        }
+      : {
+          windowStartedAtMs: currentState.windowStartedAtMs,
+          used: currentState.used + 1,
+        };
 
-  agentRateLimitState.used += 1;
+  agentRateLimitStates.set(rateLimitKey, nextState);
 
   return {
     limit: RATE_LIMIT_LIMIT,
-    remaining: Math.max(0, RATE_LIMIT_LIMIT - agentRateLimitState.used),
+    remaining: Math.max(0, RATE_LIMIT_LIMIT - nextState.used),
     reset: Math.max(
       1,
-      Math.ceil((agentRateLimitState.windowStartedAtMs + windowMs - nowMs) / 1000),
+      Math.ceil((nextState.windowStartedAtMs + windowMs - nowMs) / 1000),
     ),
   };
 }
 
+export function readAgentRateLimitKey(request: Request): string {
+  return (
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    DEFAULT_RATE_LIMIT_KEY
+  );
+}
+
 export function resetAgentRateLimitForTests(nowMs = Date.now()): void {
-  agentRateLimitState = {
+  agentRateLimitStates.clear();
+  agentRateLimitStates.set(DEFAULT_RATE_LIMIT_KEY, {
     windowStartedAtMs: nowMs,
     used: 0,
-  };
+  });
 }
 
 export function withAgentResponseHeaders(
   headers?: HeadersInit,
-  nowMs = Date.now(),
+  options: AgentRateLimitOptions = {},
 ): Headers {
   const merged = new Headers(headers);
-  const rateLimit = readAgentRateLimit(nowMs);
+  const rateLimit = readAgentRateLimit(options);
 
   merged.set("RateLimit-Limit", String(rateLimit.limit));
   merged.set("RateLimit-Remaining", String(rateLimit.remaining));
@@ -67,10 +91,11 @@ export function withAgentResponseHeaders(
 export function jsonWithAgentHeaders(
   body: unknown,
   init: ResponseInit = {},
+  options: AgentRateLimitOptions = {},
 ): Response {
   return Response.json(body, {
     ...init,
-    headers: withAgentResponseHeaders(init.headers),
+    headers: withAgentResponseHeaders(init.headers, options),
   });
 }
 
@@ -81,6 +106,7 @@ export function jsonProblem(
     docs?: string;
     issues?: unknown;
   } = {},
+  options: AgentRateLimitOptions = {},
 ): Response {
   const { docs = toPublicUrl("/docs"), issues, ...responseInit } = init;
 
@@ -94,13 +120,17 @@ export function jsonProblem(
       },
     },
     responseInit,
+    options,
   );
 }
 
-export function attachAgentHeaders(response: Response): Response {
+export function attachAgentHeaders(
+  response: Response,
+  options: AgentRateLimitOptions = {},
+): Response {
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: withAgentResponseHeaders(response.headers),
+    headers: withAgentResponseHeaders(response.headers, options),
   });
 }

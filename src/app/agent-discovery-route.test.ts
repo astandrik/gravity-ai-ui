@@ -28,29 +28,6 @@ describe("agent discovery routes", () => {
     );
   });
 
-  it("publishes an A2A agent card", async () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
-    const { GET } = await import("@/app/.well-known/agent-card.json/route");
-
-    const body = await GET().json();
-
-    expect(body).toMatchObject({
-      name: "Gravity AI UI",
-      description: expect.stringContaining("AI-powered UI generator"),
-      url: "https://gravity.example/mcp",
-      version: "1.0.0",
-      documentationUrl: "https://gravity.example/docs",
-    });
-    expect(body.defaultInputModes).toContain("text/plain");
-    expect(body.defaultOutputModes).toContain("application/json");
-    expect(body.skills.map((skill: { id: string }) => skill.id)).toEqual([
-      "search_interfaces",
-      "get_interface",
-      "generate_interface",
-      "refine_interface",
-    ]);
-  });
-
   it("publishes an MCP well-known compatibility document", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
     const { GET } = await import("@/app/.well-known/mcp.json/route");

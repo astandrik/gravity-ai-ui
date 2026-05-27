@@ -46,7 +46,6 @@ export async function GET(): Promise<Response> {
       `- [MCP compatibility manifest](${toPublicUrl("/.well-known/mcp.json")}): Well-known MCP manifest for crawlers that probe mcp.json.`,
       `- [MCP server card](${toPublicUrl("/.well-known/mcp/server-card.json")}): Tool manifest for agent discovery.`,
       `- [Agent discovery](${toPublicUrl("/.well-known/agent.json")}): Generic agent capability discovery document.`,
-      `- [A2A agent card](${toPublicUrl("/.well-known/agent-card.json")}): Agent-to-Agent capability card.`,
       `- [OpenAPI spec](${toPublicUrl("/openapi.json")}): OpenAPI 3.1 API reference for function-calling agents.`,
       `- [OAuth metadata](${toPublicUrl("/.well-known/oauth-authorization-server")}): Metadata-only OAuth discovery surface.`,
       `- [Full agent docs](${toPublicUrl("/llms-full.txt")}): Markdown product, API, auth, MCP, and webhook documentation.`,

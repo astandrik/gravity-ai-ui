@@ -138,16 +138,6 @@ export function buildOpenApiDocument() {
           },
         },
       },
-      "/.well-known/agent-card.json": {
-        get: {
-          operationId: "getA2aAgentCard",
-          tags: ["Discovery"],
-          summary: "Fetch the A2A agent card",
-          responses: {
-            "200": jsonResponse("#/components/schemas/A2aAgentCard"),
-          },
-        },
-      },
       "/openapi.json": {
         get: {
           operationId: "getOpenApiSpec",
@@ -486,46 +476,6 @@ export function buildOpenApiDocument() {
             oauth: { type: "object" },
             mcp: { type: "object" },
             capabilities: { type: "array", items: { type: "string" } },
-          },
-        },
-        A2aAgentCard: {
-          type: "object",
-          required: [
-            "name",
-            "description",
-            "url",
-            "version",
-            "documentationUrl",
-            "defaultInputModes",
-            "defaultOutputModes",
-            "skills",
-          ],
-          properties: {
-            name: { type: "string" },
-            description: { type: "string" },
-            url: { type: "string", format: "uri" },
-            version: { type: "string" },
-            documentationUrl: { type: "string", format: "uri" },
-            provider: { type: "object" },
-            capabilities: { type: "object" },
-            defaultInputModes: { type: "array", items: { type: "string" } },
-            defaultOutputModes: { type: "array", items: { type: "string" } },
-            skills: {
-              type: "array",
-              items: {
-                type: "object",
-                required: ["id", "name", "description"],
-                properties: {
-                  id: { type: "string" },
-                  name: { type: "string" },
-                  description: { type: "string" },
-                  tags: { type: "array", items: { type: "string" } },
-                  examples: { type: "array", items: { type: "string" } },
-                  inputModes: { type: "array", items: { type: "string" } },
-                  outputModes: { type: "array", items: { type: "string" } },
-                },
-              },
-            },
           },
         },
         McpWellKnownDocument: {

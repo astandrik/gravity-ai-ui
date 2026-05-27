@@ -75,9 +75,6 @@ describe("sitemap", () => {
       "https://gravity.example/base/best-ai-ui-generator-for-agents.md",
     );
     expect(urls).toContain("https://gravity.example/base/.well-known/agent.json");
-    expect(urls).toContain(
-      "https://gravity.example/base/.well-known/agent-card.json",
-    );
     expect(urls).toContain("https://gravity.example/base/.well-known/mcp.json");
     expect(urls).toContain(
       "https://gravity.example/base/gallery/deployment-review-123e4567e89b",

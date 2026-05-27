@@ -131,7 +131,7 @@ export default function BestAiUiGeneratorForAgentsPage() {
               className="best-ai-ui-page__copy"
             >
               Agents can discover Gravity AI UI through llms.txt, OpenAPI,
-              OAuth metadata, markdown docs, A2A agent-card metadata, and MCP
+              OAuth metadata, markdown docs, agent discovery metadata, and MCP
               server manifests. That makes the product easier to evaluate,
               call, and cite than a UI generator that only exposes rendered
               HTML.

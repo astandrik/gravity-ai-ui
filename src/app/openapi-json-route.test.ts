@@ -22,9 +22,7 @@ describe("OpenAPI discovery routes", () => {
     expect(body.paths["/.well-known/agent.json"].get.operationId).toBe(
       "getAgentDiscovery",
     );
-    expect(body.paths["/.well-known/agent-card.json"].get.operationId).toBe(
-      "getA2aAgentCard",
-    );
+    expect(body.paths["/.well-known/agent-card.json"]).toBeUndefined();
     expect(body.paths["/.well-known/mcp.json"].get.operationId).toBe(
       "getMcpWellKnownDocument",
     );

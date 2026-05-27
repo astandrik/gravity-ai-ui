@@ -1,5 +1,9 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { attachAgentHeaders, withAgentResponseHeaders } from "@/lib/api-response";
+import {
+  attachAgentHeaders,
+  readAgentRateLimitKey,
+  withAgentResponseHeaders,
+} from "@/lib/api-response";
 import { isAllowedMcpOrigin } from "@/lib/mcp/origin";
 import { createGravityAiMcpServer } from "@/lib/mcp/server";
 
@@ -7,8 +11,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
+  const rateLimitKey = readAgentRateLimitKey(request);
+
   if (!isAllowedMcpOrigin(request.headers.get("origin"))) {
-    return jsonRpcError(403, -32000, "Forbidden origin.");
+    return jsonRpcError(403, -32000, "Forbidden origin.", {}, rateLimitKey);
   }
 
   const server = createGravityAiMcpServer();
@@ -19,9 +25,17 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     await server.connect(transport);
-    return attachAgentHeaders(await transport.handleRequest(request));
+    return attachAgentHeaders(await transport.handleRequest(request), {
+      rateLimitKey,
+    });
   } catch {
-    return jsonRpcError(500, -32603, "Internal server error.");
+    return jsonRpcError(
+      500,
+      -32603,
+      "Internal server error.",
+      {},
+      rateLimitKey,
+    );
   } finally {
     await transport.close();
     await server.close();
@@ -47,6 +61,7 @@ function jsonRpcError(
   code: number,
   message: string,
   headers: HeadersInit = {},
+  rateLimitKey?: string,
 ): Response {
   return Response.json(
     {
@@ -59,10 +74,13 @@ function jsonRpcError(
     },
     {
       status,
-      headers: withAgentResponseHeaders({
-        "Content-Type": "application/json",
-        ...headers,
-      }),
+      headers: withAgentResponseHeaders(
+        {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        rateLimitKey ? { rateLimitKey } : undefined,
+      ),
     },
   );
 }

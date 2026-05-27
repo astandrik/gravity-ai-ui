@@ -40,37 +40,6 @@ export function buildAgentDiscovery() {
   };
 }
 
-export function buildA2aAgentCard() {
-  return {
-    name: SITE_NAME,
-    description:
-      "Gravity AI UI is an AI-powered UI generator for agent workflows, A2UI component trees, OpenAI generation, and trusted Gravity UI product interfaces.",
-    url: toPublicUrl("/mcp"),
-    version: MCP_REGISTRY_SERVER_VERSION,
-    documentationUrl: toPublicUrl("/docs"),
-    provider: {
-      organization: "Gravity AI UI",
-      url: toPublicUrl("/"),
-    },
-    capabilities: {
-      streaming: true,
-      pushNotifications: false,
-      stateTransitionHistory: false,
-    },
-    defaultInputModes: ["text/plain", "application/json"],
-    defaultOutputModes: ["application/json", "text/plain"],
-    skills: MCP_TOOL_CATALOG.map((tool) => ({
-      id: tool.name,
-      name: tool.title,
-      description: tool.description,
-      tags: ["ai-ui-generator", "a2ui", "gravity-ui", "mcp"],
-      examples: [tool.description],
-      inputModes: ["text/plain", "application/json"],
-      outputModes: ["application/json", "text/plain"],
-    })),
-  };
-}
-
 export function buildMcpWellKnownDocument() {
   const tools = MCP_TOOL_CATALOG.map((tool) => ({ ...tool }));
 

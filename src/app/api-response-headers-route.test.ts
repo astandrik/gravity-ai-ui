@@ -85,4 +85,17 @@ describe("agent-facing API response headers and errors", () => {
       },
     });
   });
+
+  it("returns structured JSON for the unknown API root", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
+    const { GET } = await import("@/app/api/route");
+
+    const response = GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("Content-Type")).toContain("application/json");
+    expect(response.headers.get("RateLimit-Limit")).toBe("60");
+    expect(body.error.message).toBe("API route not found.");
+  });
 });
