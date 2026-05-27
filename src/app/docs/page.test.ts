@@ -41,9 +41,13 @@ describe("DocsPage", () => {
     expect(html).toContain("OAuth");
     expect(html).toContain("MCP server");
     expect(html).toContain("webhooks");
+    expect(html).toContain("Agent discovery");
+    expect(html).toContain("Markdown docs");
     expect(html).toContain("Remote MCP");
     expect(html).toContain("https://gravity.example/mcp");
     expect(html).toContain("https://gravity.example/openapi.json");
+    expect(html).toContain("https://gravity.example/.well-known/agent.json");
+    expect(html).toContain("https://gravity.example/docs.md");
     expect(html).toContain(
       "codex mcp add gravityAiUi --url https://gravity.example/mcp",
     );

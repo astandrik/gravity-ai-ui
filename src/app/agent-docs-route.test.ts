@@ -3,6 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 const resourceRoutes = [
   ["llms-full.txt", "@/app/llms-full.txt/route"],
   ["developers.md", "@/app/developers.md/route"],
+  ["index.md", "@/app/index.md/route"],
+  ["docs.md", "@/app/docs.md/route"],
+  ["compare.md", "@/app/compare.md/route"],
+  [
+    "a2ui-openai-gravity-ui.md",
+    "@/app/guides/a2ui-openai-gravity-ui.md/route",
+  ],
+  [
+    "best-ai-ui-generator-for-agents.md",
+    "@/app/best-ai-ui-generator-for-agents.md/route",
+  ],
   ["auth.md", "@/app/auth.md/route"],
   ["webhooks.md", "@/app/webhooks.md/route"],
   ["mcp.md", "@/app/mcp.md/route"],
@@ -34,6 +45,15 @@ describe("agent-readable documentation routes", () => {
     expect(body).toContain("https://gravity.example/openapi.json");
     expect(body).toContain("OAuth metadata");
     expect(body).toContain("Webhooks are not currently supported");
+    expect(body).toContain("https://gravity.example/.well-known/agent.json");
+    expect(body).not.toContain(
+      "https://gravity.example/.well-known/agent-card.json",
+    );
+    expect(body).toContain("https://gravity.example/.well-known/mcp.json");
+    expect(body).toContain("https://gravity.example/index.md");
+    expect(body).toContain(
+      "https://gravity.example/best-ai-ui-generator-for-agents",
+    );
     expect(body).toContain("curl -X POST https://gravity.example/mcp");
   });
 });

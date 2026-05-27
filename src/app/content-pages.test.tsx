@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import BestAiUiGeneratorForAgentsPage from "@/app/best-ai-ui-generator-for-agents/page";
 import ComparePage from "@/app/compare/page";
 import IntegrationGuidePage from "@/app/guides/a2ui-openai-gravity-ui/page";
 
@@ -29,6 +30,8 @@ describe("agent-readiness content pages", () => {
     expect(html).toContain("Vercel v0");
     expect(html).toContain("Lovable");
     expect(html).toContain("Figma");
+    expect(html).toContain("Uizard");
+    expect(html).toContain("AI-powered UI generator");
     expect(html).toContain("A2UI");
     expect(html).toContain("MCP");
   });
@@ -40,5 +43,21 @@ describe("agent-readiness content pages", () => {
     expect(html).toContain("compose_gravity_interface");
     expect(html).toContain("Streamable HTTP MCP");
     expect(html).toContain("trusted Gravity UI components");
+  });
+
+  it("renders best AI UI generator content for agent workflows", () => {
+    const html = renderToStaticMarkup(
+      createElement(BestAiUiGeneratorForAgentsPage),
+    );
+
+    expect(html).toContain("Best AI UI generator for agents");
+    expect(html).toContain("AI-powered UI generator");
+    expect(html).toContain("agent workflows");
+    expect(html).toContain("Figma");
+    expect(html).toContain("Uizard");
+    expect(html).toContain("A2UI");
+    expect(html).toContain("MCP");
+    expect(html).toContain("OpenAI");
+    expect(html).toContain("Gravity UI");
   });
 });

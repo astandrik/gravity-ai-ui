@@ -19,6 +19,13 @@ describe("OpenAPI discovery routes", () => {
       "publishDesignFeedback",
     );
     expect(body.paths["/mcp"].post.operationId).toBe("callMcpServer");
+    expect(body.paths["/.well-known/agent.json"].get.operationId).toBe(
+      "getAgentDiscovery",
+    );
+    expect(body.paths["/.well-known/agent-card.json"]).toBeUndefined();
+    expect(body.paths["/.well-known/mcp.json"].get.operationId).toBe(
+      "getMcpWellKnownDocument",
+    );
     expect(body.components.schemas.ProblemDetails).toMatchObject({
       type: "object",
       required: ["error"],
@@ -41,15 +48,18 @@ describe("OpenAPI discovery routes", () => {
     const wellKnownMcp = body.paths["/.well-known/mcp"];
 
     expect(agentResponses["400"].content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/ValidationErrorResponse",
+      "#/components/schemas/ProblemDetails",
     );
+    expect(agentResponses["400"].headers["RateLimit-Limit"]).toBeDefined();
+    expect(agentResponses["400"].headers["API-Version"]).toBeDefined();
     expect(agentResponses["503"]).toBeUndefined();
     expect(
       feedbackResponses["400"].content["application/json"].schema.$ref,
-    ).toBe("#/components/schemas/ValidationErrorResponse");
+    ).toBe("#/components/schemas/ProblemDetails");
     expect(
       feedbackResponses["503"].content["application/json"].schema.$ref,
-    ).toBe("#/components/schemas/SimpleErrorResponse");
+    ).toBe("#/components/schemas/ProblemDetails");
+    expect(feedbackResponses["200"].headers["API-Version"]).toBeDefined();
     expect(
       wellKnownMcp.get.responses["200"].content["application/json"].schema.$ref,
     ).toBe("#/components/schemas/McpServerCard");
@@ -69,6 +79,7 @@ describe("OpenAPI discovery routes", () => {
     expect(mcpResponses["500"].content["application/json"].schema.$ref).toBe(
       "#/components/schemas/JsonRpcResponse",
     );
+    expect(mcpResponses["200"].headers["API-Version"]).toBeDefined();
   });
 
   it("documents OAuth discovery and disabled OAuth endpoints", async () => {
@@ -93,18 +104,33 @@ describe("OpenAPI discovery routes", () => {
     expect(body.paths["/oauth/authorize"].get.responses["501"].content[
       "application/json"
     ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(
+      body.paths["/oauth/authorize"].get.responses["501"].headers,
+    ).toBeUndefined();
     expect(body.paths["/oauth/token"].post.responses["501"].content[
       "application/json"
     ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(
+      body.paths["/oauth/token"].post.responses["501"].headers,
+    ).toBeUndefined();
     expect(body.paths["/oauth/token"].get.responses["405"].content[
       "application/json"
     ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(
+      body.paths["/oauth/token"].get.responses["405"].headers,
+    ).toBeUndefined();
     expect(body.paths["/oauth/userinfo"].get.responses["501"].content[
       "application/json"
     ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(
+      body.paths["/oauth/userinfo"].get.responses["501"].headers,
+    ).toBeUndefined();
     expect(body.paths["/oauth/userinfo"].post.responses["501"].content[
       "application/json"
     ].schema.$ref).toBe("#/components/schemas/ProblemDetails");
+    expect(
+      body.paths["/oauth/userinfo"].post.responses["501"].headers,
+    ).toBeUndefined();
   });
 
   it("serves the same OpenAPI document from /api/openapi.json", async () => {

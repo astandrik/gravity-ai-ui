@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
+const mcpRouteMocks = vi.hoisted(() => ({
+  POST: vi.fn(),
+}));
+
+vi.mock("@/app/mcp/route", () => ({
+  POST: mcpRouteMocks.POST,
+}));
+
 describe("MCP discovery routes", () => {
   it("serves pre-connection MCP metadata from /.well-known/mcp", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
@@ -43,32 +51,44 @@ describe("MCP discovery routes", () => {
 
   it("proxies Streamable HTTP MCP calls through /.well-known/mcp", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://gravity.example");
-    const { POST } = await import("@/app/.well-known/mcp/route");
-
-    const response = await POST(
-      new Request("https://gravity.example/.well-known/mcp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-11-25",
-            capabilities: {},
-            clientInfo: {
-              name: "vitest",
-              version: "0.0.0",
-            },
+    mcpRouteMocks.POST.mockResolvedValueOnce(
+      Response.json({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          instructions: "Gravity AI UI",
+          serverInfo: {
+            name: "gravity-ai-ui",
           },
-        }),
+        },
       }),
     );
+    const { POST } = await import("@/app/.well-known/mcp/route");
+
+    const request = new Request("https://gravity.example/.well-known/mcp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: {
+            name: "vitest",
+            version: "0.0.0",
+          },
+        },
+      }),
+    });
+    const response = await POST(request);
     const body = await response.json();
 
+    expect(mcpRouteMocks.POST).toHaveBeenCalledWith(request);
     expect(response.status).toBe(200);
     expect(body.result.instructions).toContain("Gravity AI UI");
     expect(body.result.serverInfo.name).toBe("gravity-ai-ui");

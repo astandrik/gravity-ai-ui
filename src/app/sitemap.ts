@@ -58,10 +58,46 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: toPublicUrl("/best-ai-ui-generator-for-agents"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
       url: toPublicUrl("/guides/a2ui-openai-gravity-ui"),
       lastModified: generatedAt,
       changeFrequency: "weekly",
       priority: 0.7,
+    },
+    {
+      url: toPublicUrl("/index.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/docs.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/compare.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/guides/a2ui-openai-gravity-ui.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/best-ai-ui-generator-for-agents.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
     },
     {
       url: toPublicUrl("/openapi.json"),
@@ -80,6 +116,18 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: generatedAt,
       changeFrequency: "weekly",
       priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/.well-known/agent.json"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.3,
+    },
+    {
+      url: toPublicUrl("/.well-known/mcp.json"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.3,
     },
     {
       url: toPublicUrl("/opengraph-image"),

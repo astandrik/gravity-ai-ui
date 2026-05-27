@@ -36,6 +36,7 @@ import {
   startActiveSurfaceActionUpdate,
   type ActiveSurfaceState,
 } from "./activeSurface";
+import { readDesignFeedbackErrorMessage } from "./feedbackError";
 
 type UserTurn = {
   id: string;
@@ -403,7 +404,9 @@ export function AgentShell({
         if (!response.ok) {
           const body = await response.json().catch(() => null);
 
-          throw new Error(body?.error || `Feedback failed with ${response.status}`);
+          throw new Error(
+            readDesignFeedbackErrorMessage(body, response.status),
+          );
         }
 
         const savedFeedback = await response.json().catch(() => null);
