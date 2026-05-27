@@ -32,7 +32,7 @@ vi.mock("@/lib/mcp/server", () => ({
 
 describe("agent-facing API response headers and errors", () => {
   beforeEach(() => {
-    resetAgentRateLimitForTests(1_000);
+    resetAgentRateLimitForTests();
   });
 
   it("adds rate-limit and version headers to handled API validation errors", async () => {

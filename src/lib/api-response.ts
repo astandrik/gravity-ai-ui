@@ -3,6 +3,7 @@ import { toPublicUrl } from "@/lib/base-path";
 export const API_VERSION = "1";
 export const RATE_LIMIT_LIMIT = 60;
 export const RATE_LIMIT_WINDOW_SECONDS = 60;
+export const RATE_LIMIT_MAX_CALLER_KEYS = 2048;
 
 type AgentRateLimit = {
   limit: number;
@@ -28,6 +29,9 @@ export function readAgentRateLimit(
 ): AgentRateLimit {
   const { rateLimitKey = DEFAULT_RATE_LIMIT_KEY, nowMs = Date.now() } = options;
   const windowMs = RATE_LIMIT_WINDOW_SECONDS * 1000;
+
+  pruneExpiredRateLimitWindows(nowMs, windowMs);
+
   const currentState = agentRateLimitStates.get(rateLimitKey) ?? {
     windowStartedAtMs: nowMs,
     used: 0,
@@ -45,6 +49,7 @@ export function readAgentRateLimit(
         };
 
   agentRateLimitStates.set(rateLimitKey, nextState);
+  pruneOldestRateLimitWindows();
 
   return {
     limit: RATE_LIMIT_LIMIT,
@@ -65,12 +70,12 @@ export function readAgentRateLimitKey(request: Request): string {
   );
 }
 
-export function resetAgentRateLimitForTests(nowMs = Date.now()): void {
+export function resetAgentRateLimitForTests(): void {
   agentRateLimitStates.clear();
-  agentRateLimitStates.set(DEFAULT_RATE_LIMIT_KEY, {
-    windowStartedAtMs: nowMs,
-    used: 0,
-  });
+}
+
+export function readAgentRateLimitStateCountForTests(): number {
+  return agentRateLimitStates.size;
 }
 
 export function withAgentResponseHeaders(
@@ -133,4 +138,22 @@ export function attachAgentHeaders(
     statusText: response.statusText,
     headers: withAgentResponseHeaders(response.headers, options),
   });
+}
+
+function pruneExpiredRateLimitWindows(nowMs: number, windowMs: number): void {
+  for (const [key, state] of agentRateLimitStates) {
+    if (nowMs >= state.windowStartedAtMs + windowMs) {
+      agentRateLimitStates.delete(key);
+    }
+  }
+}
+
+function pruneOldestRateLimitWindows(): void {
+  for (const key of agentRateLimitStates.keys()) {
+    if (agentRateLimitStates.size <= RATE_LIMIT_MAX_CALLER_KEYS) {
+      return;
+    }
+
+    agentRateLimitStates.delete(key);
+  }
 }

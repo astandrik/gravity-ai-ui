@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  RATE_LIMIT_MAX_CALLER_KEYS,
   readAgentRateLimit,
   readAgentRateLimitKey,
+  readAgentRateLimitStateCountForTests,
   resetAgentRateLimitForTests,
   withAgentResponseHeaders,
 } from "@/lib/api-response";
 
 describe("agent API response headers", () => {
   it("accounts for requests when building RateLimit headers", () => {
-    resetAgentRateLimitForTests(1_000);
+    resetAgentRateLimitForTests();
 
     const first = readAgentRateLimit({
       rateLimitKey: "client-a",
@@ -32,7 +34,7 @@ describe("agent API response headers", () => {
   });
 
   it("starts a new accounting window after reset time", () => {
-    resetAgentRateLimitForTests(1_000);
+    resetAgentRateLimitForTests();
     readAgentRateLimit({ rateLimitKey: "client-a", nowMs: 1_000 });
 
     const nextWindow = readAgentRateLimit({
@@ -48,7 +50,7 @@ describe("agent API response headers", () => {
   });
 
   it("uses the accounting result in response headers", () => {
-    resetAgentRateLimitForTests(1_000);
+    resetAgentRateLimitForTests();
 
     const first = withAgentResponseHeaders(undefined, {
       rateLimitKey: "client-a",
@@ -64,7 +66,7 @@ describe("agent API response headers", () => {
   });
 
   it("does not share accounting between caller keys", () => {
-    resetAgentRateLimitForTests(1_000);
+    resetAgentRateLimitForTests();
 
     readAgentRateLimit({ rateLimitKey: "client-a", nowMs: 1_000 });
     const otherClient = readAgentRateLimit({
@@ -77,6 +79,34 @@ describe("agent API response headers", () => {
       remaining: 59,
       reset: 60,
     });
+  });
+
+  it("prunes expired caller windows before storing new keys", () => {
+    resetAgentRateLimitForTests();
+
+    readAgentRateLimit({ rateLimitKey: "client-a", nowMs: 1_000 });
+    readAgentRateLimit({ rateLimitKey: "client-b", nowMs: 1_000 });
+
+    expect(readAgentRateLimitStateCountForTests()).toBe(2);
+
+    readAgentRateLimit({ rateLimitKey: "client-c", nowMs: 61_000 });
+
+    expect(readAgentRateLimitStateCountForTests()).toBe(1);
+  });
+
+  it("caps the number of tracked caller keys", () => {
+    resetAgentRateLimitForTests();
+
+    for (let index = 0; index < RATE_LIMIT_MAX_CALLER_KEYS + 2; index += 1) {
+      readAgentRateLimit({
+        rateLimitKey: `client-${index}`,
+        nowMs: 1_000,
+      });
+    }
+
+    expect(readAgentRateLimitStateCountForTests()).toBe(
+      RATE_LIMIT_MAX_CALLER_KEYS,
+    );
   });
 
   it("reads caller keys from proxy headers", () => {
