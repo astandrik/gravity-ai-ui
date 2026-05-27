@@ -13,6 +13,7 @@ const links = [
   { href: "/", label: "Generator" },
   { href: "/gallery", label: "Gallery" },
   { href: "/docs", label: "Docs" },
+  { href: "/compare", label: "Compare" },
   { href: "/about", label: "About" },
 ] as const;
 const GITHUB_REPOSITORY_URL = "https://github.com/astandrik/gravity-ai-ui";

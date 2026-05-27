@@ -52,6 +52,36 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
+      url: toPublicUrl("/compare"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: toPublicUrl("/guides/a2ui-openai-gravity-ui"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: toPublicUrl("/openapi.json"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/llms-full.txt"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
+      url: toPublicUrl("/developers.md"),
+      lastModified: generatedAt,
+      changeFrequency: "weekly",
+      priority: 0.4,
+    },
+    {
       url: toPublicUrl("/opengraph-image"),
       lastModified: generatedAt,
       changeFrequency: "monthly",
