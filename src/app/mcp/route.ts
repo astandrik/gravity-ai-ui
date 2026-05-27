@@ -1,4 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { attachAgentHeaders, withAgentResponseHeaders } from "@/lib/api-response";
 import { isAllowedMcpOrigin } from "@/lib/mcp/origin";
 import { createGravityAiMcpServer } from "@/lib/mcp/server";
 
@@ -18,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     await server.connect(transport);
-    return await transport.handleRequest(request);
+    return attachAgentHeaders(await transport.handleRequest(request));
   } catch {
     return jsonRpcError(500, -32603, "Internal server error.");
   } finally {
@@ -58,10 +59,10 @@ function jsonRpcError(
     },
     {
       status,
-      headers: {
+      headers: withAgentResponseHeaders({
         "Content-Type": "application/json",
         ...headers,
-      },
+      }),
     },
   );
 }

@@ -1,5 +1,6 @@
 import { agentRequestSchema, createSseEncoder } from "@/lib/agent/protocol";
 import { streamAgentResponse } from "@/lib/agent/openaiAgent";
+import { jsonProblem, withAgentResponseHeaders } from "@/lib/api-response";
 
 export const runtime = "nodejs";
 
@@ -8,10 +9,10 @@ export async function POST(request: Request) {
   const parsed = agentRequestSchema.safeParse(body);
 
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid agent request", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return jsonProblem("invalid_agent_request", "Invalid agent request.", {
+      status: 400,
+      issues: parsed.error.flatten(),
+    });
   }
 
   const encode = createSseEncoder();
@@ -56,11 +57,11 @@ export async function POST(request: Request) {
   });
 
   return new Response(stream, {
-    headers: {
+    headers: withAgentResponseHeaders({
       "Cache-Control": "no-store, no-transform",
       Connection: "keep-alive",
       "Content-Type": "text/event-stream; charset=utf-8",
       "X-Accel-Buffering": "no",
-    },
+    }),
   });
 }

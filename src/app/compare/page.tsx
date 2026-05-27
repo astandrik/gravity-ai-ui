@@ -28,13 +28,19 @@ const comparisons = [
     name: "Figma",
     fit: "Collaborative design canvas and design-system workflows.",
     gravity:
-      "Gravity AI UI complements design tools by exposing generated interface payloads, React exports, and MCP tools for autonomous agents.",
+      "Gravity AI UI complements Figma by exposing generated interface payloads, React exports, OpenAPI docs, and MCP tools for autonomous agents.",
   },
   {
     name: "Uizard",
     fit: "AI-assisted wireframes and product mockups.",
     gravity:
       "Gravity AI UI emphasizes agent integration, structured A2UI messages, and a predictable component registry instead of freeform mockups.",
+  },
+  {
+    name: "Custom OpenAI stacks",
+    fit: "Bespoke prompt-to-UI flows built around a model API.",
+    gravity:
+      "Gravity AI UI adds the agent-readiness surface custom stacks often lack: markdown docs, OpenAPI, OAuth discovery metadata, and a Streamable HTTP MCP server.",
   },
 ] as const;
 
@@ -67,7 +73,9 @@ export default function ComparePage() {
             >
               Gravity AI UI is for teams and agents that need product-interface
               generation with structured A2UI payloads, MCP tools, OpenAI
-              generation, and trusted Gravity UI components.
+              generation, and trusted Gravity UI components. It is an
+              AI-powered UI generator for workflows where agents need to
+              discover, call, inspect, and reuse generated interface output.
             </Text>
           </header>
 
@@ -111,6 +119,27 @@ export default function ComparePage() {
               A2UI structure, a Streamable HTTP MCP endpoint, copyable React
               output, and constrained rendering through a known Gravity UI
               registry.
+            </Text>
+          </section>
+
+          <section
+            className="compare-page__section"
+            aria-labelledby="agent-category-title"
+          >
+            <Text as="h2" id="agent-category-title" variant="subheader-3">
+              AI-powered UI generator for agent workflows
+            </Text>
+            <Text
+              as="p"
+              variant="body-2"
+              color="secondary"
+              className="compare-page__lead"
+            >
+              Figma and Uizard are strong category leaders for visual design and
+              wireframing. Gravity AI UI is positioned for agent workflows:
+              OpenAI produces a constrained interface plan, A2UI carries the UI
+              contract, Gravity UI renders trusted components, and MCP gives
+              assistants a native way to search, generate, and refine.
             </Text>
           </section>
         </section>

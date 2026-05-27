@@ -31,6 +31,7 @@ export function buildOpenApiDocument() {
           operationId: "streamGravityInterface",
           tags: ["Agent"],
           summary: "Stream generated Gravity UI interface events",
+          parameters: [apiVersionParameter()],
           description:
             "Accepts a prompt or action request and returns Server-Sent Events with status, A2UI messages, composed payload snapshots, errors, and a final done event.",
           requestBody: {
@@ -61,7 +62,7 @@ export function buildOpenApiDocument() {
               },
               headers: rateLimitHeaders(),
             },
-            "400": validationErrorResponse("Invalid agent request."),
+            "400": agentProblemResponse("Invalid agent request."),
           },
         },
       },
@@ -73,6 +74,7 @@ export function buildOpenApiDocument() {
           description:
             "Stores a liked composed interface payload and schedules gallery thumbnail generation. Current public demo accepts only positive published feedback from the app flow.",
           parameters: [
+            apiVersionParameter(),
             {
               name: "Idempotency-Key",
               in: "header",
@@ -109,13 +111,43 @@ export function buildOpenApiDocument() {
                 },
               },
             },
-            "400": validationErrorResponse("Invalid design feedback."),
-            "503": simpleErrorResponse("Feedback storage unavailable."),
+            "400": agentProblemResponse("Invalid design feedback."),
+            "503": agentProblemResponse("Feedback storage unavailable."),
           },
         },
       },
       "/mcp": mcpPathItem("callMcpServer"),
       "/.well-known/mcp": wellKnownMcpPathItem(),
+      "/.well-known/mcp.json": {
+        get: {
+          operationId: "getMcpWellKnownDocument",
+          tags: ["Discovery", "MCP"],
+          summary: "Fetch MCP well-known compatibility metadata",
+          responses: {
+            "200": jsonResponse("#/components/schemas/McpWellKnownDocument"),
+          },
+        },
+      },
+      "/.well-known/agent.json": {
+        get: {
+          operationId: "getAgentDiscovery",
+          tags: ["Discovery"],
+          summary: "Fetch generic agent discovery metadata",
+          responses: {
+            "200": jsonResponse("#/components/schemas/AgentDiscovery"),
+          },
+        },
+      },
+      "/.well-known/agent-card.json": {
+        get: {
+          operationId: "getA2aAgentCard",
+          tags: ["Discovery"],
+          summary: "Fetch the A2A agent card",
+          responses: {
+            "200": jsonResponse("#/components/schemas/A2aAgentCard"),
+          },
+        },
+      },
       "/openapi.json": {
         get: {
           operationId: "getOpenApiSpec",
@@ -224,6 +256,16 @@ export function buildOpenApiDocument() {
       },
     },
     components: {
+      parameters: {
+        ApiVersionHeader: {
+          name: "API-Version",
+          in: "header",
+          required: false,
+          schema: { type: "string", enum: ["1"], default: "1" },
+          description:
+            "Optional API version selector. The current public API version is 1 and responses echo API-Version: 1.",
+        },
+      },
       securitySchemes: {
         OAuth2Metadata: {
           type: "oauth2",
@@ -430,6 +472,91 @@ export function buildOpenApiDocument() {
             },
           },
         },
+        AgentDiscovery: {
+          type: "object",
+          required: ["name", "description", "url", "openapi", "mcp", "capabilities"],
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            url: { type: "string", format: "uri" },
+            documentation: { type: "string", format: "uri" },
+            openapi: { type: "string", format: "uri" },
+            llms: { type: "string", format: "uri" },
+            markdown: { type: "string", format: "uri" },
+            oauth: { type: "object" },
+            mcp: { type: "object" },
+            capabilities: { type: "array", items: { type: "string" } },
+          },
+        },
+        A2aAgentCard: {
+          type: "object",
+          required: [
+            "name",
+            "description",
+            "url",
+            "version",
+            "documentationUrl",
+            "defaultInputModes",
+            "defaultOutputModes",
+            "skills",
+          ],
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            url: { type: "string", format: "uri" },
+            version: { type: "string" },
+            documentationUrl: { type: "string", format: "uri" },
+            provider: { type: "object" },
+            capabilities: { type: "object" },
+            defaultInputModes: { type: "array", items: { type: "string" } },
+            defaultOutputModes: { type: "array", items: { type: "string" } },
+            skills: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "name", "description"],
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  tags: { type: "array", items: { type: "string" } },
+                  examples: { type: "array", items: { type: "string" } },
+                  inputModes: { type: "array", items: { type: "string" } },
+                  outputModes: { type: "array", items: { type: "string" } },
+                },
+              },
+            },
+          },
+        },
+        McpWellKnownDocument: {
+          type: "object",
+          required: [
+            "name",
+            "title",
+            "description",
+            "version",
+            "websiteUrl",
+            "serverUrl",
+            "serverCard",
+            "openapi",
+            "transport",
+            "tools",
+            "servers",
+          ],
+          properties: {
+            name: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            version: { type: "string" },
+            websiteUrl: { type: "string", format: "uri" },
+            serverUrl: { type: "string", format: "uri" },
+            serverCard: { type: "string", format: "uri" },
+            openapi: { type: "string", format: "uri" },
+            transport: { type: "string", const: "streamable-http" },
+            tools: { type: "array", items: { type: "object" } },
+            servers: { type: "array", items: { type: "object" } },
+          },
+        },
         ProblemDetails: {
           type: "object",
           required: ["error"],
@@ -556,6 +683,7 @@ function mcpPostOperation(operationId: string) {
     operationId,
     tags: ["MCP"],
     summary: "Call the Gravity AI UI MCP server",
+    parameters: [apiVersionParameter()],
     description:
       "Streamable HTTP MCP endpoint. Send JSON-RPC requests with Accept: application/json, text/event-stream.",
     requestBody: {
@@ -593,9 +721,18 @@ function methodNotAllowedOperation(operationId: string) {
   };
 }
 
-function jsonResponse(schemaRef: string, description = "JSON response.") {
+function apiVersionParameter() {
+  return { $ref: "#/components/parameters/ApiVersionHeader" };
+}
+
+function jsonResponse(
+  schemaRef: string,
+  description = "JSON response.",
+  headers?: Record<string, unknown>,
+) {
   return {
     description,
+    ...(headers ? { headers } : {}),
     content: {
       "application/json": {
         schema: { $ref: schemaRef },
@@ -604,16 +741,20 @@ function jsonResponse(schemaRef: string, description = "JSON response.") {
   };
 }
 
-function validationErrorResponse(description: string) {
-  return jsonResponse("#/components/schemas/ValidationErrorResponse", description);
-}
-
-function simpleErrorResponse(description: string) {
-  return jsonResponse("#/components/schemas/SimpleErrorResponse", description);
-}
-
 function jsonRpcErrorResponse(description: string) {
-  return jsonResponse("#/components/schemas/JsonRpcResponse", description);
+  return jsonResponse(
+    "#/components/schemas/JsonRpcResponse",
+    description,
+    rateLimitHeaders(),
+  );
+}
+
+function agentProblemResponse(description: string) {
+  return jsonResponse(
+    "#/components/schemas/ProblemDetails",
+    description,
+    rateLimitHeaders(),
+  );
 }
 
 function problemResponse(description: string) {
@@ -633,6 +774,10 @@ function rateLimitHeaders() {
     "RateLimit-Reset": {
       schema: { type: "integer" },
       description: "Seconds until the current window resets when enforced.",
+    },
+    "API-Version": {
+      schema: { type: "string", enum: ["1"] },
+      description: "Current public API version.",
     },
   };
 }

@@ -1,4 +1,5 @@
 import { designFeedbackSchema } from "@/lib/feedback/designFeedback";
+import { jsonProblem, jsonWithAgentHeaders } from "@/lib/api-response";
 import { scheduleGalleryThumbnailGeneration } from "@/lib/feedback/galleryThumbnailGenerator";
 import { saveDesignFeedback } from "@/lib/feedback/ydbFeedbackStore";
 import { revalidateSitemapCache } from "@/lib/sitemap-cache";
@@ -11,10 +12,10 @@ export async function POST(request: Request) {
   const parsed = designFeedbackSchema.safeParse(body);
 
   if (!parsed.success) {
-    return Response.json(
-      { error: "Invalid design feedback", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return jsonProblem("invalid_design_feedback", "Invalid design feedback.", {
+      status: 400,
+      issues: parsed.error.flatten(),
+    });
   }
 
   try {
@@ -23,20 +24,16 @@ export async function POST(request: Request) {
     revalidateSitemapCache();
     void scheduleGalleryThumbnailGeneration(saved.gallerySlug);
 
-    return Response.json({
+    return jsonWithAgentHeaders({
       feedbackId: saved.feedbackId,
       galleryId: saved.gallerySlug,
       rating: saved.rating,
       createdAtMs: saved.createdAtMs,
     });
   } catch (error) {
-    return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to save design feedback.",
-      },
+    return jsonProblem(
+      "feedback_storage_unavailable",
+      error instanceof Error ? error.message : "Failed to save design feedback.",
       { status: 503 },
     );
   }

@@ -12,7 +12,10 @@ export function buildDevelopersMarkdown(): string {
     `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- MCP discovery: ${toPublicUrl("/.well-known/mcp")}`,
+    `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
     `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
+    `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
+    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
     `- OAuth metadata: ${toPublicUrl("/.well-known/oauth-authorization-server")}`,
     `- OAuth protected resource: ${toPublicUrl("/.well-known/oauth-protected-resource")}`,
     `- Full agent docs: ${toPublicUrl("/llms-full.txt")}`,
@@ -27,6 +30,118 @@ export function buildDevelopersMarkdown(): string {
     "## Rate limits and retries",
     "",
     "The public demo is intended for low-volume interactive evaluation. Agents should retry with backoff, send `Idempotency-Key` on mutation attempts, and respect `RateLimit-*` or `Retry-After` headers when they are present.",
+  ].join("\n");
+}
+
+export function buildIndexMarkdown(): string {
+  return [
+    `# ${SITE_NAME}`,
+    "",
+    "Gravity AI UI is an AI-powered UI generator for agents and product teams. It turns natural-language prompts into validated A2UI component trees, renders those trees with trusted Gravity UI components, and exposes OpenAPI and MCP surfaces for agent workflows.",
+    "",
+    "## What agents can do",
+    "",
+    "- Generate product interface drafts from prompts.",
+    "- Inspect generated payloads, data models, A2UI messages, and React exports.",
+    "- Search public liked interface drafts through the Streamable HTTP MCP server.",
+    "- Reuse predictable developer resources without scraping the visual app.",
+    "",
+    "## Agent resources",
+    "",
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
+    `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
+    `- Developer docs: ${toPublicUrl("/docs.md")}`,
+    `- Compare AI UI generators: ${toPublicUrl("/compare.md")}`,
+  ].join("\n");
+}
+
+export function buildDocsMarkdown(): string {
+  return [
+    `# ${SITE_NAME} Developer Docs`,
+    "",
+    "Gravity AI UI developer docs collect the predictable URLs agents need to discover the API surface, auth metadata, markdown docs, and MCP tools.",
+    "",
+    "## Core API resources",
+    "",
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- Developer portal: ${toPublicUrl("/docs")}`,
+    `- Developer markdown: ${toPublicUrl("/developers.md")}`,
+    `- Auth docs: ${toPublicUrl("/auth.md")}`,
+    `- Webhook docs: ${toPublicUrl("/webhooks.md")}`,
+    "",
+    "## Agent integration resources",
+    "",
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
+    `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
+    `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
+    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
+  ].join("\n");
+}
+
+export function buildCompareMarkdown(): string {
+  return [
+    "# Gravity AI UI compared with AI UI generators",
+    "",
+    "Gravity AI UI is an AI-powered UI generator focused on agent workflows. It differs from broad visual design tools by prioritizing structured A2UI payloads, OpenAPI documentation, a Streamable HTTP MCP server, and trusted Gravity UI rendering.",
+    "",
+    "## Compared products",
+    "",
+    "- Figma is strongest as a collaborative design canvas. Gravity AI UI is strongest when an agent needs machine-readable interface payloads and API access.",
+    "- Uizard is strongest for fast AI-assisted wireframes. Gravity AI UI is strongest for structured product-interface generation with A2UI and MCP.",
+    "- Vercel v0 and Lovable are useful for code and app prototyping. Gravity AI UI focuses on inspectable interface surfaces for agent evaluation and reuse.",
+    "",
+    "## Agent resources",
+    "",
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- Best AI UI generator guide: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
+  ].join("\n");
+}
+
+export function buildIntegrationGuideMarkdown(): string {
+  return [
+    "# A2UI, OpenAI, and Gravity UI integration guide",
+    "",
+    "Gravity AI UI uses OpenAI structured output to produce a compose_gravity_interface payload. The app validates that payload, transports interface updates as A2UI messages, and renders trusted Gravity UI components instead of arbitrary JSX.",
+    "",
+    "## Integration path",
+    "",
+    "- Model output is constrained to a typed composed interface contract.",
+    "- Server validation keeps generated UI inside the curated component registry.",
+    "- A2UI messages let clients render progressive product-interface snapshots.",
+    "- The Streamable HTTP MCP server exposes search, fetch, generate, and refine tools to agents.",
+    "",
+    "## Agent resources",
+    "",
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+  ].join("\n");
+}
+
+export function buildBestAiUiGeneratorForAgentsMarkdown(): string {
+  return [
+    "# Best AI UI generator for agents",
+    "",
+    "The best AI UI generator for agents should expose more than a visual canvas. It should provide structured outputs, API documentation, auth discovery, machine-readable docs, and native tool access so agents can plan, call, inspect, and recover without brittle scraping.",
+    "",
+    "## Where Gravity AI UI fits",
+    "",
+    "Gravity AI UI is an AI-powered UI generator for product-interface drafts. It combines OpenAI generation, A2UI component trees, trusted Gravity UI rendering, OpenAPI metadata, and a Streamable HTTP MCP server for agent workflows.",
+    "",
+    "## Compared with Figma and Uizard",
+    "",
+    "Figma leads collaborative design systems and Uizard leads quick AI wireframing. Gravity AI UI is narrower: it is built for agent-readable interface generation where the output can be validated, inspected, fetched through MCP, and reused as React code.",
+    "",
+    "## Agent resources",
+    "",
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- Compare page: ${toPublicUrl("/compare")}`,
+    `- Integration guide: ${toPublicUrl("/guides/a2ui-openai-gravity-ui")}`,
   ].join("\n");
 }
 
@@ -121,8 +236,13 @@ export function buildLlmsFullTxt(): string {
     `- App: ${toPublicUrl("/")}`,
     `- Gallery: ${toPublicUrl("/gallery")}`,
     `- Developer docs: ${toPublicUrl("/docs")}`,
+    `- Best AI UI generator for agents: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
     `- Compare AI UI generators: ${toPublicUrl("/compare")}`,
     `- A2UI, OpenAI, and Gravity UI integration guide: ${toPublicUrl("/guides/a2ui-openai-gravity-ui")}`,
+    `- Markdown homepage: ${toPublicUrl("/index.md")}`,
+    `- Markdown developer docs: ${toPublicUrl("/docs.md")}`,
+    `- Markdown comparison page: ${toPublicUrl("/compare.md")}`,
+    `- Markdown agent guide: ${toPublicUrl("/best-ai-ui-generator-for-agents.md")}`,
     "",
     "## API reference",
     "",
@@ -135,7 +255,10 @@ export function buildLlmsFullTxt(): string {
     "",
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- MCP discovery: ${toPublicUrl("/.well-known/mcp")}`,
+    `- MCP compatibility manifest: ${toPublicUrl("/.well-known/mcp.json")}`,
     `- MCP server card: ${toPublicUrl("/.well-known/mcp/server-card.json")}`,
+    `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
+    `- A2A agent card: ${toPublicUrl("/.well-known/agent-card.json")}`,
     "- Tools: `search_interfaces`, `get_interface`, `generate_interface`, `refine_interface`.",
     "",
     "```bash",

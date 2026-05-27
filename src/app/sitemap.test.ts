@@ -63,6 +63,23 @@ describe("sitemap", () => {
     );
     expect(urls).toContain("https://gravity.example/base/gallery");
     expect(urls).toContain(
+      "https://gravity.example/base/best-ai-ui-generator-for-agents",
+    );
+    expect(urls).toContain("https://gravity.example/base/index.md");
+    expect(urls).toContain("https://gravity.example/base/docs.md");
+    expect(urls).toContain("https://gravity.example/base/compare.md");
+    expect(urls).toContain(
+      "https://gravity.example/base/guides/a2ui-openai-gravity-ui.md",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/best-ai-ui-generator-for-agents.md",
+    );
+    expect(urls).toContain("https://gravity.example/base/.well-known/agent.json");
+    expect(urls).toContain(
+      "https://gravity.example/base/.well-known/agent-card.json",
+    );
+    expect(urls).toContain("https://gravity.example/base/.well-known/mcp.json");
+    expect(urls).toContain(
       "https://gravity.example/base/gallery/deployment-review-123e4567e89b",
     );
     expect(
@@ -83,6 +100,9 @@ describe("sitemap", () => {
 
     expect(urls).toContain("http://localhost:3000/");
     expect(urls).toContain("http://localhost:3000/gallery");
+    expect(urls).toContain(
+      "http://localhost:3000/best-ai-ui-generator-for-agents",
+    );
     expect(
       urls.some((url) => url.includes("/gallery/deployment-review-123e4567e89b")),
     ).toBe(false);

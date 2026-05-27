@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "typecheck": "tsc --noEmit --incremental false",
     "generate:gallery-thumbnails": "tsx scripts/generate-gallery-thumbnails.ts",
     "generate:gravity-capabilities": "node scripts/generate-gravity-capabilities.mjs",

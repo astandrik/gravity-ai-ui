@@ -14,6 +14,11 @@ describe("GET /llms.txt", () => {
     expect(body).toContain(
       "https://gravity.example/.well-known/mcp/server-card.json",
     );
+    expect(body).toContain("https://gravity.example/.well-known/mcp.json");
+    expect(body).toContain("https://gravity.example/.well-known/agent.json");
+    expect(body).toContain(
+      "https://gravity.example/.well-known/agent-card.json",
+    );
     expect(body).toContain("https://gravity.example/openapi.json");
     expect(body).toContain(
       "https://gravity.example/.well-known/oauth-authorization-server",
@@ -50,7 +55,16 @@ describe("GET /llms.txt", () => {
     expect(body).toContain("https://gravity.example/about");
     expect(body).toContain("https://gravity.example/compare");
     expect(body).toContain(
+      "https://gravity.example/best-ai-ui-generator-for-agents",
+    );
+    expect(body).toContain(
       "https://gravity.example/guides/a2ui-openai-gravity-ui",
+    );
+    expect(body).toContain("https://gravity.example/index.md");
+    expect(body).toContain("https://gravity.example/docs.md");
+    expect(body).toContain("https://gravity.example/compare.md");
+    expect(body).toContain(
+      "https://gravity.example/best-ai-ui-generator-for-agents.md",
     );
     expect(body).toContain("https://gravity.example/sitemap.xml");
     expect(body).toContain("https://gravity.example/robots.txt");

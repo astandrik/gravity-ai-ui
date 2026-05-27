@@ -70,6 +70,18 @@ function getDeveloperResources() {
         "Pre-connection MCP server card with Streamable HTTP transport details and the public tool list.",
     },
     {
+      title: "Agent discovery",
+      href: toPublicUrl("/.well-known/agent.json"),
+      description:
+        "Generic agent discovery document with product capabilities, OpenAPI, OAuth metadata, MCP links, and llms.txt.",
+    },
+    {
+      title: "Markdown docs",
+      href: toPublicUrl("/docs.md"),
+      description:
+        "Heading-led markdown fallback for agents that prefer text resources over rendered HTML pages.",
+    },
+    {
       title: "webhooks",
       href: toPublicUrl("/webhooks.md"),
       description:
