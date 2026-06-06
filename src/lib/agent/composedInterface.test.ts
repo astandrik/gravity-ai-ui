@@ -138,6 +138,65 @@ describe("composed interface builder", () => {
     ).toThrow(/Invalid props for component NodePool \(MetricGrid\): .*items/);
   });
 
+  it("accepts data-bound metric item tone and icon props", () => {
+    const built = buildComposedInterfaceFromJson(
+      JSON.stringify({
+        ...simplePayload,
+        dataModel: {
+          metrics: [
+            {
+              label: "Risk",
+              value: "Low",
+              description: "No blockers",
+              tone: "success",
+              icon: "check",
+            },
+          ],
+        },
+        nodes: [
+          {
+            id: "DeploymentMetrics",
+            parentId: "root",
+            order: 0,
+            component: "MetricGrid",
+            props: {
+              items: [
+                {
+                  label: { path: "/metrics/0/label" },
+                  value: { path: "/metrics/0/value" },
+                  description: { path: "/metrics/0/description" },
+                  tone: { path: "/metrics/0/tone" },
+                  icon: { path: "/metrics/0/icon" },
+                },
+              ],
+            },
+          },
+        ],
+      } satisfies ComposedInterfacePayload),
+    );
+
+    expect(built.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          updateComponents: expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                id: "DeploymentMetrics",
+                component: "MetricGrid",
+                items: [
+                  expect.objectContaining({
+                    tone: { path: "/metrics/0/tone" },
+                    icon: { path: "/metrics/0/icon" },
+                  }),
+                ],
+              }),
+            ]),
+          }),
+        }),
+      ]),
+    );
+  });
+
   it("accepts data-bound HeroBlock props with refresh actions", () => {
     const built = buildComposedInterfaceFromJson(
       JSON.stringify({

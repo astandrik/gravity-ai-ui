@@ -65,6 +65,27 @@ const dynamicStringSchemaWithBounds = (
 const nullableDynamicStringSchemaOfMax = (maxLength: number) => ({
   oneOf: [{ type: ["string", "null"], maxLength }, dataBindingSchema],
 });
+const dynamicEnumSchema = (
+  values: readonly (string | number | boolean)[],
+) => ({
+  oneOf: [enumSchema(values), dataBindingSchema],
+});
+const nullableDynamicEnumSchema = (
+  values: readonly (string | number | boolean)[],
+) => ({
+  oneOf: [
+    {
+      type:
+        typeof values[0] === "number"
+          ? ["number", "null"]
+          : typeof values[0] === "boolean"
+            ? ["boolean", "null"]
+            : ["string", "null"],
+      enum: [...values, null],
+    },
+    dataBindingSchema,
+  ],
+});
 const dynamicArraySchema = (arraySchema: JsonSchema) => ({
   oneOf: [arraySchema, dataBindingSchema],
 });
@@ -270,11 +291,8 @@ export const COMPOSE_COMPONENT_PROP_SPECS = {
             label: dynamicStringSchemaWithBounds(1, 240),
             value: dynamicStringSchemaWithBounds(1, 240),
             description: nullableDynamicStringSchemaOfMax(240),
-            tone: enumSchema(GRAVITY_TONES),
-            icon: {
-              type: ["string", "null"],
-              enum: [...ALLOWED_GRAVITY_ICONS, null],
-            },
+            tone: dynamicEnumSchema(GRAVITY_TONES),
+            icon: nullableDynamicEnumSchema(ALLOWED_GRAVITY_ICONS),
           },
           ["label", "value", "description", "tone", "icon"],
         ),
