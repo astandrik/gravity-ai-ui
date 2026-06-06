@@ -9,12 +9,8 @@ const INTERACTIVE_COMPONENTS = new Set([
   "Button",
   "CheckBox",
   "ChoicePicker",
-  "RadioGroup",
-  "Select",
   "SelectField",
-  "Slider",
   "SliderField",
-  "Switch",
   "SwitchField",
   "TextField",
 ]);

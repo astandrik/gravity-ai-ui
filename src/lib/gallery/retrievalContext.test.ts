@@ -6,7 +6,7 @@ const design: PublishedDesign = {
   id: "release-ops-123456789abc",
   title: "Release operations dashboard",
   summary:
-    "Composed tree with 7 nodes: Text x2, Card x2, Button x1, Table x1, Alert x1.",
+    "Composed tree with 4 nodes: Text x1, AlertBlock x1, DataTable x1, Button x1.",
   surfaceId: "surface_release_ops",
   createdAtMs: 1_700_000_000_000,
   payload: {
@@ -67,6 +67,9 @@ describe("buildGalleryRetrievalContext", () => {
     expect(context[1].body).toContain("review");
     expect(context[2].body).toContain("AlertBlock");
     expect(context[2].body).toContain("DataTable");
+    expect(context[0].body).toContain(
+      "Composed tree with 4 nodes: Text x1, AlertBlock x1, DataTable x1, Button x1.",
+    );
     expect(context[3].body).toContain("React export");
     expect(context[4].body).toContain("Original prompt history is not exposed");
     expect(context[5].body).toContain("data states");
@@ -114,6 +117,54 @@ describe("buildGalleryRetrievalContext", () => {
     expect(componentContext).toContain("SliderField x1");
     expect(componentContext).not.toContain(
       "content components (SelectField, SliderField, SwitchField)",
+    );
+  });
+
+  it("does not classify non-contract Gravity UI component names as interactive controls", () => {
+    const context = buildGalleryRetrievalContext({
+      ...design,
+      payload: {
+        ...design.payload,
+        nodes: [
+          {
+            id: "radio-group",
+            parentId: "root",
+            order: 0,
+            component: "RadioGroup",
+            props: {},
+          },
+          {
+            id: "select",
+            parentId: "root",
+            order: 1,
+            component: "Select",
+            props: {},
+          },
+          {
+            id: "slider",
+            parentId: "root",
+            order: 2,
+            component: "Slider",
+            props: {},
+          },
+          {
+            id: "switch",
+            parentId: "root",
+            order: 3,
+            component: "Switch",
+            props: {},
+          },
+        ],
+      },
+    } as unknown as PublishedDesign);
+
+    const componentContext = context.find(
+      (section) => section.title === "Generated component categories",
+    )?.body;
+
+    expect(componentContext).not.toContain("interactive controls");
+    expect(componentContext).toContain(
+      "content components (RadioGroup, Select, Slider, Switch)",
     );
   });
 });
