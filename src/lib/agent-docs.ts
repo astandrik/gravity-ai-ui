@@ -202,6 +202,7 @@ export function buildGuidePageMarkdown(slug: GuideSlug): string {
     `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+    `- llms.txt: ${toPublicUrl("/llms.txt")}`,
     `- Best AI UI generator guide: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
   ].join("\n");
 }
@@ -254,8 +255,12 @@ export function buildBestAiUiGeneratorForAgentsMarkdown(): string {
     "",
     "## Agent resources",
     "",
+    `- Canonical page: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
+    `- Developer docs: ${toPublicUrl("/docs")}`,
     `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
     `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+    `- llms.txt: ${toPublicUrl("/llms.txt")}`,
     `- Compare page: ${toPublicUrl("/compare")}`,
     `- Integration guide: ${toPublicUrl("/guides/a2ui-openai-gravity-ui")}`,
     `- MCP UI generator guide: ${toPublicUrl("/guides/mcp-ui-generator")}`,
