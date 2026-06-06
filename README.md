@@ -15,7 +15,9 @@ AI-agent interface shell for generating, previewing, inspecting, and reusing pro
 - Gravity UI component catalog with cards, forms, metrics, alerts, tables, progress, links, users, icons, and navigation patterns.
 - Starter prompt rotation for empty conversations.
 - Design likes stored in YDB and reused as positive examples for later generations.
-- SEO metadata, Open Graph image, sitemap, robots, `llms.txt`, IndexNow support, and Yandex Metrika goals.
+- Agent-readable discovery with OpenAPI, MCP server metadata, `llms.txt`, markdown fallbacks, sitemap, robots, IndexNow support, and Yandex Metrika goals.
+- Public comparison and guide pages for AI UI generator discovery, including focused Gravity AI UI comparisons with Vercel v0, Lovable, Figma, and Uizard.
+- Remote MCP tools for public interface search, interface retrieval, generation, and refinement.
 
 ## Architecture
 
@@ -25,8 +27,28 @@ AI-agent interface shell for generating, previewing, inspecting, and reusing pro
 - `src/components/AgentShell/gravityA2uiCatalog.tsx` maps the safe interface contract to Gravity UI components.
 - `src/lib/agent/reactCode.ts` generates the copyable React representation.
 - `src/app/api/design-feedback/route.ts` stores liked designs through the YDB feedback store.
+- `src/app/mcp/route.ts` exposes the Streamable HTTP MCP server.
+- `src/app/llms.txt/route.ts` and markdown routes expose agent-readable documentation for crawlers and assistants.
 
 The model never emits arbitrary React, HTML, iframe, or markdown content for direct rendering. It emits structured interface data, and the application decides how that data maps to local components.
+
+## Agent and AI Visibility Resources
+
+- Live app: [gravity-ai.ydb-qdrant.tech](https://gravity-ai.ydb-qdrant.tech)
+- `llms.txt`: [gravity-ai.ydb-qdrant.tech/llms.txt](https://gravity-ai.ydb-qdrant.tech/llms.txt)
+- Full agent docs: [gravity-ai.ydb-qdrant.tech/llms-full.txt](https://gravity-ai.ydb-qdrant.tech/llms-full.txt)
+- OpenAPI: [gravity-ai.ydb-qdrant.tech/openapi.json](https://gravity-ai.ydb-qdrant.tech/openapi.json)
+- MCP server card: [gravity-ai.ydb-qdrant.tech/.well-known/mcp/server-card.json](https://gravity-ai.ydb-qdrant.tech/.well-known/mcp/server-card.json)
+- Best AI UI generator guide: [gravity-ai.ydb-qdrant.tech/best-ai-ui-generator-for-agents](https://gravity-ai.ydb-qdrant.tech/best-ai-ui-generator-for-agents)
+- Comparison hub: [gravity-ai.ydb-qdrant.tech/compare](https://gravity-ai.ydb-qdrant.tech/compare)
+- AI visibility playbook: [`docs/ai-visibility-playbook.md`](docs/ai-visibility-playbook.md)
+
+### MCP tools
+
+- `search_interfaces`: search public liked interface drafts.
+- `get_interface`: fetch public interface metadata, composed payload, thumbnails, page URL, and React code.
+- `generate_interface`: generate a new Gravity AI UI composed interface from a prompt without saving it.
+- `refine_interface`: refine a supplied composed interface payload without saving it.
 
 ## Stack
 

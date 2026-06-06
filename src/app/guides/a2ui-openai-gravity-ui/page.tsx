@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
-import { toPublicUrl } from "@/lib/base-path";
-import { SITE_NAME } from "@/lib/site";
+import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
-import "./page.scss";
+import "@/components/AiVisibility/GuideArticle.scss";
 
 export const metadata: Metadata = {
-  title: `A2UI, OpenAI, and Gravity UI Integration Guide - ${SITE_NAME}`,
+  title: "A2UI, OpenAI, and Gravity UI Integration Guide",
   description:
     "How Gravity AI UI uses OpenAI structured output, A2UI messages, and trusted Gravity UI components to build agent-generated product interfaces.",
+  alternates: {
+    canonical: withBasePath("/guides/a2ui-openai-gravity-ui"),
+  },
 };
 
 const steps = [

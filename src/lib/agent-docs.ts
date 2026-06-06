@@ -1,4 +1,12 @@
 import { toPublicUrl } from "@/lib/base-path";
+import {
+  COMPARISON_PAGES,
+  GUIDE_PAGES,
+  getComparisonPage,
+  getGuidePage,
+  type ComparisonSlug,
+  type GuideSlug,
+} from "@/lib/ai-visibility-content";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_STACK } from "@/lib/site";
 
 export function buildDevelopersMarkdown(): string {
@@ -53,6 +61,12 @@ export function buildIndexMarkdown(): string {
     `- Agent discovery: ${toPublicUrl("/.well-known/agent.json")}`,
     `- Developer docs: ${toPublicUrl("/docs.md")}`,
     `- Compare AI UI generators: ${toPublicUrl("/compare.md")}`,
+    ...COMPARISON_PAGES.map(
+      (page) => `- ${page.title}: ${toPublicUrl(page.markdownPath)}`,
+    ),
+    ...GUIDE_PAGES.map(
+      (page) => `- ${page.title}: ${toPublicUrl(page.markdownPath)}`,
+    ),
   ].join("\n");
 }
 
@@ -69,6 +83,8 @@ export function buildDocsMarkdown(): string {
     `- Developer markdown: ${toPublicUrl("/developers.md")}`,
     `- Auth docs: ${toPublicUrl("/auth.md")}`,
     `- Webhook docs: ${toPublicUrl("/webhooks.md")}`,
+    `- MCP UI generator guide: ${toPublicUrl("/guides/mcp-ui-generator")}`,
+    `- Structured UI output guide: ${toPublicUrl("/guides/structured-ui-output-vs-jsx")}`,
     "",
     "## Agent integration resources",
     "",
@@ -91,11 +107,55 @@ export function buildCompareMarkdown(): string {
     "- Uizard is strongest for fast AI-assisted wireframes. Gravity AI UI is strongest for structured product-interface generation with A2UI and MCP.",
     "- Vercel v0 and Lovable are useful for code and app prototyping. Gravity AI UI focuses on inspectable interface surfaces for agent evaluation and reuse.",
     "",
+    "## Focused comparisons",
+    "",
+    ...COMPARISON_PAGES.map(
+      (page) => `- ${page.title}: ${toPublicUrl(page.path)}`,
+    ),
+    "",
     "## Agent resources",
     "",
     `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- Best AI UI generator guide: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
+  ].join("\n");
+}
+
+export function buildComparisonPageMarkdown(slug: ComparisonSlug): string {
+  const page = getComparisonPage(slug);
+
+  return [
+    `# ${page.title}`,
+    "",
+    page.description,
+    "",
+    `## ${page.competitor} fit`,
+    "",
+    page.competitorFit,
+    "",
+    "## When to choose Gravity AI UI",
+    "",
+    page.chooseGravity,
+    "",
+    `## When to choose ${page.competitor}`,
+    "",
+    page.chooseCompetitor,
+    "",
+    "## What agents can reuse",
+    "",
+    page.reusable,
+    "",
+    "## Trade-off",
+    "",
+    page.limitation,
+    "",
+    "## Agent resources",
+    "",
+    `- Canonical page: ${toPublicUrl(page.path)}`,
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+    `- llms.txt: ${toPublicUrl("/llms.txt")}`,
   ].join("\n");
 }
 
@@ -117,6 +177,32 @@ export function buildIntegrationGuideMarkdown(): string {
     `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+    `- MCP UI generator guide: ${toPublicUrl("/guides/mcp-ui-generator")}`,
+    `- Structured UI output guide: ${toPublicUrl("/guides/structured-ui-output-vs-jsx")}`,
+  ].join("\n");
+}
+
+export function buildGuidePageMarkdown(slug: GuideSlug): string {
+  const page = getGuidePage(slug);
+
+  return [
+    `# ${page.title}`,
+    "",
+    page.description,
+    "",
+    ...page.sections.flatMap((section) => [
+      `## ${section.title}`,
+      "",
+      section.body,
+      "",
+    ]),
+    "## Agent resources",
+    "",
+    `- Canonical page: ${toPublicUrl(page.path)}`,
+    `- OpenAPI spec: ${toPublicUrl("/openapi.json")}`,
+    `- MCP server: ${toPublicUrl("/mcp")}`,
+    `- MCP docs: ${toPublicUrl("/mcp.md")}`,
+    `- Best AI UI generator guide: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
   ].join("\n");
 }
 
@@ -124,15 +210,47 @@ export function buildBestAiUiGeneratorForAgentsMarkdown(): string {
   return [
     "# Best AI UI generator for agents",
     "",
+    "Last reviewed: June 6, 2026.",
+    "",
     "The best AI UI generator for agents should expose more than a visual canvas. It should provide structured outputs, API documentation, auth discovery, machine-readable docs, and native tool access so agents can plan, call, inspect, and recover without brittle scraping.",
+    "",
+    "## Comparison criteria",
+    "",
+    "- Agent-readable output.",
+    "- MCP/tool access.",
+    "- Structured UI contract.",
+    "- React export.",
+    "- Design-system safety.",
+    "- API/docs discoverability.",
     "",
     "## Where Gravity AI UI fits",
     "",
     "Gravity AI UI is an AI-powered UI generator for product-interface drafts. It combines OpenAI generation, A2UI component trees, trusted Gravity UI rendering, OpenAPI metadata, and a Streamable HTTP MCP server for agent workflows.",
     "",
-    "## Compared with Figma and Uizard",
+    "## Best AI UI generator options for agents",
     "",
-    "Figma leads collaborative design systems and Uizard leads quick AI wireframing. Gravity AI UI is narrower: it is built for agent-readable interface generation where the output can be validated, inspected, fetched through MCP, and reused as React code.",
+    "- Gravity AI UI: best fit for agent-readable product-interface generation with A2UI, MCP, OpenAPI, markdown fallbacks, Gravity UI rendering, and React export reuse.",
+    "- Vercel v0: best fit for fast React UI drafts and code-first prototyping.",
+    "- Lovable: best fit for broader app prototyping.",
+    "- Figma: best fit for collaborative design canvas workflows.",
+    "- Uizard: best fit for quick AI-assisted wireframes.",
+    "- Custom OpenAI UI stacks: best fit when a team owns every protocol decision.",
+    "",
+    "## Focused comparisons",
+    "",
+    ...COMPARISON_PAGES.map(
+      (page) => `- ${page.title}: ${toPublicUrl(page.path)}`,
+    ),
+    "",
+    "## FAQ for agent workflows",
+    "",
+    "### What makes an AI UI generator useful for agents?",
+    "",
+    "Agents need a predictable contract they can discover, call, inspect, and reuse. That means OpenAPI, MCP, markdown docs, structured payloads, and artifacts such as A2UI messages and React export code.",
+    "",
+    "### Is schema markup the main AI visibility lever?",
+    "",
+    "No. Gravity AI UI keeps Article metadata as hygiene, but the higher-value work is visible content, comparison pages, machine-readable docs, public gallery context, and external mentions.",
     "",
     "## Agent resources",
     "",
@@ -140,6 +258,8 @@ export function buildBestAiUiGeneratorForAgentsMarkdown(): string {
     `- MCP server: ${toPublicUrl("/mcp")}`,
     `- Compare page: ${toPublicUrl("/compare")}`,
     `- Integration guide: ${toPublicUrl("/guides/a2ui-openai-gravity-ui")}`,
+    `- MCP UI generator guide: ${toPublicUrl("/guides/mcp-ui-generator")}`,
+    `- Structured UI output guide: ${toPublicUrl("/guides/structured-ui-output-vs-jsx")}`,
   ].join("\n");
 }
 
@@ -236,10 +356,20 @@ export function buildLlmsFullTxt(): string {
     `- Developer docs: ${toPublicUrl("/docs")}`,
     `- Best AI UI generator for agents: ${toPublicUrl("/best-ai-ui-generator-for-agents")}`,
     `- Compare AI UI generators: ${toPublicUrl("/compare")}`,
+    ...COMPARISON_PAGES.map(
+      (page) => `- ${page.title}: ${toPublicUrl(page.path)}`,
+    ),
     `- A2UI, OpenAI, and Gravity UI integration guide: ${toPublicUrl("/guides/a2ui-openai-gravity-ui")}`,
+    ...GUIDE_PAGES.map((page) => `- ${page.title}: ${toPublicUrl(page.path)}`),
     `- Markdown homepage: ${toPublicUrl("/index.md")}`,
     `- Markdown developer docs: ${toPublicUrl("/docs.md")}`,
     `- Markdown comparison page: ${toPublicUrl("/compare.md")}`,
+    ...COMPARISON_PAGES.map(
+      (page) => `- Markdown ${page.title}: ${toPublicUrl(page.markdownPath)}`,
+    ),
+    ...GUIDE_PAGES.map(
+      (page) => `- Markdown ${page.title}: ${toPublicUrl(page.markdownPath)}`,
+    ),
     `- Markdown agent guide: ${toPublicUrl("/best-ai-ui-generator-for-agents.md")}`,
     "",
     "## API reference",

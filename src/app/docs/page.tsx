@@ -6,7 +6,6 @@ import {
 } from "@/components/AskAI/ask-ai-content";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
 import { toPublicUrl } from "@/lib/base-path";
-import { SITE_NAME } from "@/lib/site";
 
 import "./page.scss";
 
@@ -26,7 +25,7 @@ const mcpTools = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: `Developer Docs - ${SITE_NAME}`,
+  title: "Developer Docs",
   description:
     "Gravity AI UI API docs with OpenAPI, MCP server, OAuth metadata, webhooks status, rate limits, and structured error guidance for AI agents.",
 };
@@ -80,6 +79,18 @@ function getDeveloperResources() {
       href: toPublicUrl("/docs.md"),
       description:
         "Heading-led markdown fallback for agents that prefer text resources over rendered HTML pages.",
+    },
+    {
+      title: "MCP UI generator guide",
+      href: toPublicUrl("/guides/mcp-ui-generator"),
+      description:
+        "How to expose an AI UI generator through MCP with structured A2UI output, OpenAPI, markdown docs, and React export artifacts.",
+    },
+    {
+      title: "Structured UI output guide",
+      href: toPublicUrl("/guides/structured-ui-output-vs-jsx"),
+      description:
+        "Why structured A2UI-style output is safer and easier for agents to reuse than raw JSX or HTML generation.",
     },
     {
       title: "webhooks",

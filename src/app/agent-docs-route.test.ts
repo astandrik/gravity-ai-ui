@@ -6,9 +6,27 @@ const resourceRoutes = [
   ["index.md", "@/app/index.md/route"],
   ["docs.md", "@/app/docs.md/route"],
   ["compare.md", "@/app/compare.md/route"],
+  ["gravity-ai-ui-vs-v0.md", "@/app/compare/gravity-ai-ui-vs-v0.md/route"],
+  [
+    "gravity-ai-ui-vs-lovable.md",
+    "@/app/compare/gravity-ai-ui-vs-lovable.md/route",
+  ],
+  [
+    "gravity-ai-ui-vs-figma.md",
+    "@/app/compare/gravity-ai-ui-vs-figma.md/route",
+  ],
+  [
+    "gravity-ai-ui-vs-uizard.md",
+    "@/app/compare/gravity-ai-ui-vs-uizard.md/route",
+  ],
   [
     "a2ui-openai-gravity-ui.md",
     "@/app/guides/a2ui-openai-gravity-ui.md/route",
+  ],
+  ["mcp-ui-generator.md", "@/app/guides/mcp-ui-generator.md/route"],
+  [
+    "structured-ui-output-vs-jsx.md",
+    "@/app/guides/structured-ui-output-vs-jsx.md/route",
   ],
   [
     "best-ai-ui-generator-for-agents.md",
@@ -53,6 +71,15 @@ describe("agent-readable documentation routes", () => {
     expect(body).toContain("https://gravity.example/index.md");
     expect(body).toContain(
       "https://gravity.example/best-ai-ui-generator-for-agents",
+    );
+    expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-v0",
+    );
+    expect(body).toContain(
+      "https://gravity.example/guides/mcp-ui-generator",
+    );
+    expect(body).toContain(
+      "https://gravity.example/guides/structured-ui-output-vs-jsx",
     );
     expect(body).toContain("curl -X POST https://gravity.example/mcp");
   });
