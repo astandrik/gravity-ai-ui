@@ -114,6 +114,11 @@ const dynamicStringSchemaWithBounds = (minLength: number, maxLength: number) =>
   z.union([z.string().min(minLength).max(maxLength), dataBindingSchema]);
 const nullableDynamicStringSchemaOfMax = (maxLength: number) =>
   dynamicStringSchemaOfMax(maxLength).nullable();
+const dynamicToneSchema = z.union([z.enum(GRAVITY_TONES), dataBindingSchema]);
+const nullableDynamicIconNameSchema = z.union([
+  iconNameSchema.nullable(),
+  dataBindingSchema,
+]);
 const dynamicArraySchema = <ArraySchema extends z.ZodArray<z.ZodTypeAny>>(
   schema: ArraySchema,
 ) => z.union([schema, dataBindingSchema]);
@@ -304,8 +309,8 @@ const metricItemSchema = z
     label: dynamicStringSchemaWithBounds(1, 240),
     value: dynamicStringSchemaWithBounds(1, 240),
     description: nullableDynamicStringSchemaOfMax(240),
-    tone: z.enum(GRAVITY_TONES),
-    icon: iconNameSchema.nullable(),
+    tone: dynamicToneSchema,
+    icon: nullableDynamicIconNameSchema,
   })
   .strict();
 

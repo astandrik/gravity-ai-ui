@@ -158,6 +158,7 @@ const layoutSchema = z.object({
 });
 
 const toneSchema = z.enum(GRAVITY_TONES);
+const dynamicToneSchema = z.union([toneSchema, CommonSchemas.DataBinding]);
 const optionSchema = z.object({
   label: dynamicStringSchema,
   value: z.string(),
@@ -168,6 +169,13 @@ const metricItemSchema = z.object({
   description: nullableDynamicStringSchema,
   tone: toneSchema,
   icon: iconNameSchema.nullable(),
+});
+const metricItemInputSchema = z.object({
+  label: dynamicStringSchema,
+  value: dynamicStringSchema,
+  description: nullableDynamicStringSchema,
+  tone: dynamicToneSchema,
+  icon: z.union([iconNameSchema.nullable(), CommonSchemas.DataBinding]),
 });
 const tableColumnSchema = z.object({
   id: z.string(),
@@ -480,7 +488,7 @@ const MetricGridSurface = createComponentImplementation(
     name: "MetricGrid",
     schema: z.object({
       ...commonProps,
-      items: dynamicArraySchema(z.array(metricItemSchema)),
+      items: dynamicArraySchema(z.array(metricItemInputSchema)),
     }),
   },
   ({ props: rawProps, context }) => {
