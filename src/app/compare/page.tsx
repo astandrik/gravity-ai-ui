@@ -3,7 +3,7 @@ import { Container, Text } from "@/components/GravityUI/GravityUI";
 import { COMPARISON_PAGES } from "@/lib/ai-visibility-content";
 import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
-import "./page.scss";
+import "@/components/AiVisibility/ComparisonArticle.scss";
 
 export const metadata: Metadata = {
   title: "Compare AI UI Generators",

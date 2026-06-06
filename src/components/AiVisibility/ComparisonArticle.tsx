@@ -5,7 +5,7 @@ import {
 } from "@/lib/ai-visibility-content";
 import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
-import "@/app/compare/page.scss";
+import "./ComparisonArticle.scss";
 
 export function ComparisonArticle({ slug }: { slug: ComparisonSlug }) {
   const page = getComparisonPage(slug);

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
 import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
-import "./page.scss";
+import "@/components/AiVisibility/GuideArticle.scss";
 
 export const metadata: Metadata = {
   title: "A2UI, OpenAI, and Gravity UI Integration Guide",

@@ -2,7 +2,7 @@ import { Container, Text } from "@/components/GravityUI/GravityUI";
 import { getGuidePage, type GuideSlug } from "@/lib/ai-visibility-content";
 import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
-import "@/app/guides/a2ui-openai-gravity-ui/page.scss";
+import "./GuideArticle.scss";
 
 export function GuideArticle({ slug }: { slug: GuideSlug }) {
   const page = getGuidePage(slug);
