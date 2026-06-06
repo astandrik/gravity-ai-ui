@@ -1,4 +1,5 @@
 import { toPublicUrl } from "@/lib/base-path";
+import { COMPARISON_PAGES, GUIDE_PAGES } from "@/lib/ai-visibility-content";
 import {
   SITE_DESCRIPTION,
   SITE_NAME,
@@ -25,8 +26,15 @@ export async function GET(): Promise<Response> {
       `- [Docs](${toPublicUrl("/docs")}): Gravity AI UI API docs, OpenAPI spec, MCP server usage, auth notes, webhooks status, rate limits, and errors.`,
       `- [About](${toPublicUrl("/about")}): How Gravity AI UI combines A2UI, Gravity UI, OpenAI, and YDB into a trusted interface preview shell.`,
       `- [Compare](${toPublicUrl("/compare")}): Gravity AI UI compared with AI UI generators such as Vercel v0, Lovable, Figma, and Uizard.`,
+      ...COMPARISON_PAGES.map(
+        (page) =>
+          `- [${page.title}](${toPublicUrl(page.path)}): Focused comparison for agent-readable UI generation, MCP, A2UI, OpenAPI, and React export workflows.`,
+      ),
       `- [Best AI UI generator for agents](${toPublicUrl("/best-ai-ui-generator-for-agents")}): Category guide for agent workflows, Figma, Uizard, A2UI, MCP, OpenAI, and Gravity UI.`,
       `- [Integration guide](${toPublicUrl("/guides/a2ui-openai-gravity-ui")}): A2UI, OpenAI, and Gravity UI integration guide for agent-generated product interfaces.`,
+      ...GUIDE_PAGES.map(
+        (page) => `- [${page.title}](${toPublicUrl(page.path)}): ${page.description}`,
+      ),
       "",
       "## Suggested assistant tasks",
       "",
@@ -54,7 +62,15 @@ export async function GET(): Promise<Response> {
       `- [Markdown homepage](${toPublicUrl("/index.md")}): Markdown fallback for the site root.`,
       `- [Markdown docs](${toPublicUrl("/docs.md")}): Markdown fallback for developer docs.`,
       `- [Markdown compare](${toPublicUrl("/compare.md")}): Markdown fallback for AI UI generator comparison.`,
+      ...COMPARISON_PAGES.map(
+        (page) =>
+          `- [Markdown ${page.title}](${toPublicUrl(page.markdownPath)}): Markdown fallback for focused AI UI generator comparison.`,
+      ),
       `- [Markdown agent guide](${toPublicUrl("/best-ai-ui-generator-for-agents.md")}): Markdown fallback for the agent-focused category guide.`,
+      ...GUIDE_PAGES.map(
+        (page) =>
+          `- [Markdown ${page.title}](${toPublicUrl(page.markdownPath)}): Markdown fallback for the guide.`,
+      ),
       "",
       "## Developer resources",
       "",

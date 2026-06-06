@@ -5,9 +5,39 @@ const markdownRoutes = [
   ["docs.md", "@/app/docs.md/route", "Gravity AI UI Developer Docs"],
   ["compare.md", "@/app/compare.md/route", "compared with AI UI generators"],
   [
+    "compare/gravity-ai-ui-vs-v0.md",
+    "@/app/compare/gravity-ai-ui-vs-v0.md/route",
+    "Gravity AI UI vs Vercel v0",
+  ],
+  [
+    "compare/gravity-ai-ui-vs-lovable.md",
+    "@/app/compare/gravity-ai-ui-vs-lovable.md/route",
+    "Gravity AI UI vs Lovable",
+  ],
+  [
+    "compare/gravity-ai-ui-vs-figma.md",
+    "@/app/compare/gravity-ai-ui-vs-figma.md/route",
+    "Gravity AI UI vs Figma",
+  ],
+  [
+    "compare/gravity-ai-ui-vs-uizard.md",
+    "@/app/compare/gravity-ai-ui-vs-uizard.md/route",
+    "Gravity AI UI vs Uizard",
+  ],
+  [
     "guides/a2ui-openai-gravity-ui.md",
     "@/app/guides/a2ui-openai-gravity-ui.md/route",
     "A2UI, OpenAI, and Gravity UI integration guide",
+  ],
+  [
+    "guides/mcp-ui-generator.md",
+    "@/app/guides/mcp-ui-generator.md/route",
+    "How to expose an AI UI generator through MCP",
+  ],
+  [
+    "guides/structured-ui-output-vs-jsx.md",
+    "@/app/guides/structured-ui-output-vs-jsx.md/route",
+    "Structured UI output vs raw JSX",
   ],
   [
     "best-ai-ui-generator-for-agents.md",

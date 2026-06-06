@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
 
+import { COMPARISON_PAGES, GUIDE_PAGES } from "@/lib/ai-visibility-content";
 import { toPublicUrl } from "@/lib/base-path";
 import { listPublishedDesignSitemapEntries } from "@/lib/feedback/ydbFeedbackStore";
 import {
@@ -57,6 +58,12 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    ...COMPARISON_PAGES.map((page) => ({
+      url: toPublicUrl(page.path),
+      lastModified: generatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
     {
       url: toPublicUrl("/best-ai-ui-generator-for-agents"),
       lastModified: generatedAt,
@@ -69,6 +76,12 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    ...GUIDE_PAGES.map((page) => ({
+      url: toPublicUrl(page.path),
+      lastModified: generatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
     {
       url: toPublicUrl("/index.md"),
       lastModified: generatedAt,
@@ -87,12 +100,24 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.4,
     },
+    ...COMPARISON_PAGES.map((page) => ({
+      url: toPublicUrl(page.markdownPath),
+      lastModified: generatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.4,
+    })),
     {
       url: toPublicUrl("/guides/a2ui-openai-gravity-ui.md"),
       lastModified: generatedAt,
       changeFrequency: "weekly",
       priority: 0.4,
     },
+    ...GUIDE_PAGES.map((page) => ({
+      url: toPublicUrl(page.markdownPath),
+      lastModified: generatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.4,
+    })),
     {
       url: toPublicUrl("/best-ai-ui-generator-for-agents.md"),
       lastModified: generatedAt,

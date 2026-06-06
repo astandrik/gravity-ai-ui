@@ -3,7 +3,6 @@ import Image from "next/image";
 import { LogoGithub } from "@gravity-ui/icons";
 import { Button, Container, Text } from "@/components/GravityUI/GravityUI";
 import { withBasePath } from "@/lib/base-path";
-import { SITE_NAME } from "@/lib/site";
 
 import "./page.scss";
 
@@ -11,7 +10,7 @@ const GITHUB_REPOSITORY_URL = "https://github.com/astandrik/gravity-ai-ui";
 const LOCAL_YDB_TOOLKIT_URL = "https://github.com/astandrik/local-ydb-toolkit";
 
 export const metadata: Metadata = {
-  title: `About - ${SITE_NAME}`,
+  title: "About",
   description:
     "How Gravity AI UI combines A2UI, Gravity UI, and YDB into a trusted interface preview shell.",
 };

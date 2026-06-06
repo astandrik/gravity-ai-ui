@@ -55,16 +55,41 @@ describe("GET /llms.txt", () => {
     expect(body).toContain("https://gravity.example/about");
     expect(body).toContain("https://gravity.example/compare");
     expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-v0",
+    );
+    expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-lovable",
+    );
+    expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-figma",
+    );
+    expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-uizard",
+    );
+    expect(body).toContain(
       "https://gravity.example/best-ai-ui-generator-for-agents",
     );
     expect(body).toContain(
       "https://gravity.example/guides/a2ui-openai-gravity-ui",
     );
+    expect(body).toContain("https://gravity.example/guides/mcp-ui-generator");
+    expect(body).toContain(
+      "https://gravity.example/guides/structured-ui-output-vs-jsx",
+    );
     expect(body).toContain("https://gravity.example/index.md");
     expect(body).toContain("https://gravity.example/docs.md");
     expect(body).toContain("https://gravity.example/compare.md");
     expect(body).toContain(
+      "https://gravity.example/compare/gravity-ai-ui-vs-v0.md",
+    );
+    expect(body).toContain(
       "https://gravity.example/best-ai-ui-generator-for-agents.md",
+    );
+    expect(body).toContain(
+      "https://gravity.example/guides/mcp-ui-generator.md",
+    );
+    expect(body).toContain(
+      "https://gravity.example/guides/structured-ui-output-vs-jsx.md",
     );
     expect(body).toContain("https://gravity.example/sitemap.xml");
     expect(body).toContain("https://gravity.example/robots.txt");

@@ -21,6 +21,7 @@ import {
   buildGalleryDesignJsonLd,
   serializeGalleryDesignJsonLd,
 } from "@/lib/gallery/designJsonLd";
+import { buildGalleryRetrievalContext } from "@/lib/gallery/retrievalContext";
 import {
   getSiteSocialImageUrl,
   SITE_IMAGE_ALT,
@@ -120,6 +121,7 @@ export default async function GalleryDesignPage({
   const canonicalPageUrl = toPublicUrl(`/gallery/${design.id}`);
   const socialImage = getGalleryDesignSocialImage(design);
   const reactCode = buildReactCode(design.payload);
+  const retrievalContext = buildGalleryRetrievalContext(design);
   const jsonLd = buildGalleryDesignJsonLd({
     canonicalUrl: canonicalPageUrl,
     createdAtMs: design.createdAtMs,
@@ -175,6 +177,33 @@ export default async function GalleryDesignPage({
           />
 
           <InterfaceInspector payload={design.payload} />
+
+          <section
+            className="gallery-detail__context"
+            aria-labelledby="gallery-context-title"
+          >
+            <div className="gallery-detail__retrieval-copy">
+              <Text as="h2" id="gallery-context-title" variant="subheader-3">
+                Interface context for agents
+              </Text>
+              <Text as="p" variant="body-2" color="secondary">
+                Citation-friendly context for agents evaluating or adapting
+                this public generated interface.
+              </Text>
+            </div>
+            <div className="gallery-detail__context-grid">
+              {retrievalContext.map((section) => (
+                <article key={section.title} className="gallery-context-card">
+                  <Text as="h3" variant="subheader-2">
+                    {section.title}
+                  </Text>
+                  <Text as="p" variant="body-2" color="secondary">
+                    {section.body}
+                  </Text>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <section
             className="gallery-detail__retrieval"

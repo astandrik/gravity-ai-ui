@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { Container, Text } from "@/components/GravityUI/GravityUI";
-import { toPublicUrl } from "@/lib/base-path";
-import { SITE_NAME } from "@/lib/site";
+import { COMPARISON_PAGES } from "@/lib/ai-visibility-content";
+import { toPublicUrl, withBasePath } from "@/lib/base-path";
 
 import "./page.scss";
 
 export const metadata: Metadata = {
-  title: `Compare AI UI Generators - ${SITE_NAME}`,
+  title: "Compare AI UI Generators",
   description:
     "Gravity AI UI compared with AI UI generators such as Vercel v0, Lovable, Figma, Uizard, and custom OpenAI UI generation stacks.",
+  alternates: {
+    canonical: withBasePath("/compare"),
+  },
 };
 
 const comparisons = [
@@ -120,6 +123,22 @@ export default function ComparePage() {
               output, and constrained rendering through a known Gravity UI
               registry.
             </Text>
+          </section>
+
+          <section
+            className="compare-page__section"
+            aria-labelledby="focused-comparisons-title"
+          >
+            <Text as="h2" id="focused-comparisons-title" variant="subheader-3">
+              Focused comparison pages
+            </Text>
+            <div className="compare-page__links">
+              {COMPARISON_PAGES.map((page) => (
+                <a key={page.slug} href={withBasePath(page.path)}>
+                  {page.title}
+                </a>
+              ))}
+            </div>
           </section>
 
           <section

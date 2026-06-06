@@ -139,6 +139,31 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
+.gallery-detail__context {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.gallery-detail__context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.gallery-context-card {
+  display: grid;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.2);
+
+  h3,
+  p {
+    margin: 0;
+  }
+}
+
 .gallery-detail__retrieval-copy {
   display: grid;
   gap: var(--spacing-sm);
@@ -206,5 +231,11 @@
 @include md {
   .gallery-grid {
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .gallery-detail__context-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

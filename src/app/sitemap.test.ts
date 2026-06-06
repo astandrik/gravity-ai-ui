@@ -69,7 +69,34 @@ describe("sitemap", () => {
     expect(urls).toContain("https://gravity.example/base/docs.md");
     expect(urls).toContain("https://gravity.example/base/compare.md");
     expect(urls).toContain(
+      "https://gravity.example/base/compare/gravity-ai-ui-vs-v0",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/compare/gravity-ai-ui-vs-v0.md",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/compare/gravity-ai-ui-vs-lovable",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/compare/gravity-ai-ui-vs-figma",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/compare/gravity-ai-ui-vs-uizard",
+    );
+    expect(urls).toContain(
       "https://gravity.example/base/guides/a2ui-openai-gravity-ui.md",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/guides/mcp-ui-generator",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/guides/mcp-ui-generator.md",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/guides/structured-ui-output-vs-jsx",
+    );
+    expect(urls).toContain(
+      "https://gravity.example/base/guides/structured-ui-output-vs-jsx.md",
     );
     expect(urls).toContain(
       "https://gravity.example/base/best-ai-ui-generator-for-agents.md",
