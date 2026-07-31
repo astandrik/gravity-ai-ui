@@ -31,7 +31,7 @@ import type {
 
 export const COMPOSE_GRAVITY_INTERFACE_TOOL_NAME = "compose_gravity_interface";
 
-const DEFAULT_MODEL = "gpt-5.5";
+const DEFAULT_MODEL = "gpt-5.6-sol";
 const DEFAULT_REASONING_EFFORT = "none";
 const DEFAULT_MAX_OUTPUT_TOKENS = 24_000;
 const MIN_MAX_OUTPUT_TOKENS = 4_000;
@@ -90,7 +90,7 @@ export async function streamAgentResponse({
 
   const stream = await client.responses.create(
     {
-      model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+      model: getOpenAIModel(),
       input: buildInput(request),
       instructions: buildInstructions(),
       reasoning: { effort: getReasoningEffort() },
@@ -433,6 +433,10 @@ export function getMaxOutputTokens() {
     MAX_MAX_OUTPUT_TOKENS,
     Math.max(MIN_MAX_OUTPUT_TOKENS, Math.floor(configuredTokens)),
   );
+}
+
+export function getOpenAIModel() {
+  return process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 }
 
 function isReasoningEffort(

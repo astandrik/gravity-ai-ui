@@ -26,7 +26,7 @@
     "@ydbjs/query": "^6.2.0",
     "@ydbjs/value": "^6.0.7",
     "next": "^16.0.10",
-    "openai": "^6.38.0",
+    "openai": "^7.2.0",
     "playwright-core": "^1.60.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

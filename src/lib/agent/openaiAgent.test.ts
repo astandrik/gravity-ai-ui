@@ -12,16 +12,24 @@ import {
   COMPOSE_GRAVITY_INTERFACE_TOOL_NAME,
   createInitializedSurfaceIds,
   getMaxOutputTokens,
+  getOpenAIModel,
   getProgressiveStatusA2uiMessages,
   getReasoningEffort,
   parseFunctionCallArguments,
   parseFunctionToolCallItem,
 } from "./openaiAgent";
 
+const originalOpenAIModel = process.env.OPENAI_MODEL;
 const originalOpenAIReasoningEffort = process.env.OPENAI_REASONING_EFFORT;
 const originalOpenAIMaxOutputTokens = process.env.OPENAI_MAX_OUTPUT_TOKENS;
 
 afterEach(() => {
+  if (originalOpenAIModel === undefined) {
+    delete process.env.OPENAI_MODEL;
+  } else {
+    process.env.OPENAI_MODEL = originalOpenAIModel;
+  }
+
   if (originalOpenAIReasoningEffort === undefined) {
     delete process.env.OPENAI_REASONING_EFFORT;
   } else {
@@ -110,6 +118,14 @@ const composedPayload = {
 } satisfies ComposedInterfacePayload;
 
 describe("OpenAI agent stream parsing", () => {
+  it("uses GPT-5.6 Sol by default while preserving model overrides", () => {
+    delete process.env.OPENAI_MODEL;
+    expect(getOpenAIModel()).toBe("gpt-5.6-sol");
+
+    process.env.OPENAI_MODEL = "custom-model";
+    expect(getOpenAIModel()).toBe("custom-model");
+  });
+
   it("disables reasoning by default", () => {
     delete process.env.OPENAI_REASONING_EFFORT;
 
